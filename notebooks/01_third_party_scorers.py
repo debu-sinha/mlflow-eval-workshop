@@ -11,8 +11,8 @@
 
 # COMMAND ----------
 
-# Install dependencies (uncomment if running locally)
-# !pip install mlflow[genai] arize-phoenix trulens guardrails-ai -q
+# MAGIC %pip install --upgrade mlflow[genai] arize-phoenix trulens guardrails-ai -q
+# MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
 
