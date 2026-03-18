@@ -17,17 +17,24 @@ A production evaluation pipeline that connects external evaluation libraries to 
 
 ## Setup
 
-### Option A: Databricks Free Serverless (recommended for the workshop)
+### Option A: Databricks Workspace (recommended for the workshop)
 
-1. Sign up at [community.cloud.databricks.com](https://community.cloud.databricks.com/)
-2. Create a new cluster (any default serverless cluster works)
-3. Import this repo: **Workspace > Repos > Add Repo** and paste this URL:
+> **Note:** Git Folders require a Databricks paid workspace or [free trial](https://www.databricks.com/try-databricks).
+> Community Edition does not support Git Folders.
+
+**Clone this repo into your workspace:**
+
+1. In the Databricks sidebar, click **Workspace**
+2. Navigate to your user folder (`/Users/<your-email>/`)
+3. Click **Create > Git folder**
+4. Paste the repository URL:
    ```
    https://github.com/debu-sinha/mlflow-eval-workshop
    ```
-4. Open `notebooks/01_third_party_scorers` and run each cell
+5. Set Git provider to **GitHub** and click **Create Git folder**
+6. Open `notebooks/01_third_party_scorers` and attach to any cluster
 
-The notebooks auto-detect the Databricks environment and use Databricks Foundation Model APIs (e.g., `databricks-claude-sonnet-4`). No API keys needed. MLflow tracking is also built in. Zero configuration required.
+No Git credentials are needed (this is a public repo). No API keys are needed either. The notebooks auto-detect the Databricks environment and use Databricks Foundation Model APIs (e.g., `databricks-claude-sonnet-4`). MLflow tracking is built in. Zero configuration required.
 
 ### Option B: Run locally
 
