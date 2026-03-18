@@ -19,8 +19,7 @@ A production evaluation pipeline that connects external evaluation libraries to 
 
 ### Option A: Databricks Workspace (recommended for the workshop)
 
-> **Note:** Git Folders require a Databricks paid workspace or [free trial](https://www.databricks.com/try-databricks).
-> Community Edition does not support Git Folders.
+Sign up for the [Databricks Free Edition](https://www.databricks.com/try-databricks-free) if you don't have a workspace. The Free Edition includes serverless compute, MLflow tracking, and Git Folders.
 
 **Clone this repo into your workspace:**
 
@@ -34,7 +33,7 @@ A production evaluation pipeline that connects external evaluation libraries to 
 5. Set Git provider to **GitHub** and click **Create Git folder**
 6. Open `notebooks/01_third_party_scorers` and attach to any cluster
 
-No Git credentials are needed (this is a public repo). No API keys are needed either. The notebooks auto-detect the Databricks environment and use Databricks Foundation Model APIs (e.g., `databricks-claude-sonnet-4`). MLflow tracking is built in. Zero configuration required.
+No Git credentials needed (public repo). No API keys needed. The notebooks auto-detect the Databricks environment and use built-in Foundation Model APIs (e.g., `databricks-claude-sonnet-4`). MLflow tracking is built in. Zero configuration.
 
 ### Option B: Run locally
 
