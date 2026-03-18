@@ -241,7 +241,7 @@ with mlflow.start_run(run_name="eval-gate-demo") as run:
 # MAGIC %md
 # MAGIC ## Questions?
 # MAGIC
-# MAGIC **Debu Sinha** | Principal MLE @ Databricks
+# MAGIC **Debu Sinha** | Lead Applied AI/ML Engineer @ Databricks
 # MAGIC
 # MAGIC LinkedIn: linkedin.com/in/debusinha
 # MAGIC

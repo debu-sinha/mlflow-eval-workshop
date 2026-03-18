@@ -32,7 +32,7 @@ pip install mlflow[genai] arize-phoenix trulens guardrails-ai scikit-learn numpy
 
 ## Speaker
 
-**Debu Sinha** | Principal MLE @ Databricks
+**Debu Sinha** | Lead Applied AI/ML Engineer @ Databricks
 
 Built MLflow's first third-party scorer integrations (Phoenix, TruLens, Guardrails AI) and the first MLflow tracking integration for Inspect AI. Author of *Practical Machine Learning on Databricks* (Packt, 2023).
 
