@@ -16,6 +16,11 @@
 
 # COMMAND ----------
 
+import os
+ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 3.1 The problem: "Did the model get better?"
 # MAGIC

@@ -16,6 +16,11 @@
 
 # COMMAND ----------
 
+import os
+ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 4.1 The evaluation gate pattern
 # MAGIC
