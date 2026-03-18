@@ -31,7 +31,7 @@ ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
 
 if ON_DATABRICKS:
     # Databricks Foundation Model APIs (no key needed)
-    JUDGE_MODEL = "databricks-claude-sonnet-4"
+    JUDGE_MODEL = "databricks:/databricks-claude-sonnet-4"
     print(f"Running on Databricks. Using model: {JUDGE_MODEL}")
 else:
     # Local / OSS: use OpenAI (requires OPENAI_API_KEY)
