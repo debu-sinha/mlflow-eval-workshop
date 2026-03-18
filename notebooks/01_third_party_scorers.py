@@ -11,7 +11,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] arize-phoenix trulens guardrails-ai -q
+# MAGIC %pip install --upgrade mlflow[genai] arize-phoenix trulens guardrails-ai trulens-providers-litellm -q
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
