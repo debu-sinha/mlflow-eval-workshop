@@ -156,7 +156,8 @@ print(f"Toxicity check (bad): {feedback_bad.value}")
 
 import mlflow
 
-mlflow.set_experiment("/odsc-eval-workshop/module-1-scorers")
+if not ON_DATABRICKS:
+    mlflow.set_experiment("odsc-eval-workshop-module-1-scorers")
 
 results = mlflow.genai.evaluate(
     data=eval_dataset,

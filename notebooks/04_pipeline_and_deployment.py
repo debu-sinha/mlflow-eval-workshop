@@ -41,7 +41,8 @@ import mlflow
 import numpy as np
 from dataclasses import dataclass
 
-mlflow.set_experiment("/odsc-eval-workshop/module-4-pipeline")
+if not ON_DATABRICKS:
+    mlflow.set_experiment("odsc-eval-workshop-module-4-pipeline")
 
 
 @dataclass

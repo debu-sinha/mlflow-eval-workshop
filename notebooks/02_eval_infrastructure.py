@@ -46,7 +46,8 @@ else:
 
 import mlflow
 
-mlflow.set_experiment("/odsc-eval-workshop/module-2-infrastructure")
+if not ON_DATABRICKS:
+    mlflow.set_experiment("odsc-eval-workshop-module-2-infrastructure")
 
 eval_data = [
     {
