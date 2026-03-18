@@ -24,14 +24,14 @@ Sign up for the [Databricks Free Edition](https://www.databricks.com/try-databri
 **Clone this repo into your workspace:**
 
 1. In the Databricks sidebar, click **Workspace**
-2. Navigate to your user folder (`/Users/<your-email>/`)
-3. Click **Create > Git folder**
+2. Expand **Workspace > Repos** and click into your user folder
+3. Click the **Create Git folder** button (top right) or use **New > Git folder**
 4. Paste the repository URL:
    ```
    https://github.com/debu-sinha/mlflow-eval-workshop
    ```
-5. Set Git provider to **GitHub** and click **Create Git folder**
-6. Open `notebooks/01_third_party_scorers` and attach to any cluster
+5. Select **GitHub** as the Git provider and click **Create Git folder**
+6. Open `notebooks/01_third_party_scorers` and attach to any serverless cluster
 
 No Git credentials needed (public repo). No API keys needed. The notebooks auto-detect the Databricks environment and use built-in Foundation Model APIs (e.g., `databricks-claude-sonnet-4`). MLflow tracking is built in. Zero configuration.
 
