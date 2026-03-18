@@ -11,8 +11,8 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install mlflow[genai] arize-phoenix trulens guardrails-ai -q
-# MAGIC dbutils.library.restartPython()
+# Install dependencies (uncomment if running locally)
+# !pip install mlflow[genai] arize-phoenix trulens guardrails-ai -q
 
 # COMMAND ----------
 
@@ -64,7 +64,7 @@ print(f"Evaluation dataset: {len(eval_dataset)} samples")
 
 from mlflow.genai.scorers.phoenix import Hallucination
 
-hallucination_scorer = Hallucination(model="databricks-claude-sonnet-4")
+hallucination_scorer = Hallucination(model="openai:/gpt-4o-mini")
 
 # Test on a single sample
 feedback = hallucination_scorer(
@@ -86,7 +86,7 @@ print(f"Rationale: {feedback.rationale}")
 
 from mlflow.genai.scorers.trulens import Groundedness
 
-groundedness_scorer = Groundedness(model="databricks-claude-sonnet-4")
+groundedness_scorer = Groundedness(model="openai:/gpt-4o-mini")
 
 feedback = groundedness_scorer(
     inputs=eval_dataset[2]["inputs"],
@@ -136,8 +136,8 @@ mlflow.set_experiment("/odsc-eval-workshop/module-1-scorers")
 results = mlflow.genai.evaluate(
     data=eval_dataset,
     scorers=[
-        Hallucination(model="databricks-claude-sonnet-4"),
-        Groundedness(model="databricks-claude-sonnet-4"),
+        Hallucination(model="openai:/gpt-4o-mini"),
+        Groundedness(model="openai:/gpt-4o-mini"),
         ToxicLanguage(),
     ],
 )
@@ -163,4 +163,6 @@ for metric_name, metric_value in results.metrics.items():
 # COMMAND ----------
 
 # Display the results DataFrame
-display(results.result_df)
+# On Databricks: display(results.result_df)
+# Locally:
+print(results.result_df.to_string())

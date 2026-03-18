@@ -5,14 +5,14 @@
 # MAGIC **Objective:** Chain all three modules into a single evaluation pipeline using
 # MAGIC Databricks Workflows and understand CI/CD integration patterns.
 # MAGIC
-# MAGIC **Tools:** Databricks Workflows, MLflow, Databricks Model Serving
+# MAGIC **Tools:** MLflow, NumPy
 # MAGIC
 # MAGIC **Time:** 10 minutes
 
 # COMMAND ----------
 
-# MAGIC %pip install mlflow[genai] arize-phoenix guardrails-ai scikit-learn numpy -q
-# MAGIC dbutils.library.restartPython()
+# Install dependencies (uncomment if running locally)
+# !pip install mlflow[genai] arize-phoenix guardrails-ai scikit-learn numpy -q
 
 # COMMAND ----------
 

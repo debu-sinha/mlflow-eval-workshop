@@ -5,14 +5,14 @@
 # MAGIC **Objective:** Align samples across two evaluation runs, compute score deltas,
 # MAGIC and determine whether differences are statistically significant.
 # MAGIC
-# MAGIC **Tools:** Databricks Workspace, MLflow, NumPy
+# MAGIC **Tools:** MLflow, NumPy
 # MAGIC
 # MAGIC **Time:** 20 minutes
 
 # COMMAND ----------
 
-# MAGIC %pip install mlflow[genai] scikit-learn numpy -q
-# MAGIC dbutils.library.restartPython()
+# Install dependencies (uncomment if running locally)
+# !pip install mlflow[genai] scikit-learn numpy -q
 
 # COMMAND ----------
 

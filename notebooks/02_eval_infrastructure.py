@@ -5,14 +5,14 @@
 # MAGIC **Objective:** Configure LLM judge parameters, manage scorer concurrency,
 # MAGIC and lock model dependencies with uv for reproducible evaluations.
 # MAGIC
-# MAGIC **Tools:** Databricks Workspace, MLflow, Databricks Model Serving, uv
+# MAGIC **Tools:** MLflow, OpenAI API, uv package manager
 # MAGIC
 # MAGIC **Time:** 15 minutes
 
 # COMMAND ----------
 
-# MAGIC %pip install mlflow[genai] arize-phoenix scikit-learn -q
-# MAGIC dbutils.library.restartPython()
+# Install dependencies (uncomment if running locally)
+# !pip install mlflow[genai] arize-phoenix scikit-learn -q
 
 # COMMAND ----------
 
@@ -54,7 +54,7 @@ from mlflow.genai.scorers.phoenix import Hallucination
 # Default temperature (model default, usually 1.0)
 results_default = mlflow.genai.evaluate(
     data=eval_data,
-    scorers=[Hallucination(model="databricks-claude-sonnet-4")],
+    scorers=[Hallucination(model="openai:/gpt-4o-mini")],
 )
 
 print("Default temperature results:")
@@ -71,7 +71,7 @@ for metric_name, value in results_default.metrics.items():
 # COMMAND ----------
 
 judge = mlflow.genai.make_judge(
-    model="databricks-claude-sonnet-4",
+    model="openai:/gpt-4o-mini",
     name="deterministic_correctness",
     prompt="Is the following response correct? Answer YES or NO.\n\nQuestion: {question}\nResponse: {outputs}\nExpected: {expected_response}",
     inference_params={"temperature": 0.0, "max_tokens": 10},
@@ -106,8 +106,8 @@ from mlflow.genai.scorers.phoenix import Hallucination, Relevance
 results_limited = mlflow.genai.evaluate(
     data=eval_data,
     scorers=[
-        Hallucination(model="databricks-claude-sonnet-4"),
-        Relevance(model="databricks-claude-sonnet-4"),
+        Hallucination(model="openai:/gpt-4o-mini"),
+        Relevance(model="openai:/gpt-4o-mini"),
     ],
 )
 
