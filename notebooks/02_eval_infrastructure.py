@@ -71,10 +71,15 @@ for metric_name, value in results_default.metrics.items():
 # COMMAND ----------
 
 judge = mlflow.genai.make_judge(
+    name="correctness",
     model="openai:/gpt-4o-mini",
-    name="deterministic_correctness",
-    prompt="Is the following response correct? Answer YES or NO.\n\nQuestion: {question}\nResponse: {outputs}\nExpected: {expected_response}",
-    inference_params={"temperature": 0.0, "max_tokens": 10},
+    instructions=(
+        "Evaluate whether the response is factually correct compared to "
+        "the expected answer. Return 'yes' if correct, 'no' if incorrect.\n\n"
+        "Response: {{ outputs }}\n"
+        "Expected: {{ expectations }}"
+    ),
+    inference_params={"temperature": 0.0, "max_tokens": 50},
 )
 
 results_deterministic = mlflow.genai.evaluate(
@@ -85,6 +90,8 @@ results_deterministic = mlflow.genai.evaluate(
 print("Low temperature results:")
 for metric_name, value in results_deterministic.metrics.items():
     print(f"  {metric_name}: {value}")
+if not results_deterministic.metrics:
+    print("  (Check the Traces tab in MLflow UI for per-sample judge outputs)")
 
 # COMMAND ----------
 
