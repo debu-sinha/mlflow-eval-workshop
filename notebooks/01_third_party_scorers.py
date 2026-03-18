@@ -17,6 +17,31 @@
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Configuration
+# MAGIC
+# MAGIC On Databricks: uses built-in foundation model endpoints (no API key needed).
+# MAGIC Locally: uses OpenAI (requires `OPENAI_API_KEY`).
+
+# COMMAND ----------
+
+import os
+
+# Auto-detect Databricks environment
+ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
+
+if ON_DATABRICKS:
+    # Databricks Foundation Model APIs (no key needed)
+    JUDGE_MODEL = "databricks-claude-sonnet-4"
+    print(f"Running on Databricks. Using model: {JUDGE_MODEL}")
+else:
+    # Local / OSS: use OpenAI (requires OPENAI_API_KEY)
+    JUDGE_MODEL = "openai:/gpt-4o-mini"
+    assert os.environ.get("OPENAI_API_KEY"), "Set OPENAI_API_KEY to run locally"
+    print(f"Running locally. Using model: {JUDGE_MODEL}")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## 1.1 Sample evaluation dataset
 # MAGIC
 # MAGIC We start with a simple dataset of LLM responses to evaluate.
@@ -64,7 +89,7 @@ print(f"Evaluation dataset: {len(eval_dataset)} samples")
 
 from mlflow.genai.scorers.phoenix import Hallucination
 
-hallucination_scorer = Hallucination(model="openai:/gpt-4o-mini")
+hallucination_scorer = Hallucination(model=JUDGE_MODEL)
 
 # Test on a single sample
 feedback = hallucination_scorer(
@@ -86,7 +111,7 @@ print(f"Rationale: {feedback.rationale}")
 
 from mlflow.genai.scorers.trulens import Groundedness
 
-groundedness_scorer = Groundedness(model="openai:/gpt-4o-mini")
+groundedness_scorer = Groundedness(model=JUDGE_MODEL)
 
 feedback = groundedness_scorer(
     inputs=eval_dataset[2]["inputs"],
@@ -136,8 +161,8 @@ mlflow.set_experiment("/odsc-eval-workshop/module-1-scorers")
 results = mlflow.genai.evaluate(
     data=eval_dataset,
     scorers=[
-        Hallucination(model="openai:/gpt-4o-mini"),
-        Groundedness(model="openai:/gpt-4o-mini"),
+        Hallucination(model=JUDGE_MODEL),
+        Groundedness(model=JUDGE_MODEL),
         ToxicLanguage(),
     ],
 )

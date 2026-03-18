@@ -17,6 +17,25 @@
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Configuration
+
+# COMMAND ----------
+
+import os
+
+ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
+
+if ON_DATABRICKS:
+    JUDGE_MODEL = "databricks-claude-sonnet-4"
+    print(f"Running on Databricks. Using model: {JUDGE_MODEL}")
+else:
+    JUDGE_MODEL = "openai:/gpt-4o-mini"
+    assert os.environ.get("OPENAI_API_KEY"), "Set OPENAI_API_KEY to run locally"
+    print(f"Running locally. Using model: {JUDGE_MODEL}")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## 2.1 Controlling LLM judge parameters
 # MAGIC
 # MAGIC LLM-based scorers use a model as a judge. The judge's temperature and
@@ -54,7 +73,7 @@ from mlflow.genai.scorers.phoenix import Hallucination
 # Default temperature (model default, usually 1.0)
 results_default = mlflow.genai.evaluate(
     data=eval_data,
-    scorers=[Hallucination(model="openai:/gpt-4o-mini")],
+    scorers=[Hallucination(model=JUDGE_MODEL)],
 )
 
 print("Default temperature results:")
@@ -72,7 +91,7 @@ for metric_name, value in results_default.metrics.items():
 
 judge = mlflow.genai.make_judge(
     name="correctness",
-    model="openai:/gpt-4o-mini",
+    model=JUDGE_MODEL,
     instructions=(
         "Evaluate whether the response is factually correct compared to "
         "the expected answer. Return 'yes' if correct, 'no' if incorrect.\n\n"
@@ -113,8 +132,8 @@ from mlflow.genai.scorers.phoenix import Hallucination, Relevance
 results_limited = mlflow.genai.evaluate(
     data=eval_data,
     scorers=[
-        Hallucination(model="openai:/gpt-4o-mini"),
-        Relevance(model="openai:/gpt-4o-mini"),
+        Hallucination(model=JUDGE_MODEL),
+        Relevance(model=JUDGE_MODEL),
     ],
 )
 

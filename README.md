@@ -25,14 +25,9 @@ A production evaluation pipeline that connects external evaluation libraries to 
    ```
    https://github.com/debu-sinha/mlflow-eval-workshop
    ```
-4. Set your OpenAI API key in the notebook or as a Databricks secret:
-   ```python
-   import os
-   os.environ["OPENAI_API_KEY"] = "sk-..."
-   ```
-5. Open `notebooks/01_third_party_scorers` and run each cell
+4. Open `notebooks/01_third_party_scorers` and run each cell
 
-MLflow tracking is built into Databricks. No tracking server setup needed.
+The notebooks auto-detect the Databricks environment and use Databricks Foundation Model APIs (e.g., `databricks-claude-sonnet-4`). No API keys needed. MLflow tracking is also built in. Zero configuration required.
 
 ### Option B: Run locally
 
