@@ -12,8 +12,13 @@
 # COMMAND ----------
 
 # MAGIC %pip install --upgrade mlflow[genai] arize-phoenix trulens guardrails-ai trulens-providers-litellm -q
-# MAGIC %sh guardrails hub install hub://guardrails/toxic_language --quiet 2>/dev/null || true
 # MAGIC dbutils.library.restartPython()
+
+# COMMAND ----------
+
+# Install Guardrails Hub validators (needed for deterministic scorers)
+import subprocess
+subprocess.run(["guardrails", "hub", "install", "hub://guardrails/toxic_language", "--quiet"], capture_output=True)
 
 # COMMAND ----------
 
