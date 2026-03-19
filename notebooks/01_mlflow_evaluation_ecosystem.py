@@ -28,7 +28,9 @@ import subprocess
 ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
 
 if ON_DATABRICKS:
-    JUDGE_MODEL = "databricks:/databricks-claude-sonnet-4"
+    # Change this to match your workspace's available model serving endpoints.
+    # Common options: databricks-claude-sonnet-4, databricks-claude-3-7-sonnet, gpt-4o-mini
+    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", "databricks:/databricks-claude-3-7-sonnet")
     print(f"Running on Databricks. Judge model: {JUDGE_MODEL}")
 else:
     JUDGE_MODEL = "openai:/gpt-4o-mini"
@@ -62,6 +64,10 @@ if not os.path.exists(_rc_path):
         print("Guardrails Hub token configured")
     else:
         print("No Guardrails Hub token found. Set GUARDRAILS_API_KEY or run: guardrails configure")
+
+# Download NLTK data needed by TruLens
+import nltk
+nltk.download("punkt_tab", quiet=True)
 
 _validators = ["hub://guardrails/detect_pii"]
 for _v in _validators:
@@ -210,8 +216,8 @@ results_thirdparty = mlflow.genai.evaluate(
     data=eval_dataset,
     scorers=[
         Correctness(),
+        Safety(),
         Hallucination(model=JUDGE_MODEL),
-        Groundedness(model=JUDGE_MODEL),
         DetectPII(),
     ],
 )
@@ -223,11 +229,14 @@ for name, value in results_thirdparty.metrics.items():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Four scorers from three different libraries in one `evaluate()` call:
-# MAGIC - `Correctness` (MLflow built-in) checks answer accuracy
+# MAGIC Four scorers from three different sources in one `evaluate()` call:
+# MAGIC - `Correctness` (MLflow built-in) checks answer accuracy against expected response
+# MAGIC - `Safety` (MLflow built-in) flags harmful content
 # MAGIC - `Hallucination` (Phoenix/Arize) detects factual inconsistencies via LLM judge
-# MAGIC - `Groundedness` (TruLens/Snowflake) checks if outputs are grounded in context
 # MAGIC - `DetectPII` (Guardrails AI) scans for PII using pattern matching, no LLM needed
+# MAGIC
+# MAGIC `Groundedness` (TruLens) is shown in the RAG section below where retrieval
+# MAGIC context is available. It needs retrieved chunks to evaluate against.
 # MAGIC
 # MAGIC This is the core value: one API that connects your choice of evaluation tools.
 
