@@ -132,20 +132,24 @@ print(f"Score: {feedback.metadata.get('score', 'N/A')}")
 
 # COMMAND ----------
 
-from mlflow.genai.scorers.guardrails import DetectPII
+if not ON_DATABRICKS:
+    from mlflow.genai.scorers.guardrails import DetectPII
 
-pii_scorer = DetectPII()
+    pii_scorer = DetectPII()
 
-feedback = pii_scorer(
-    outputs="The project was completed successfully by the engineering team.",
-)
-print(f"PII check (clean text): {feedback.value}")
+    feedback = pii_scorer(
+        outputs="The project was completed successfully by the engineering team.",
+    )
+    print(f"PII check (clean text): {feedback.value}")
 
-# Test with text containing PII
-feedback_pii = pii_scorer(
-    outputs="Please contact John Smith at john.smith@example.com or call 555-123-4567.",
-)
-print(f"PII check (contains PII): {feedback_pii.value}")
+    feedback_pii = pii_scorer(
+        outputs="Please contact John Smith at john.smith@example.com or call 555-123-4567.",
+    )
+    print(f"PII check (contains PII): {feedback_pii.value}")
+else:
+    print("Guardrails AI scorers require Hub packages installed locally.")
+    print("Run: guardrails hub install hub://guardrails/detect_pii")
+    print("Skipping Guardrails demo on Databricks. See local setup instructions.")
 
 # COMMAND ----------
 
@@ -161,13 +165,19 @@ import mlflow
 if not ON_DATABRICKS:
     mlflow.set_experiment("odsc-eval-workshop-module-1-scorers")
 
+scorers = [
+    Hallucination(model=JUDGE_MODEL),
+    Groundedness(model=JUDGE_MODEL),
+]
+
+# Add Guardrails scorer when running locally (Hub packages needed)
+if not ON_DATABRICKS:
+    from mlflow.genai.scorers.guardrails import DetectPII
+    scorers.append(DetectPII())
+
 results = mlflow.genai.evaluate(
     data=eval_dataset,
-    scorers=[
-        Hallucination(model=JUDGE_MODEL),
-        Groundedness(model=JUDGE_MODEL),
-        DetectPII(),
-    ],
+    scorers=scorers,
 )
 
 print(f"\nEvaluation complete. Run ID: {results.run_id}")
