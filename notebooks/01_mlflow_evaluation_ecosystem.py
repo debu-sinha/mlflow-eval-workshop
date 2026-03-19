@@ -88,7 +88,7 @@ import mlflow
 # Set experiment. On Databricks, use a /Users/ path (auto UC-linked).
 # On local, use a simple name with SQLite backend.
 if ON_DATABRICKS:
-    _user = spark.conf.get("spark.databricks.clusterUsageTags.sparkUser", "default")  # noqa: F821
+    _user = dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()  # noqa: F821
     mlflow.set_experiment(f"/Users/{_user}/odsc-workshop-m1")
 else:
     mlflow.set_tracking_uri("sqlite:///mlflow_workshop.db")
