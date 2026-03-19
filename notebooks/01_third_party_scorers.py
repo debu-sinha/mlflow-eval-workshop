@@ -193,6 +193,11 @@ print(f"PII check (contains PII): {feedback_pii.value}")
 
 import mlflow
 
+# On UC-enabled workspaces, use the notebook's path as experiment
+if ON_DATABRICKS:
+    import json
+    _ctx = json.loads(dbutils.notebook.entry_point.getDbutils().notebook().getContext().toJson())  # noqa: F821
+    mlflow.set_experiment(_ctx.get("extraContext", {}).get("notebook_path", "/tmp/odsc-workshop"))
 
 results = mlflow.genai.evaluate(
     data=eval_dataset,
