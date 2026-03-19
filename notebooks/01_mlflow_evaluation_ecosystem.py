@@ -85,9 +85,12 @@ for _v in _validators:
 
 import mlflow
 
-# On Databricks, the notebook's default experiment is used automatically.
-# On local, set a simple experiment name.
-if not ON_DATABRICKS:
+# Set experiment. On Databricks, use a /Users/ path (auto UC-linked).
+# On local, use a simple name with SQLite backend.
+if ON_DATABRICKS:
+    _user = spark.conf.get("spark.databricks.clusterUsageTags.sparkUser", "default")  # noqa: F821
+    mlflow.set_experiment(f"/Users/{_user}/odsc-workshop-m1")
+else:
     mlflow.set_tracking_uri("sqlite:///mlflow_workshop.db")
     mlflow.set_experiment("odsc-eval-workshop")
 
