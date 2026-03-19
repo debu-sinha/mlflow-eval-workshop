@@ -193,8 +193,6 @@ print(f"PII check (contains PII): {feedback_pii.value}")
 
 import mlflow
 
-if not ON_DATABRICKS:
-    mlflow.set_experiment("odsc-eval-workshop-module-1-scorers")
 
 results = mlflow.genai.evaluate(
     data=eval_dataset,

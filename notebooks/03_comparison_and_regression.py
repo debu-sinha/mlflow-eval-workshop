@@ -42,8 +42,6 @@ ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
 import mlflow
 import numpy as np
 
-if not ON_DATABRICKS:
-    mlflow.set_experiment("odsc-eval-workshop-module-3-comparison")
 
 # Simulate baseline evaluation (model v1)
 np.random.seed(42)
