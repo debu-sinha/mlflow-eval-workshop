@@ -41,6 +41,27 @@ else:
     print(f"Running locally. Using model: {JUDGE_MODEL}")
 
 # Install Guardrails Hub validators (works on both Databricks and local)
+# Hub validators live on a private PyPI index and need an API token.
+# On Databricks: reads from secret scope "guardrails" key "hub-token"
+# Locally: reads from ~/.guardrailsrc (set by `guardrails configure`)
+# Configure Guardrails Hub token if not already present
+_rc_path = os.path.expanduser("~/.guardrailsrc")
+if not os.path.exists(_rc_path):
+    if ON_DATABRICKS:
+        try:
+            _token = dbutils.secrets.get(scope="guardrails-hub", key="api-token")  # noqa: F821
+        except Exception:
+            _token = os.environ.get("GUARDRAILS_API_KEY", "")
+    else:
+        _token = os.environ.get("GUARDRAILS_API_KEY", "")
+
+    if _token:
+        with open(_rc_path, "w") as f:
+            f.write(f"token={_token}\n")
+        print("Guardrails Hub token configured")
+    else:
+        print("No Guardrails Hub token found. Set GUARDRAILS_API_KEY or run: guardrails configure")
+
 _validators = ["hub://guardrails/detect_pii"]
 for _v in _validators:
     _result = subprocess.run(
@@ -51,7 +72,7 @@ for _v in _validators:
     if _result.returncode == 0:
         print(f"Guardrails validator installed: {_name}")
     else:
-        print(f"Guardrails validator {_name}: {_result.stderr.strip() or 'install issue, will try fallback'}")
+        print(f"Guardrails validator {_name} install issue: {_result.stderr.strip()[:200]}")
 
 # COMMAND ----------
 
