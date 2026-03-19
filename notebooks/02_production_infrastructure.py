@@ -56,6 +56,7 @@ if ON_DATABRICKS:
 # MAGIC
 # MAGIC `mlflow.genai.make_judge` lets you create a custom judge with full control
 # MAGIC over inference parameters.
+# MAGIC
 
 # COMMAND ----------
 
@@ -241,3 +242,22 @@ del os.environ["MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS"]
 # MAGIC scorer. This is where you spot which specific samples failed. In Module 1,
 # MAGIC the "Berlin" sample should show a correctness failure. In this module, all
 # MAGIC samples should pass since the outputs are factually correct.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC ## Appendix: Design context for production evaluation features
+# MAGIC
+# MAGIC The production features in this module address problems that come up when
+# MAGIC evaluation moves from notebooks to pipelines:
+# MAGIC
+# MAGIC - **`inference_params`** solves evaluation reproducibility. Before this existed,
+# MAGIC   judge temperature defaulted to the provider's default (usually 1.0), so scores
+# MAGIC   varied across runs on identical data.
+# MAGIC   [PR #19152](https://github.com/mlflow/mlflow/pull/19152)
+# MAGIC
+# MAGIC - **`MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS`** solves rate limiting under concurrent
+# MAGIC   scoring. Four LLM-based scorers on 100 samples is 400 API calls. Without a
+# MAGIC   concurrency cap, most provider rate limits break.
+# MAGIC   [PR #19248](https://github.com/mlflow/mlflow/pull/19248)

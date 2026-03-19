@@ -59,6 +59,34 @@ Then open each notebook in Jupyter or VS Code and run the cells.
 5. Compare two evaluation runs with statistical significance testing (McNemar's test, bootstrap CI, Cohen's d, win rate)
 6. Build an evaluation gate that blocks model promotion on regression
 
+## Background
+
+This workshop covers MLflow's GenAI evaluation ecosystem, including features
+contributed by the speaker to MLflow core and the broader evaluation ecosystem:
+
+- **Third-party scorer integrations** (Phoenix, TruLens, Guardrails AI): Connect
+  external evaluation libraries to MLflow's unified `evaluate()` API.
+  PRs [#19473](https://github.com/mlflow/mlflow/pull/19473),
+  [#19492](https://github.com/mlflow/mlflow/pull/19492),
+  [#20038](https://github.com/mlflow/mlflow/pull/20038)
+
+- **LLM judge inference parameters**: Temperature, max tokens, and other controls
+  for deterministic evaluation scoring.
+  PR [#19152](https://github.com/mlflow/mlflow/pull/19152)
+
+- **Scorer parallelism control**: `MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS` for
+  managing API rate limits during concurrent evaluation.
+  PR [#19248](https://github.com/mlflow/mlflow/pull/19248)
+
+- **Inspect AI MLflow tracking**: Logging hook for the UK AI Safety Institute's
+  evaluation framework.
+  PRs [#3433](https://github.com/UKGovernmentBEIS/inspect_ai/pull/3433),
+  [#3483](https://github.com/UKGovernmentBEIS/inspect_ai/pull/3483)
+
+MLflow is downloaded over 30 million times per month from PyPI.
+
+Presented at [ODSC AI East 2026](https://odsc.com/boston/), Boston, April 28-30.
+
 ## Prerequisites
 
 - Python 3.10+

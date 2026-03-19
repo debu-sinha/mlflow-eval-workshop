@@ -405,3 +405,11 @@ print("=" * 60)
 # MAGIC 5. **Win rate** is the metric non-statisticians understand fastest.
 # MAGIC
 # MAGIC In Module 4, we wrap this into an automated evaluation gate.
+# MAGIC
+# MAGIC **Where this is going:** The comparison and statistical testing patterns shown
+# MAGIC here are being contributed upstream to the
+# MAGIC [Inspect AI](https://github.com/UKGovernmentBEIS/inspect_ai) framework as a
+# MAGIC built-in comparison module
+# MAGIC ([PR #3511](https://github.com/UKGovernmentBEIS/inspect_ai/pull/3511)). The
+# MAGIC goal is to make regression detection a first-class feature of AI safety
+# MAGIC evaluation, not something teams build ad hoc.
