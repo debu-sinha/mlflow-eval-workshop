@@ -86,14 +86,18 @@ for _v in _validators:
 import mlflow
 
 if ON_DATABRICKS:
+    # On UC workspaces, experiments must be linked to UC paths.
+    # Using the notebook path ensures the experiment is UC-compatible.
     import json
 
     _ctx = json.loads(
         dbutils.notebook.entry_point.getDbutils().notebook().getContext().toJson()  # noqa: F821
     )
-    mlflow.set_experiment(
-        _ctx.get("extraContext", {}).get("notebook_path", "/tmp/odsc-workshop")
-    )
+    _nb_path = _ctx.get("extraContext", {}).get("notebook_path", "")
+    if _nb_path:
+        mlflow.set_experiment(_nb_path)
+        # Also set as env var so internal evaluate() calls respect it
+        os.environ["MLFLOW_EXPERIMENT_NAME"] = _nb_path
 
 # COMMAND ----------
 

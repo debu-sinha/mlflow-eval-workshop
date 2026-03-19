@@ -42,9 +42,10 @@ if ON_DATABRICKS:
     _ctx = json.loads(
         dbutils.notebook.entry_point.getDbutils().notebook().getContext().toJson()  # noqa: F821
     )
-    mlflow.set_experiment(
-        _ctx.get("extraContext", {}).get("notebook_path", "/tmp/odsc-workshop")
-    )
+    _nb_path = _ctx.get("extraContext", {}).get("notebook_path", "")
+    if _nb_path:
+        mlflow.set_experiment(_nb_path)
+        os.environ["MLFLOW_EXPERIMENT_NAME"] = _nb_path
 
 # COMMAND ----------
 
