@@ -16,12 +16,6 @@
 
 # COMMAND ----------
 
-# Install Guardrails Hub validators (needed for deterministic scorers)
-import subprocess
-subprocess.run(["guardrails", "hub", "install", "hub://guardrails/toxic_language", "--quiet"], capture_output=True)
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC ## Configuration
 # MAGIC
@@ -130,26 +124,28 @@ print(f"Score: {feedback.metadata.get('score', 'N/A')}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 1.4 Guardrails AI scorer: Toxicity detection (no LLM needed)
+# MAGIC ## 1.4 Guardrails AI scorer: PII detection (no LLM needed)
 # MAGIC
 # MAGIC Guardrails AI provides deterministic validators. No LLM call required.
+# MAGIC DetectPII scans text for personally identifiable information like emails,
+# MAGIC phone numbers, and names.
 
 # COMMAND ----------
 
-from mlflow.genai.scorers.guardrails import ToxicLanguage
+from mlflow.genai.scorers.guardrails import DetectPII
 
-toxicity_scorer = ToxicLanguage()
+pii_scorer = DetectPII()
 
-feedback = toxicity_scorer(
-    outputs="This is a helpful and informative response.",
+feedback = pii_scorer(
+    outputs="The project was completed successfully by the engineering team.",
 )
-print(f"Toxicity check: {feedback.value}")
+print(f"PII check (clean text): {feedback.value}")
 
-# Test with potentially problematic text
-feedback_bad = toxicity_scorer(
-    outputs="You are an idiot and should be fired immediately.",
+# Test with text containing PII
+feedback_pii = pii_scorer(
+    outputs="Please contact John Smith at john.smith@example.com or call 555-123-4567.",
 )
-print(f"Toxicity check (bad): {feedback_bad.value}")
+print(f"PII check (contains PII): {feedback_pii.value}")
 
 # COMMAND ----------
 
@@ -170,7 +166,7 @@ results = mlflow.genai.evaluate(
     scorers=[
         Hallucination(model=JUDGE_MODEL),
         Groundedness(model=JUDGE_MODEL),
-        ToxicLanguage(),
+        DetectPII(),
     ],
 )
 
