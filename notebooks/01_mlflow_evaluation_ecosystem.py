@@ -85,14 +85,11 @@ for _v in _validators:
 
 import mlflow
 
-if ON_DATABRICKS:
-    # On UC workspaces, experiments must be UC-backed.
-    # Use the current user's workspace path which auto-links to UC on modern workspaces.
-    _user = (
-        dbutils.notebook.entry_point.getDbutils()  # noqa: F821
-        .notebook().getContext().userName().get()
-    )
-    mlflow.set_experiment(f"/Users/{_user}/odsc-eval-workshop")
+# On Databricks, the notebook's default experiment is used automatically.
+# On local, set a simple experiment name.
+if not ON_DATABRICKS:
+    mlflow.set_tracking_uri("sqlite:///mlflow_workshop.db")
+    mlflow.set_experiment("odsc-eval-workshop")
 
 # COMMAND ----------
 

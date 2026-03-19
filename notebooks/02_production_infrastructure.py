@@ -36,12 +36,9 @@ else:
 
 import mlflow
 
-if ON_DATABRICKS:
-    _user = (
-        dbutils.notebook.entry_point.getDbutils()  # noqa: F821
-        .notebook().getContext().userName().get()
-    )
-    mlflow.set_experiment(f"/Users/{_user}/odsc-eval-workshop")
+if not ON_DATABRICKS:
+    mlflow.set_tracking_uri("sqlite:///mlflow_workshop.db")
+    mlflow.set_experiment("odsc-eval-workshop")
 
 # COMMAND ----------
 
