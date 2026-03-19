@@ -356,7 +356,24 @@ with mlflow.start_run(run_name="eval-gate-blocking") as run:
 # MAGIC   Databricks.
 # MAGIC - **Tune the thresholds.** The 10% regression rate and p=0.05 significance
 # MAGIC   level are starting points. Adjust them based on your risk tolerance.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Beyond MLflow scorers
 # MAGIC
+# MAGIC MLflow's evaluation ecosystem extends beyond what we covered today:
+# MAGIC - **More third-party scorers**: DeepEval and RAGAS integrations are also available
+# MAGIC   for RAG-specific metrics like faithfulness and answer relevance
+# MAGIC - **Inspect AI integration**: MLflow tracking hooks for the UK AI Safety Institute's
+# MAGIC   evaluation framework, enabling experiment tracking across safety evaluation suites
+# MAGIC - **Trace-based evaluation**: MLflow scorers can evaluate production traces directly,
+# MAGIC   connecting observability with evaluation
+# MAGIC - **Scheduled scorers**: Run evaluation scorers on a schedule against production traffic
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ### Resources
 # MAGIC
 # MAGIC - Workshop code: [github.com/debu-sinha/mlflow-eval-workshop](https://github.com/debu-sinha/mlflow-eval-workshop)
