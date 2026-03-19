@@ -28,10 +28,18 @@ import subprocess
 ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
 
 if ON_DATABRICKS:
-    # Change this to match your workspace's available model serving endpoints.
-    # Common options: databricks-claude-sonnet-4, databricks-claude-3-7-sonnet, gpt-4o-mini
-    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", "databricks:/databricks-claude-3-7-sonnet")
+    # Databricks Foundation Model APIs provide hosted LLMs as judge models.
+    #
+    # Free Edition:  use "databricks:/databricks-gpt-oss-120b"
+    #                (limited model selection, but no API key needed)
+    # Enterprise:    use "databricks:/databricks-gpt-5-4" or other premium models
+    #
+    # Override via WORKSHOP_JUDGE_MODEL env var on your cluster if needed.
+    _default_model = "databricks:/databricks-gpt-oss-120b"
+    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", _default_model)
     print(f"Running on Databricks. Judge model: {JUDGE_MODEL}")
+    print("Tip: Free Edition has limited model capacity. Enterprise workspaces")
+    print("     can use premium models like databricks-gpt-5-4.")
 else:
     JUDGE_MODEL = "openai:/gpt-4o-mini"
     assert os.environ.get("OPENAI_API_KEY"), "Set OPENAI_API_KEY to run locally"

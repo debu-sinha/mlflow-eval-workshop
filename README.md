@@ -34,7 +34,11 @@ Sign up for the [Databricks Free Edition](https://www.databricks.com/try-databri
 5. Select **GitHub** as the Git provider and click **Create Git folder**
 6. Open `notebooks/01_mlflow_evaluation_ecosystem` and attach to any serverless cluster
 
-No Git credentials needed (public repo). No API keys needed. The notebooks auto-detect the Databricks environment and use built-in Foundation Model APIs (e.g., `databricks-claude-sonnet-4`). MLflow tracking is built in. Zero configuration.
+No Git credentials needed (public repo). No API keys needed. The notebooks auto-detect the Databricks environment and use Databricks Foundation Model APIs. MLflow tracking is built in. Zero configuration.
+
+**Model availability by edition:**
+- **Free Edition**: Uses `databricks-gpt-oss-120b` (limited model selection, sufficient for the workshop)
+- **Enterprise**: Can use premium models like `databricks-gpt-5-4`. Set the `WORKSHOP_JUDGE_MODEL` env var on your cluster to override the default.
 
 **For Guardrails AI scorers on Databricks:** Set your Guardrails Hub API token as an environment variable on the cluster (`GUARDRAILS_API_KEY`), or store it in a Databricks secret scope. Sign up at [hub.guardrailsai.com](https://hub.guardrailsai.com) if you don't have a token.
 

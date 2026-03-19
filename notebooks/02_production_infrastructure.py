@@ -25,7 +25,10 @@ import os
 ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
 
 if ON_DATABRICKS:
-    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", "databricks:/databricks-claude-3-7-sonnet")
+    # Free Edition: "databricks:/databricks-gpt-oss-120b"
+    # Enterprise:   "databricks:/databricks-gpt-5-4" or other premium models
+    _default_model = "databricks:/databricks-gpt-oss-120b"
+    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", _default_model)
     print(f"Running on Databricks. Judge model: {JUDGE_MODEL}")
 else:
     JUDGE_MODEL = "openai:/gpt-4o-mini"
