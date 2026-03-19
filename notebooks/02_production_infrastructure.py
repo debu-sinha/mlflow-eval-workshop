@@ -37,15 +37,11 @@ else:
 import mlflow
 
 if ON_DATABRICKS:
-    import json
-
-    _ctx = json.loads(
-        dbutils.notebook.entry_point.getDbutils().notebook().getContext().toJson()  # noqa: F821
+    _user = (
+        dbutils.notebook.entry_point.getDbutils()  # noqa: F821
+        .notebook().getContext().userName().get()
     )
-    _nb_path = _ctx.get("extraContext", {}).get("notebook_path", "")
-    if _nb_path:
-        mlflow.set_experiment(_nb_path)
-        os.environ["MLFLOW_EXPERIMENT_NAME"] = _nb_path
+    mlflow.set_experiment(f"/Users/{_user}/odsc-eval-workshop")
 
 # COMMAND ----------
 
