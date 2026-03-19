@@ -10,7 +10,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] arize-phoenix -q
+# MAGIC %pip install --upgrade mlflow[genai] arize-phoenix databricks-agents -q
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
