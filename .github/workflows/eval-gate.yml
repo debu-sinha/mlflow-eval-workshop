@@ -1,0 +1,42 @@
+name: Evaluation Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseline_run_id:
+        description: 'MLflow run ID for baseline evaluation'
+        required: true
+      candidate_run_id:
+        description: 'MLflow run ID for candidate evaluation'
+        required: true
+      scorer:
+        description: 'Scorer name to compare'
+        required: false
+        default: 'correctness'
+      threshold:
+        description: 'Max regression rate (0.0-1.0)'
+        required: false
+        default: '0.10'
+
+jobs:
+  eval-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install mlflow numpy
+
+      - name: Run evaluation gate
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+        run: |
+          python eval_gate.py \
+            --baseline-run-id ${{ inputs.baseline_run_id }} \
+            --candidate-run-id ${{ inputs.candidate_run_id }} \
+            --scorer ${{ inputs.scorer }} \
+            --threshold ${{ inputs.threshold }}

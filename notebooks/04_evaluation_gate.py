@@ -367,6 +367,8 @@ with mlflow.start_run(run_name="eval-gate-blocking") as run:
 # MAGIC   for RAG-specific metrics like faithfulness and answer relevance
 # MAGIC - **Inspect AI integration**: MLflow tracking hooks for the UK AI Safety Institute's
 # MAGIC   evaluation framework, enabling experiment tracking across safety evaluation suites
+# MAGIC - **Agent evaluation**: `ToolCallCorrectness` and `ToolCallEfficiency` scorers
+# MAGIC   for evaluating agent tool usage, multi-turn conversations, and trajectory quality
 # MAGIC - **Trace-based evaluation**: MLflow scorers can evaluate production traces directly,
 # MAGIC   connecting observability with evaluation
 # MAGIC - **Scheduled scorers**: Run evaluation scorers on a schedule against production traffic

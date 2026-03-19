@@ -235,6 +235,51 @@ for name, value in results_thirdparty.metrics.items():
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ### RAG evaluation with retrieval context
+# MAGIC
+# MAGIC For RAG pipelines, pass retrieved chunks in the `context` field so
+# MAGIC `Groundedness` can evaluate whether the output is supported by what
+# MAGIC the retriever actually returned.
+
+# COMMAND ----------
+
+rag_dataset = [
+    {
+        "inputs": {"question": "What is the refund policy?"},
+        "outputs": "You can get a full refund within 30 days of purchase.",
+        "expectations": {
+            "context": [
+                "Our refund policy allows full refunds within 30 days.",
+                "After 30 days, only store credit is available.",
+            ]
+        },
+    },
+    {
+        "inputs": {"question": "What are the shipping options?"},
+        "outputs": "We offer free overnight shipping on all orders.",
+        "expectations": {
+            "context": [
+                "Standard shipping takes 5-7 business days.",
+                "Express shipping (2-day) is available for $9.99.",
+            ]
+        },
+    },
+]
+
+results_rag = mlflow.genai.evaluate(
+    data=rag_dataset,
+    scorers=[Groundedness(model=JUDGE_MODEL)],
+)
+
+print("RAG Groundedness results:")
+for name, value in results_rag.metrics.items():
+    print(f"  {name}: {value}")
+print("\nThe second sample claims 'free overnight shipping' but the context only mentions")
+print("standard (5-7 days) and express ($9.99). Groundedness should flag this.")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## 1.3 Custom scorer (3 min)
 # MAGIC
 # MAGIC The `@scorer` decorator turns any Python function into a scorer.
@@ -299,7 +344,10 @@ else:
     LLM_MODEL = "gpt-4o-mini"
 
 
+@mlflow.trace
 def ask_llm(question: str) -> str:
+    """Traced LLM call. The @mlflow.trace decorator captures the full
+    call span: input, output, latency, and token usage."""
     response = client.chat.completions.create(
         model=LLM_MODEL,
         messages=[{"role": "user", "content": question}],
@@ -309,19 +357,20 @@ def ask_llm(question: str) -> str:
     return response.choices[0].message.content
 
 
-# Call the model with a real question
+# Call the model with a real question. The trace captures the LLM span.
 question = "What are the three main components of MLflow?"
 live_answer = ask_llm(question)
 print(f"Question: {question}")
 print(f"Answer: {live_answer}")
+print("(Check the Traces tab to see the LLM call span with latency and token counts)")
 
 # COMMAND ----------
 
-# Evaluate the live response
-live_data = [
+# Evaluate by calling the model live via predict_fn.
+# This produces real traced spans (LLM call latency, tokens) alongside scorer results.
+live_questions = [
     {
-        "inputs": {"question": question},
-        "outputs": live_answer,
+        "inputs": {"question": "What are the three main components of MLflow?"},
         "expectations": {
             "expected_response": (
                 "MLflow has three main components: Tracking for logging experiments, "
@@ -330,10 +379,15 @@ live_data = [
             )
         },
     },
+    {
+        "inputs": {"question": "What is the capital of Japan?"},
+        "expectations": {"expected_response": "Tokyo"},
+    },
 ]
 
 results_live = mlflow.genai.evaluate(
-    data=live_data,
+    predict_fn=lambda inputs: ask_llm(inputs["question"]),
+    data=live_questions,
     scorers=[
         Correctness(),
         Hallucination(model=JUDGE_MODEL),
@@ -345,6 +399,7 @@ results_live = mlflow.genai.evaluate(
 print(f"\nLive evaluation (run ID: {results_live.run_id}):")
 for name, value in results_live.metrics.items():
     print(f"  {name}: {value}")
+print("\nCheck Traces tab: each trace shows the ask_llm span with real LLM latency + scorer judge spans.")
 
 # COMMAND ----------
 
