@@ -437,14 +437,16 @@ print("\nCheck Traces tab: each trace shows the ask_llm span with real LLM laten
 
 # COMMAND ----------
 
-# Show the results table (select key columns to avoid Arrow serialization issues)
+# Show the results table
 if results_all.result_df is not None:
-    _display_cols = [c for c in results_all.result_df.columns if c not in ("trace", "assessments", "spans", "trace_metadata", "tags")]
-    _df = results_all.result_df[_display_cols]
-    if ON_DATABRICKS:
-        display(_df)  # noqa: F821
+    # Select only simple columns to avoid serialization issues with display()
+    _simple_cols = [c for c in results_all.result_df.columns
+                    if any(k in c for k in ("value", "inputs", "outputs", "request", "response"))
+                    or c in ("trace_id", "state", "execution_duration")]
+    if _simple_cols:
+        print(results_all.result_df[_simple_cols].to_string())
     else:
-        print(_df.to_string())
+        print(results_all.result_df.iloc[:, :8].to_string())
 
 # COMMAND ----------
 
