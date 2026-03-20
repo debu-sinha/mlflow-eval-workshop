@@ -355,7 +355,9 @@ if ON_DATABRICKS:
         api_key=creds.token,
         base_url=f"{creds.host}/serving-endpoints",
     )
-    LLM_MODEL = "databricks-claude-sonnet-4"
+    # Use same model config as JUDGE_MODEL but for direct LLM calls.
+    # Strip the "databricks:/" prefix for the OpenAI-compatible API.
+    LLM_MODEL = JUDGE_MODEL.replace("databricks:/", "")
 else:
     client = openai.OpenAI()
     LLM_MODEL = "gpt-4o-mini"
@@ -435,11 +437,14 @@ print("\nCheck Traces tab: each trace shows the ask_llm span with real LLM laten
 
 # COMMAND ----------
 
-# Show the results table
-if ON_DATABRICKS:
-    display(results_all.result_df)  # noqa: F821
-else:
-    print(results_all.result_df.to_string())
+# Show the results table (select key columns to avoid Arrow serialization issues)
+if results_all.result_df is not None:
+    _display_cols = [c for c in results_all.result_df.columns if c not in ("trace", "assessments", "spans", "trace_metadata", "tags")]
+    _df = results_all.result_df[_display_cols]
+    if ON_DATABRICKS:
+        display(_df)  # noqa: F821
+    else:
+        print(_df.to_string())
 
 # COMMAND ----------
 
