@@ -405,7 +405,7 @@ live_questions = [
 ]
 
 results_live = mlflow.genai.evaluate(
-    predict_fn=lambda inputs: ask_llm(inputs["question"]),
+    predict_fn=lambda question: ask_llm(question),
     data=live_questions,
     scorers=[
         Correctness(),
