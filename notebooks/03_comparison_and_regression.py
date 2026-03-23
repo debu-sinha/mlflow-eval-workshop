@@ -418,6 +418,146 @@ print("=" * 60)
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## 3.5 Comparing real MLflow evaluation runs
+# MAGIC
+# MAGIC The simulated data above teaches the mechanics. Now let's run it on real
+# MAGIC `mlflow.genai.evaluate()` output. We evaluate two sets of outputs with
+# MAGIC `Correctness` and compare the per-sample scores using the same utilities.
+
+# COMMAND ----------
+
+from mlflow.genai.scorers import Correctness
+
+# Baseline: a model that gets 3 out of 4 right
+baseline_data = [
+    {
+        "inputs": {"question": "What is MLflow?"},
+        "outputs": "MLflow is an open-source platform for managing the ML lifecycle.",
+        "expectations": {
+            "expected_response": "MLflow is an open-source ML lifecycle platform."
+        },
+    },
+    {
+        "inputs": {"question": "What is the capital of France?"},
+        "outputs": "The capital of France is Paris.",
+        "expectations": {"expected_response": "Paris."},
+    },
+    {
+        "inputs": {"question": "What language is PyTorch written in?"},
+        "outputs": "PyTorch is primarily written in C++ and Python.",
+        "expectations": {"expected_response": "C++ and Python."},
+    },
+    {
+        "inputs": {"question": "Who created Linux?"},
+        "outputs": "Linux was created by Steve Jobs.",
+        "expectations": {"expected_response": "Linus Torvalds created Linux."},
+    },
+]
+
+# Candidate: fixes the Linux question but breaks the France question
+candidate_data = [
+    {
+        "inputs": {"question": "What is MLflow?"},
+        "outputs": "MLflow is an open-source platform for managing the ML lifecycle.",
+        "expectations": {
+            "expected_response": "MLflow is an open-source ML lifecycle platform."
+        },
+    },
+    {
+        "inputs": {"question": "What is the capital of France?"},
+        "outputs": "The capital of France is Berlin.",
+        "expectations": {"expected_response": "Paris."},
+    },
+    {
+        "inputs": {"question": "What language is PyTorch written in?"},
+        "outputs": "PyTorch is primarily written in C++ and Python.",
+        "expectations": {"expected_response": "C++ and Python."},
+    },
+    {
+        "inputs": {"question": "Who created Linux?"},
+        "outputs": "Linux was created by Linus Torvalds in 1991.",
+        "expectations": {"expected_response": "Linus Torvalds created Linux."},
+    },
+]
+
+print("Running baseline evaluation...")
+result_baseline = mlflow.genai.evaluate(data=baseline_data, scorers=[Correctness()])
+print(f"  Run ID: {result_baseline.run_id}")
+print(f"  Metrics: {result_baseline.metrics}")
+
+print("\nRunning candidate evaluation...")
+result_candidate = mlflow.genai.evaluate(data=candidate_data, scorers=[Correctness()])
+print(f"  Run ID: {result_candidate.run_id}")
+print(f"  Metrics: {result_candidate.metrics}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Extract per-sample scores from real runs
+# MAGIC
+# MAGIC `result_df` has one row per sample. The `Correctness/value` column
+# MAGIC contains the per-sample score. We align by row index since both runs
+# MAGIC evaluated the same dataset in the same order.
+
+# COMMAND ----------
+
+df_bl = result_baseline.result_df
+df_cd = result_candidate.result_df
+
+
+# Convert yes/no to 1.0/0.0
+def _to_binary(value):
+    if value == "yes":
+        return 1.0
+    if value == "no":
+        return 0.0
+    return float(value) if value is not None else 0.0
+
+
+bl_real = [_to_binary(v) for v in df_bl["Correctness/value"]]
+cd_real = [_to_binary(v) for v in df_cd["Correctness/value"]]
+
+print("Per-sample comparison (from real MLflow evaluation runs):")
+print(f"{'Question':<45} {'Baseline':>10} {'Candidate':>10} {'Delta':>8}")
+print("-" * 75)
+for i in range(len(bl_real)):
+    q = baseline_data[i]["inputs"]["question"][:42]
+    delta_str = ""
+    if bl_real[i] > cd_real[i]:
+        delta_str = "REGRESSED"
+    elif bl_real[i] < cd_real[i]:
+        delta_str = "IMPROVED"
+    print(f"{q:<45} {bl_real[i]:>10.0f} {cd_real[i]:>10.0f} {delta_str:>8}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Run the same statistical analysis on real scores
+
+# COMMAND ----------
+
+mcnemar_real = mcnemars_test(
+    [s == 1.0 for s in bl_real],
+    [s == 1.0 for s in cd_real],
+)
+wr_real = win_rate(bl_real, cd_real)
+
+print("REAL RUN COMPARISON")
+print(f"  Baseline accuracy:  {np.mean(bl_real):.1%}")
+print(f"  Candidate accuracy: {np.mean(cd_real):.1%}")
+print(f"  Regressions: {mcnemar_real['regressions']}")
+print(f"  Improvements: {mcnemar_real['improvements']}")
+print(f"  Win rate: {wr_real['win_pct']:.1%}")
+print()
+print("  The candidate fixed the Linux question but broke the France question.")
+print("  Net change is zero, but the regression is real and visible per-sample.")
+print(
+    "  This is why per-sample alignment matters: aggregate accuracy hides regressions."
+)
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Key takeaways
 # MAGIC
 # MAGIC 1. **Align samples by ID** before comparing. Datasets change between runs.
@@ -425,6 +565,8 @@ print("=" * 60)
 # MAGIC 3. **Cohen's d** tells you if the difference matters in practice.
 # MAGIC 4. **Bootstrap CI** gives you a range for the true difference.
 # MAGIC 5. **Win rate** is the metric non-statisticians understand fastest.
+# MAGIC 6. **Per-sample comparison on real runs** catches regressions that aggregate
+# MAGIC    metrics hide. A model can keep the same accuracy while breaking different samples.
 # MAGIC
 # MAGIC In Module 4, we wrap this into an automated evaluation gate.
 # MAGIC
