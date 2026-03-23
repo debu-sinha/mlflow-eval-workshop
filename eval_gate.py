@@ -2,8 +2,12 @@
 """Evaluation gate for CI/CD pipelines.
 
 Compares two MLflow evaluation runs by aligning samples on a stable key
-(the input text hash) and exits with code 1 if the candidate regresses
-beyond the configured threshold.
+and exits with code 1 if the candidate regresses beyond the configured
+threshold.
+
+Sample alignment prefers MLflow-native identifiers (client_request_id or
+dataset_record_id from trace metadata) when available, and falls back to
+hashing the request body when they are not set.
 
 Wire this into GitHub Actions, GitLab CI, or any CI system that checks
 exit codes.
@@ -27,18 +31,74 @@ import sys
 import mlflow
 import numpy as np
 
+# Minimum number of aligned samples required before the gate will pass.
+# Below this count, the gate fails closed to prevent misconfigured pipelines
+# from silently promoting bad models.
+_MIN_OVERLAP = 2
+
 
 def _stable_key(trace) -> str | None:
-    """Derive a stable sample key from the trace's request input.
+    """Derive a stable sample key from a trace.
 
-    Evaluation runs on the same dataset produce traces with the same
-    input content but different trace IDs. We hash the request body so
-    that samples align correctly across runs even if trace order differs.
-    Falls back to None if no request data is available.
+    Prefers MLflow-native identifiers when available:
+      1. client_request_id (set by caller)
+      2. dataset_record_id (set by evaluation datasets)
+    Falls back to hashing the request body when neither is present.
+    Returns None if no key can be derived.
     """
-    request = trace.data.request
+    metadata = getattr(trace.info, "metadata", None) or {}
+
+    for id_field in ("client_request_id", "dataset_record_id"):
+        native_id = metadata.get(id_field)
+        if native_id:
+            return native_id
+
+    request = trace.data.request if trace.data else None
     if request:
         return hashlib.sha256(request.encode("utf-8")).hexdigest()[:16]
+    return None
+
+
+def _parse_score(value) -> float | None:
+    """Convert a scorer feedback value to a numeric score.
+
+    Handles the common value formats returned by MLflow scorers:
+      - Binary strings: "yes"/"no", "pass"/"fail"
+      - Phoenix-style labels: "factual"/"hallucinated"
+      - Booleans: True/False
+      - Numeric: int or float pass through directly
+    Returns None if the value cannot be parsed.
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    if isinstance(value, bool):
+        return 1.0 if value else 0.0
+
+    if isinstance(value, str):
+        lower = value.lower().strip()
+        _positive = {"yes", "pass", "true", "factual", "correct", "grounded", "safe"}
+        _negative = {
+            "no",
+            "fail",
+            "false",
+            "hallucinated",
+            "incorrect",
+            "ungrounded",
+            "unsafe",
+        }
+        if lower in _positive:
+            return 1.0
+        if lower in _negative:
+            return 0.0
+        try:
+            return float(lower)
+        except ValueError:
+            return None
+
     return None
 
 
@@ -47,8 +107,9 @@ def get_per_sample_scores(
 ) -> dict[str, float]:
     """Extract per-sample scores from an MLflow evaluation run.
 
-    Returns a dict mapping a stable sample key (input hash) to the
-    binary score value. Samples without a parseable key are skipped.
+    Returns a dict mapping a stable sample key to a numeric score.
+    Samples without a parseable key or an unparseable value are skipped
+    with a warning.
     """
     client = mlflow.tracking.MlflowClient()
 
@@ -59,17 +120,25 @@ def get_per_sample_scores(
     )
 
     scores: dict[str, float] = {}
+    skipped = 0
     for trace in traces:
         key = _stable_key(trace)
         if key is None:
+            skipped += 1
             continue
         for assessment in trace.info.assessments:
             if assessment.name == scorer_name and assessment.feedback:
-                value = assessment.feedback.get("value")
-                if value == "yes":
-                    scores[key] = 1.0
-                elif value == "no":
-                    scores[key] = 0.0
+                raw = assessment.feedback.get("value")
+                parsed = _parse_score(raw)
+                if parsed is not None:
+                    scores[key] = parsed
+                else:
+                    skipped += 1
+                    print(
+                        f"  Warning: unparseable score value {raw!r} for trace {trace.info.trace_id}"
+                    )
+    if skipped:
+        print(f"  Skipped {skipped} samples (no key or unparseable value)")
     return scores
 
 
@@ -77,39 +146,46 @@ def run_gate(
     baseline_scores: dict[str, float],
     candidate_scores: dict[str, float],
     max_regression_rate: float = 0.10,
+    min_overlap: int = _MIN_OVERLAP,
 ) -> tuple[bool, str]:
     """Compare baseline and candidate scores aligned by sample key.
 
     Performs an inner join on the shared keys so that only samples
-    present in both runs are compared. Reports overlap statistics.
+    present in both runs are compared. Fails closed when overlap is
+    below min_overlap.
 
     Returns (passed, reason).
     """
     shared_keys = sorted(set(baseline_scores) & set(candidate_scores))
     bl_only = len(baseline_scores) - len(shared_keys)
     cd_only = len(candidate_scores) - len(shared_keys)
-
-    if not shared_keys:
-        return True, "No overlapping samples to compare"
-
-    bl_values = np.array([baseline_scores[k] for k in shared_keys])
-    cd_values = np.array([candidate_scores[k] for k in shared_keys])
     n = len(shared_keys)
-
-    bl_acc = float(np.mean(bl_values))
-    cd_acc = float(np.mean(cd_values))
-    delta = cd_acc - bl_acc
-
-    regressions = int(np.sum((bl_values == 1.0) & (cd_values == 0.0)))
-    improvements = int(np.sum((bl_values == 0.0) & (cd_values == 1.0)))
-    regression_rate = regressions / n
 
     print(f"Aligned samples:    {n}")
     if bl_only > 0 or cd_only > 0:
         print(f"  Baseline-only:    {bl_only} (skipped)")
         print(f"  Candidate-only:   {cd_only} (skipped)")
-    print(f"Baseline accuracy:  {bl_acc:.1%}")
-    print(f"Candidate accuracy: {cd_acc:.1%}")
+
+    if n < min_overlap:
+        return (
+            False,
+            f"Only {n} overlapping samples (minimum {min_overlap} required). "
+            f"Check that both runs evaluated the same dataset.",
+        )
+
+    bl_values = np.array([baseline_scores[k] for k in shared_keys])
+    cd_values = np.array([candidate_scores[k] for k in shared_keys])
+
+    bl_acc = float(np.mean(bl_values))
+    cd_acc = float(np.mean(cd_values))
+    delta = cd_acc - bl_acc
+
+    regressions = int(np.sum((bl_values > cd_values)))
+    improvements = int(np.sum((cd_values > bl_values)))
+    regression_rate = regressions / n
+
+    print(f"Baseline mean:      {bl_acc:.1%}")
+    print(f"Candidate mean:     {cd_acc:.1%}")
     print(f"Delta:              {delta:+.1%}")
     print(f"Regressions:        {regressions}/{n} ({regression_rate:.1%})")
     print(f"Improvements:       {improvements}/{n}")
@@ -121,7 +197,7 @@ def run_gate(
             f"Regression rate {regression_rate:.1%} exceeds threshold {max_regression_rate:.1%}",
         )
     if delta < -max_regression_rate:
-        return False, f"Accuracy drop {delta:+.1%} exceeds threshold"
+        return False, f"Score drop {delta:+.1%} exceeds threshold"
     return True, "No significant regression detected"
 
 
@@ -144,6 +220,12 @@ def main():
         default=0.10,
         help="Max regression rate (default: 0.10)",
     )
+    parser.add_argument(
+        "--min-overlap",
+        type=int,
+        default=_MIN_OVERLAP,
+        help=f"Minimum overlapping samples required to pass (default: {_MIN_OVERLAP})",
+    )
     args = parser.parse_args()
 
     print("Evaluation Gate")
@@ -159,7 +241,9 @@ def main():
     print(f"Candidate samples: {len(candidate_scores)}")
     print()
 
-    passed, reason = run_gate(baseline_scores, candidate_scores, args.threshold)
+    passed, reason = run_gate(
+        baseline_scores, candidate_scores, args.threshold, args.min_overlap
+    )
 
     print()
     if passed:
