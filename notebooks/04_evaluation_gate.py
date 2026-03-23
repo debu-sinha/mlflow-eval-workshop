@@ -268,10 +268,15 @@ print("=" * 50)
 # MAGIC print("PASSED: Safe to deploy.")
 # MAGIC ```
 # MAGIC
-# MAGIC In GitHub Actions, call it like:
+# MAGIC In GitHub Actions, call it with named flags (matches the actual workflow):
 # MAGIC ```yaml
 # MAGIC - name: Run eval gate
-# MAGIC   run: python eval_gate.py $BASELINE_RUN_ID $CANDIDATE_RUN_ID 0.10
+# MAGIC   run: |
+# MAGIC     python eval_gate.py \
+# MAGIC       --baseline-run-id ${{ env.BASELINE_RUN_ID }} \
+# MAGIC       --candidate-run-id ${{ env.CANDIDATE_RUN_ID }} \
+# MAGIC       --scorer correctness \
+# MAGIC       --threshold 0.10
 # MAGIC ```
 
 # COMMAND ----------

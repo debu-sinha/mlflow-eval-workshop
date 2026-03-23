@@ -16,12 +16,12 @@ dependencies = [
     "scikit-learn>=1.4",
     "numpy>=1.26",
     "openai>=1.50",
+    "nltk>=3.9",
 ]
 
 [project.optional-dependencies]
 guardrails = [
     "guardrails-ai>=0.6,<1.0",
-    "nltk>=3.9",
 ]
 databricks = ["databricks-agents>=0.14"]
 local = ["jupytext>=1.16"]

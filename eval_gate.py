@@ -195,25 +195,47 @@ def run_gate(
     improvements = int(np.sum((cd_values > bl_values)))
     regression_rate = regressions / n
 
-    # McNemar's test (matches notebook Module 4 implementation)
-    discordant = regressions + improvements
-    if discordant > 0:
-        chi2 = (abs(regressions - improvements) - 1) ** 2 / discordant
-        p_value = erfc(sqrt(chi2 / 2))
+    # Detect whether scores are binary (0/1) or continuous
+    unique_values = set(np.unique(bl_values)) | set(np.unique(cd_values))
+    is_binary = unique_values <= {0.0, 1.0}
+
+    if is_binary:
+        # McNemar's test for binary scorers (matches notebook Module 4)
+        discordant = regressions + improvements
+        if discordant > 0:
+            chi2 = (abs(regressions - improvements) - 1) ** 2 / discordant
+            p_value = erfc(sqrt(chi2 / 2))
+        else:
+            p_value = 1.0
+        test_name = "McNemar"
     else:
-        p_value = 1.0
+        # Paired bootstrap for continuous/graded scorers
+        diffs = cd_values - bl_values
+        observed_delta = float(np.mean(diffs))
+        rng = np.random.default_rng(42)
+        n_boot = 10_000
+        boot_deltas = np.array(
+            [
+                float(np.mean(rng.choice(diffs, size=n, replace=True)))
+                for _ in range(n_boot)
+            ]
+        )
+        # Two-sided p-value: proportion of bootstrap deltas at least as extreme
+        p_value = float(np.mean(np.abs(boot_deltas) >= abs(observed_delta)))
+        test_name = "Bootstrap"
 
     # Cohen's d effect size
     diffs = cd_values - bl_values
     sd = float(np.std(diffs, ddof=1)) if n > 1 else 0.0
     effect_size = float(np.mean(diffs)) / sd if sd > 0 else 0.0
 
+    print(f"Score type:         {'binary' if is_binary else 'continuous'}")
     print(f"Baseline mean:      {bl_acc:.1%}")
     print(f"Candidate mean:     {cd_acc:.1%}")
     print(f"Delta:              {delta:+.1%}")
     print(f"Regressions:        {regressions}/{n} ({regression_rate:.1%})")
     print(f"Improvements:       {improvements}/{n}")
-    print(f"McNemar p-value:    {p_value:.4f}")
+    print(f"{test_name} p-value: {p_value:.4f}")
     print(f"Cohen's d:          {effect_size:.3f}")
     print(f"Threshold:          {max_regression_rate:.1%}")
 
@@ -225,7 +247,7 @@ def run_gate(
     if p_value < significance_threshold and cd_acc < bl_acc:
         return (
             False,
-            f"Significant regression detected (p={p_value:.4f}, d={effect_size:.3f})",
+            f"Significant regression detected ({test_name} p={p_value:.4f}, d={effect_size:.3f})",
         )
     return True, "No significant regression detected"
 

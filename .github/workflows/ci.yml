@@ -46,8 +46,32 @@ jobs:
           print('All scorer imports OK')
           "
 
-      - name: Verify eval_gate module loads
-        run: python -c "from eval_gate import run_gate, get_per_sample_scores; print('eval_gate OK')"
+      - name: Verify eval_gate module loads and gate logic works
+        run: |
+          python -c "
+          from eval_gate import run_gate, _parse_score
+
+          # Binary scorer parse
+          assert _parse_score('yes') == 1.0
+          assert _parse_score('no') == 0.0
+          assert _parse_score(0.75) == 0.75
+          assert _parse_score(None) is None
+
+          # Gate passes on low regression
+          bl = {f's{i}': 1.0 for i in range(20)}
+          bl['s19'] = 0.0
+          cd = dict(bl)
+          cd['s0'] = 0.0
+          cd['s19'] = 1.0
+          passed, _ = run_gate(bl, cd)
+          assert passed, 'Should pass with 5% regression'
+
+          # Gate fails closed on zero overlap
+          passed, _ = run_gate({'a': 1.0}, {'b': 1.0})
+          assert not passed, 'Should fail on zero overlap'
+
+          print('eval_gate OK')
+          "
 
       - name: Verify notebooks parse
         run: |

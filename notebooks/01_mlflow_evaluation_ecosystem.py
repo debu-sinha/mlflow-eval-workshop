@@ -48,7 +48,11 @@ else:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Guardrails Hub setup
+# MAGIC ### Guardrails Hub setup (optional, skip for live demo)
+# MAGIC
+# MAGIC Guardrails DetectPII is optional. It needs outbound internet access to
+# MAGIC install Hub validators, which Databricks Free Edition restricts. The
+# MAGIC must-succeed path for this workshop is built-in judges + Phoenix + TruLens.
 # MAGIC
 # MAGIC Hub validators live on a private PyPI index and need an API token.
 # MAGIC On Databricks the token is read from a secret scope. Locally it comes
@@ -75,10 +79,13 @@ if not os.path.exists(_rc_path):
             "No Guardrails Hub token found. Set GUARDRAILS_API_KEY or run: guardrails configure"
         )
 
-# Download NLTK data needed by TruLens
-import nltk
+# Download NLTK data needed by TruLens (nltk is a transitive dep of trulens)
+try:
+    import nltk
 
-nltk.download("punkt_tab", quiet=True)
+    nltk.download("punkt_tab", quiet=True)
+except ImportError:
+    print("nltk not installed. TruLens scorers may not work.")
 
 GUARDRAILS_AVAILABLE = False
 try:
