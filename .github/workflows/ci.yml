@@ -7,6 +7,24 @@ on:
     branches: [main]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Lint eval_gate.py
+        run: ruff check eval_gate.py
+
+      - name: Format check eval_gate.py
+        run: ruff format --check eval_gate.py
+
   smoke-test:
     runs-on: ubuntu-latest
     steps:
@@ -16,10 +34,10 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install core dependencies
-        run: pip install mlflow[genai] numpy scikit-learn
+      - name: Install dependencies
+        run: pip install mlflow[genai] arize-phoenix-evals trulens trulens-providers-litellm numpy scikit-learn
 
-      - name: Verify imports
+      - name: Verify scorer imports
         run: |
           python -c "
           from mlflow.genai.scorers import Correctness, Safety, scorer
@@ -28,11 +46,15 @@ jobs:
           print('All scorer imports OK')
           "
 
-      - name: Lint eval_gate.py
-        run: |
-          pip install ruff
-          ruff check eval_gate.py
-          ruff format --check eval_gate.py
+      - name: Verify eval_gate module loads
+        run: python -c "from eval_gate import run_gate, get_per_sample_scores; print('eval_gate OK')"
 
-      - name: Test eval_gate module loads
-        run: python -c "import eval_gate; print('eval_gate module loads OK')"
+      - name: Verify notebooks parse
+        run: |
+          python -c "
+          import ast, pathlib
+          for f in sorted(pathlib.Path('notebooks').glob('*.py')):
+              ast.parse(f.read_text())
+              print(f'  OK: {f.name}')
+          print('All notebooks parse OK')
+          "
