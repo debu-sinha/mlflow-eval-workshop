@@ -27,7 +27,8 @@ Sign up for the [Databricks Free Edition](https://login.databricks.com/signup) i
 
 1. In the sidebar, click **Workspace > Repos** and open your user folder
 2. Click **Create Git folder**, paste `https://github.com/debu-sinha/mlflow-eval-workshop`
-3. Open `notebooks/01_mlflow_evaluation_ecosystem` and attach to any serverless cluster
+3. Open `notebooks/00_setup`, attach to any serverless cluster, and run all cells (installs deps once)
+4. Open `notebooks/01_mlflow_evaluation_ecosystem` and start the workshop
 
 No API keys needed. The notebooks auto-detect Databricks and use Foundation Model APIs. MLflow tracking is built in.
 
@@ -141,7 +142,7 @@ MLflow is downloaded over 30 million times per month from PyPI.
 
 ## Speaker
 
-**Debu Sinha** | Lead Applied AI/ML Engineer @ Databricks
+**Debu Sinha** | Lead Specialist Solutions Architect @ Databricks
 
 Built MLflow's first third-party scorer integrations ([Phoenix](https://github.com/mlflow/mlflow/pull/19473), [TruLens](https://github.com/mlflow/mlflow/pull/19492), [Guardrails](https://github.com/mlflow/mlflow/pull/20038)) and the first MLflow tracking integration for [Inspect AI](https://github.com/UKGovernmentBEIS/inspect_ai/pull/3433). Author of *Practical Machine Learning on Databricks* (Packt, 2023).
 
