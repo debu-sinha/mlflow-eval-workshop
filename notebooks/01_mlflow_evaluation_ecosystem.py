@@ -9,7 +9,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] arize-phoenix trulens guardrails-ai trulens-providers-litellm databricks-agents -q
+# MAGIC %pip install --upgrade mlflow[genai] arize-phoenix-evals trulens guardrails-ai trulens-providers-litellm databricks-agents -q
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
@@ -71,10 +71,13 @@ if not os.path.exists(_rc_path):
             f.write(f"token={_token}\n")
         print("Guardrails Hub token configured")
     else:
-        print("No Guardrails Hub token found. Set GUARDRAILS_API_KEY or run: guardrails configure")
+        print(
+            "No Guardrails Hub token found. Set GUARDRAILS_API_KEY or run: guardrails configure"
+        )
 
 # Download NLTK data needed by TruLens
 import nltk
+
 nltk.download("punkt_tab", quiet=True)
 
 _validators = ["hub://guardrails/detect_pii"]
@@ -102,7 +105,13 @@ import mlflow
 # Set experiment. On Databricks, use a /Users/ path (auto UC-linked).
 # On local, use a simple name with SQLite backend.
 if ON_DATABRICKS:
-    _user = dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()  # noqa: F821
+    _user = (
+        dbutils.notebook.entry_point.getDbutils()
+        .notebook()
+        .getContext()
+        .userName()
+        .get()
+    )  # noqa: F821
     mlflow.set_experiment(f"/Users/{_user}/odsc-workshop-m1")
 else:
     mlflow.set_tracking_uri("sqlite:///mlflow_workshop.db")
@@ -291,7 +300,9 @@ results_rag = mlflow.genai.evaluate(
 print("RAG Groundedness results:")
 for name, value in results_rag.metrics.items():
     print(f"  {name}: {value}")
-print("\nThe second sample claims 'free overnight shipping' but the context only mentions")
+print(
+    "\nThe second sample claims 'free overnight shipping' but the context only mentions"
+)
 print("standard (5-7 days) and express ($9.99). Groundedness should flag this.")
 
 # COMMAND ----------
@@ -418,7 +429,9 @@ results_live = mlflow.genai.evaluate(
 print(f"\nLive evaluation (run ID: {results_live.run_id}):")
 for name, value in results_live.metrics.items():
     print(f"  {name}: {value}")
-print("\nCheck Traces tab: each trace shows the ask_llm span with real LLM latency + scorer judge spans.")
+print(
+    "\nCheck Traces tab: each trace shows the ask_llm span with real LLM latency + scorer judge spans."
+)
 
 # COMMAND ----------
 
@@ -440,9 +453,12 @@ print("\nCheck Traces tab: each trace shows the ask_llm span with real LLM laten
 # Show the results table
 if results_all.result_df is not None:
     # Select only simple columns to avoid serialization issues with display()
-    _simple_cols = [c for c in results_all.result_df.columns
-                    if any(k in c for k in ("value", "inputs", "outputs", "request", "response"))
-                    or c in ("trace_id", "state", "execution_duration")]
+    _simple_cols = [
+        c
+        for c in results_all.result_df.columns
+        if any(k in c for k in ("value", "inputs", "outputs", "request", "response"))
+        or c in ("trace_id", "state", "execution_duration")
+    ]
     if _simple_cols:
         print(results_all.result_df[_simple_cols].to_string())
     else:
