@@ -289,7 +289,7 @@ def main():
         "--significance",
         type=float,
         default=0.05,
-        help="McNemar significance threshold (default: 0.05)",
+        help="Significance threshold for McNemar (binary) or permutation test (continuous). Default: 0.05",
     )
     parser.add_argument(
         "--min-overlap",

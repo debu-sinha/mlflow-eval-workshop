@@ -621,7 +621,27 @@ print(
 # MAGIC    metrics hide. A model can keep the same accuracy while breaking different samples.
 # MAGIC
 # MAGIC In Module 4, we wrap this into an automated evaluation gate.
-# MAGIC
+
+# COMMAND ----------
+
+# Save run IDs so Module 4 can use them deterministically
+import json as _json_m3
+
+_run_ids = {
+    "baseline_run_id": result_baseline.run_id,
+    "candidate_run_id": result_candidate.run_id,
+}
+_handoff_path = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else ".",
+    "m3_run_ids.json",
+)
+with open(_handoff_path, "w") as _f:
+    _json_m3.dump(_run_ids, _f)
+print(f"Run IDs saved to {_handoff_path} for Module 4")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC **Where this is going:** The comparison and statistical testing patterns shown
 # MAGIC here are being contributed upstream to the
 # MAGIC [Inspect AI](https://github.com/UKGovernmentBEIS/inspect_ai) framework as a

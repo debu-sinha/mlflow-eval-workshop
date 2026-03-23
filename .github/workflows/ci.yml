@@ -34,8 +34,8 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
-        run: pip install mlflow[genai] arize-phoenix-evals trulens trulens-providers-litellm numpy scikit-learn
+      - name: Install package (same as README local path)
+        run: pip install .
 
       - name: Verify scorer imports
         run: |

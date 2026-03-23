@@ -42,10 +42,15 @@ No API keys needed. The notebooks auto-detect Databricks and use Foundation Mode
 git clone https://github.com/debu-sinha/mlflow-eval-workshop.git
 cd mlflow-eval-workshop
 
-# Install core dependencies (enough to run all modules except Guardrails DetectPII)
+# Recommended: install with uv for reproducible, lockfile-pinned deps
+# (the repo ships uv.lock; this is what the bonus module teaches)
+uv sync
+uv pip install -e .
+
+# Or with plain pip (no lockfile pinning)
 pip install .
 
-# Or with Guardrails support
+# Optional: Guardrails DetectPII support
 pip install ".[guardrails]"
 
 # Set your OpenAI key (needed for LLM-based scorers)

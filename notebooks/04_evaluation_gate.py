@@ -357,6 +357,7 @@ with mlflow.start_run(run_name="eval-gate-blocking") as run:
 
 # COMMAND ----------
 
+import json as _json_m4
 import subprocess
 from pathlib import Path
 
@@ -375,68 +376,77 @@ for _d in _search_dirs:
         _gate_script = _candidate
         break
 
-# Find Module 3's experiment. Try the current experiment name first (set by
-# env var), then fall back to common workshop experiment names.
-client = mlflow.tracking.MlflowClient()
-_m3_candidates = [os.environ.get("MLFLOW_EXPERIMENT_NAME", "")]
-if ON_DATABRICKS:
-    _m3_candidates.append(f"/Users/{_user}/odsc-workshop-m3")
-_m3_candidates.extend(["odsc-eval-workshop", "workshop-module3"])
-
-exp = None
-for _name in _m3_candidates:
-    if not _name:
-        continue
-    exp = client.get_experiment_by_name(_name)
-    if exp:
+# First try: read run IDs from Module 3's handoff file (deterministic)
+baseline_id = None
+candidate_id = None
+for _d in _search_dirs:
+    _handoff = _d / "notebooks" / "m3_run_ids.json"
+    if not _handoff.exists():
+        _handoff = _d / "m3_run_ids.json"
+    if _handoff.exists():
+        _ids = _json_m4.loads(_handoff.read_text())
+        baseline_id = _ids.get("baseline_run_id")
+        candidate_id = _ids.get("candidate_run_id")
+        print(f"Loaded run IDs from {_handoff.name}")
         break
 
-if exp is None:
-    print(f"No evaluation experiment found. Run Module 3 first.")
-elif _gate_script is None:
-    print(f"eval_gate.py not found at {_gate_script}. Check repo structure.")
-else:
-    # Filter for evaluation runs (they have correctness metrics, gate runs don't)
-    runs = client.search_runs(
-        [exp.experiment_id],
-        filter_string="metrics.`correctness/mean` > 0",
-        order_by=["start_time DESC"],
-        max_results=2,
-    )
-    if len(runs) < 2:
-        # Fall back to any runs if metric filter found nothing
-        runs = client.search_runs(
-            [exp.experiment_id], order_by=["start_time DESC"], max_results=2
-        )
-    if len(runs) < 2:
-        print(f"Need at least 2 evaluation runs, found {len(runs)}.")
-    else:
-        candidate_id = runs[0].info.run_id
-        baseline_id = runs[1].info.run_id
-        print(f"Baseline run:  {baseline_id}")
-        print(f"Candidate run: {candidate_id}")
-        print()
+# Fall back: search experiment for evaluation runs
+if not baseline_id or not candidate_id:
+    client = mlflow.tracking.MlflowClient()
+    _m3_candidates = [os.environ.get("MLFLOW_EXPERIMENT_NAME", "")]
+    if ON_DATABRICKS:
+        _m3_candidates.append(f"/Users/{_user}/odsc-workshop-m3")
+    _m3_candidates.extend(["odsc-eval-workshop", "workshop-module3"])
 
-        result = subprocess.run(
-            [
-                "python3",
-                str(_gate_script),
-                "--baseline-run-id",
-                baseline_id,
-                "--candidate-run-id",
-                candidate_id,
-                "--scorer",
-                "correctness",
-            ],
-            capture_output=True,
-            text=True,
-            cwd=str(_gate_script.parent),
+    exp = None
+    for _name in _m3_candidates:
+        if not _name:
+            continue
+        exp = client.get_experiment_by_name(_name)
+        if exp:
+            break
+
+    if exp:
+        runs = client.search_runs(
+            [exp.experiment_id],
+            filter_string="metrics.`correctness/mean` > 0",
+            order_by=["start_time DESC"],
+            max_results=2,
         )
-        print(result.stdout)
-        if result.returncode != 0:
-            print(f"Gate exit code: {result.returncode}")
-            if result.stderr:
-                print(result.stderr)
+        if len(runs) >= 2:
+            candidate_id = runs[0].info.run_id
+            baseline_id = runs[1].info.run_id
+            print("Discovered run IDs from experiment search")
+
+if _gate_script is None:
+    print("eval_gate.py not found. Check repo structure.")
+elif not baseline_id or not candidate_id:
+    print("No evaluation runs found. Run Module 3 first.")
+else:
+    print(f"Baseline run:  {baseline_id}")
+    print(f"Candidate run: {candidate_id}")
+    print()
+
+    result = subprocess.run(
+        [
+            "python3",
+            str(_gate_script),
+            "--baseline-run-id",
+            baseline_id,
+            "--candidate-run-id",
+            candidate_id,
+            "--scorer",
+            "correctness",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(_gate_script.parent),
+    )
+    print(result.stdout)
+    if result.returncode != 0:
+        print(f"Gate exit code: {result.returncode}")
+        if result.stderr:
+            print(result.stderr)
 
 # COMMAND ----------
 
