@@ -9,7 +9,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] numpy -q
+# MAGIC %pip install --upgrade mlflow[genai] numpy databricks-agents -q
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
@@ -504,6 +504,23 @@ print(f"  Metrics: {result_candidate.metrics}")
 df_bl = result_baseline.result_df
 df_cd = result_candidate.result_df
 
+if df_bl is None or df_cd is None:
+    print("ERROR: result_df is None. The evaluation may have failed silently.")
+    print(f"  Baseline result_df: {df_bl is not None}")
+    print(f"  Candidate result_df: {df_cd is not None}")
+else:
+    # Show available columns so the scorer column name is visible
+    _scorer_cols = [c for c in df_bl.columns if "/value" in c]
+    print(f"Scorer columns in result_df: {_scorer_cols}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC The scorer column follows the pattern `{scorer_name}/value`. For
+# MAGIC `Correctness`, the values are `"yes"` or `"no"` strings.
+
+# COMMAND ----------
+
 
 # Convert yes/no to 1.0/0.0
 def _to_binary(value):
@@ -514,8 +531,25 @@ def _to_binary(value):
     return float(value) if value is not None else 0.0
 
 
-bl_real = [_to_binary(v) for v in df_bl["Correctness/value"]]
-cd_real = [_to_binary(v) for v in df_cd["Correctness/value"]]
+# Find the correctness column name (handle case variations)
+_scorer_col = None
+for col in df_bl.columns:
+    if "correctness" in col.lower() and col.endswith("/value"):
+        _scorer_col = col
+        break
+
+if _scorer_col is None:
+    print(
+        f"ERROR: No correctness scorer column found. Available columns: {list(df_bl.columns)}"
+    )
+    print(
+        "Make sure Correctness() scorer ran successfully. On Databricks, databricks-agents must be installed."
+    )
+else:
+    print(f"Using scorer column: {_scorer_col}")
+
+bl_real = [_to_binary(v) for v in df_bl[_scorer_col]]
+cd_real = [_to_binary(v) for v in df_cd[_scorer_col]]
 
 print("Per-sample comparison (from real MLflow evaluation runs):")
 print(f"{'Question':<45} {'Baseline':>10} {'Candidate':>10} {'Delta':>8}")

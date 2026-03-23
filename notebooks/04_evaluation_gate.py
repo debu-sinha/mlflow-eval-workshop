@@ -9,7 +9,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] numpy -q
+# MAGIC %pip install --upgrade mlflow[genai] numpy databricks-agents -q
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
