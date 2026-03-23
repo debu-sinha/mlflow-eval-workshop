@@ -496,8 +496,8 @@ print(f"  Metrics: {result_candidate.metrics}")
 # MAGIC ### Extract per-sample scores from real runs
 # MAGIC
 # MAGIC `result_df` has one row per sample. The `Correctness/value` column
-# MAGIC contains the per-sample score. We align by row index since both runs
-# MAGIC evaluated the same dataset in the same order.
+# MAGIC contains the per-sample score. We align by the `inputs/question` column
+# MAGIC so results stay correct even if rows are reordered between runs.
 
 # COMMAND ----------
 
@@ -548,20 +548,38 @@ if _scorer_col is None:
 else:
     print(f"Using scorer column: {_scorer_col}")
 
-bl_real = [_to_binary(v) for v in df_bl[_scorer_col]]
-cd_real = [_to_binary(v) for v in df_cd[_scorer_col]]
+# Align by request content (explicit key), not row index.
+# result_df's "request" column can be a string or dict. Convert to
+# a stable string key so we can join the two DataFrames correctly.
+import json as _json
 
+bl_keys = [
+    _json.dumps(r, sort_keys=True) if isinstance(r, dict) else str(r)
+    for r in df_bl["request"]
+]
+cd_keys = [
+    _json.dumps(r, sort_keys=True) if isinstance(r, dict) else str(r)
+    for r in df_cd["request"]
+]
+bl_by_key = dict(zip(bl_keys, df_bl[_scorer_col].map(_to_binary)))
+cd_by_key = dict(zip(cd_keys, df_cd[_scorer_col].map(_to_binary)))
+
+shared = sorted(set(bl_by_key) & set(cd_by_key))
+bl_real = [bl_by_key[k] for k in shared]
+cd_real = [cd_by_key[k] for k in shared]
+
+print(f"Aligned {len(shared)} samples by request key")
 print("Per-sample comparison (from real MLflow evaluation runs):")
-print(f"{'Question':<45} {'Baseline':>10} {'Candidate':>10} {'Delta':>8}")
-print("-" * 75)
-for i in range(len(bl_real)):
-    q = baseline_data[i]["inputs"]["question"][:42]
+print(f"{'Request':<55} {'Baseline':>10} {'Candidate':>10} {'Delta':>8}")
+print("-" * 85)
+for k, b, c in zip(shared, bl_real, cd_real):
     delta_str = ""
-    if bl_real[i] > cd_real[i]:
+    if b > c:
         delta_str = "REGRESSED"
-    elif bl_real[i] < cd_real[i]:
+    elif b < c:
         delta_str = "IMPROVED"
-    print(f"{q:<45} {bl_real[i]:>10.0f} {cd_real[i]:>10.0f} {delta_str:>8}")
+    label = k[:52] if len(k) <= 52 else k[:49] + "..."
+    print(f"{label:<55} {b:>10.0f} {c:>10.0f} {delta_str:>8}")
 
 # COMMAND ----------
 

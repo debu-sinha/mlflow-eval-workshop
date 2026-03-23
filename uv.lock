@@ -2454,6 +2454,23 @@ wheels = [
 ]
 
 [[package]]
+name = "jupytext"
+version = "1.19.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markdown-it-py" },
+    { name = "mdit-py-plugins" },
+    { name = "nbformat" },
+    { name = "packaging" },
+    { name = "pyyaml" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/13/a5/80c02f307c8ce863cb33e27daf049315e9d96979e14eead700923b5ec9cc/jupytext-1.19.1.tar.gz", hash = "sha256:82587c07e299173c70ed5e8ec7e75183edf1be289ed518bab49ad0d4e3d5f433", size = 4307829, upload-time = "2026-01-25T21:35:13.276Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/16/5a/736dd2f4535dbf3bf26523f9158c011389ef88dd06ec2eef67fd744f1c7b/jupytext-1.19.1-py3-none-any.whl", hash = "sha256:d8975035155d034bdfde5c0c37891425314b7ea8d3a6c4b5d18c294348714cd9", size = 170478, upload-time = "2026-01-25T21:35:11.17Z" },
+]
+
+[[package]]
 name = "kiwisolver"
 version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3018,6 +3035,18 @@ wheels = [
 ]
 
 [[package]]
+name = "mdit-py-plugins"
+version = "0.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markdown-it-py" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b2/fd/a756d36c0bfba5f6e39a1cdbdbfdd448dc02692467d83816dff4592a1ebc/mdit_py_plugins-0.5.0.tar.gz", hash = "sha256:f4918cb50119f50446560513a8e311d574ff6aaed72606ddae6d35716fe809c6", size = 44655, upload-time = "2025-08-11T07:25:49.083Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fb/86/dd6e5db36df29e76c7a7699123569a4a18c1623ce68d826ed96c62643cae/mdit_py_plugins-0.5.0-py3-none-any.whl", hash = "sha256:07a08422fc1936a5d26d146759e9155ea466e842f5ab2f7d2266dd084c8dab1f", size = 57205, upload-time = "2025-08-11T07:25:47.597Z" },
+]
+
+[[package]]
 name = "mdurl"
 version = "0.1.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3091,6 +3120,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "arize-phoenix-evals" },
     { name = "mlflow", extra = ["genai"] },
+    { name = "nltk" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "openai" },
@@ -3104,14 +3134,16 @@ dependencies = [
 all = [
     { name = "databricks-agents" },
     { name = "guardrails-ai" },
-    { name = "nltk" },
+    { name = "jupytext" },
 ]
 databricks = [
     { name = "databricks-agents" },
 ]
 guardrails = [
     { name = "guardrails-ai" },
-    { name = "nltk" },
+]
+local = [
+    { name = "jupytext" },
 ]
 
 [package.dev-dependencies]
@@ -3125,16 +3157,17 @@ requires-dist = [
     { name = "arize-phoenix-evals", specifier = ">=0.22" },
     { name = "databricks-agents", marker = "extra == 'databricks'", specifier = ">=0.14" },
     { name = "guardrails-ai", marker = "extra == 'guardrails'", specifier = ">=0.6,<1.0" },
+    { name = "jupytext", marker = "extra == 'local'", specifier = ">=1.16" },
     { name = "mlflow", extras = ["genai"], specifier = ">=3.1" },
-    { name = "mlflow-eval-workshop", extras = ["guardrails", "databricks"], marker = "extra == 'all'" },
-    { name = "nltk", marker = "extra == 'guardrails'", specifier = ">=3.9" },
+    { name = "mlflow-eval-workshop", extras = ["guardrails", "databricks", "local"], marker = "extra == 'all'" },
+    { name = "nltk", specifier = ">=3.9" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "openai", specifier = ">=1.50" },
     { name = "scikit-learn", specifier = ">=1.4" },
     { name = "trulens", specifier = ">=1.4" },
     { name = "trulens-providers-litellm", specifier = ">=1.4" },
 ]
-provides-extras = ["guardrails", "databricks", "all"]
+provides-extras = ["guardrails", "databricks", "local", "all"]
 
 [package.metadata.requires-dev]
 dev = [

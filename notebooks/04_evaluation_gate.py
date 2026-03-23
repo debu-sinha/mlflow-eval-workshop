@@ -349,6 +349,98 @@ with mlflow.start_run(run_name="eval-gate-blocking") as run:
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ### Run the real eval_gate.py on Module 3's evaluation runs
+# MAGIC
+# MAGIC Module 3 produced two real evaluation runs (baseline and candidate) using
+# MAGIC `Correctness`. We can feed those run IDs into `eval_gate.py` to see the
+# MAGIC gate work end-to-end with real MLflow data.
+
+# COMMAND ----------
+
+import subprocess
+from pathlib import Path
+
+# Locate eval_gate.py by searching up from the script or cwd
+_search_dirs = []
+if "__file__" in dir():
+    _search_dirs.append(Path(__file__).resolve().parent.parent)
+    _search_dirs.append(Path(__file__).resolve().parent)
+_search_dirs.append(Path.cwd())
+_search_dirs.append(Path.cwd().parent)
+
+_gate_script = None
+for _d in _search_dirs:
+    _candidate = _d / "eval_gate.py"
+    if _candidate.exists():
+        _gate_script = _candidate
+        break
+
+# Find Module 3's experiment. Try the current experiment name first (set by
+# env var), then fall back to common workshop experiment names.
+client = mlflow.tracking.MlflowClient()
+_m3_candidates = [os.environ.get("MLFLOW_EXPERIMENT_NAME", "")]
+if ON_DATABRICKS:
+    _m3_candidates.append(f"/Users/{_user}/odsc-workshop-m3")
+_m3_candidates.extend(["odsc-eval-workshop", "workshop-module3"])
+
+exp = None
+for _name in _m3_candidates:
+    if not _name:
+        continue
+    exp = client.get_experiment_by_name(_name)
+    if exp:
+        break
+
+if exp is None:
+    print(f"No evaluation experiment found. Run Module 3 first.")
+elif _gate_script is None:
+    print(f"eval_gate.py not found at {_gate_script}. Check repo structure.")
+else:
+    # Filter for evaluation runs (they have correctness metrics, gate runs don't)
+    runs = client.search_runs(
+        [exp.experiment_id],
+        filter_string="metrics.`correctness/mean` > 0",
+        order_by=["start_time DESC"],
+        max_results=2,
+    )
+    if len(runs) < 2:
+        # Fall back to any runs if metric filter found nothing
+        runs = client.search_runs(
+            [exp.experiment_id], order_by=["start_time DESC"], max_results=2
+        )
+    if len(runs) < 2:
+        print(f"Need at least 2 evaluation runs, found {len(runs)}.")
+    else:
+        candidate_id = runs[0].info.run_id
+        baseline_id = runs[1].info.run_id
+        print(f"Baseline run:  {baseline_id}")
+        print(f"Candidate run: {candidate_id}")
+        print()
+
+        result = subprocess.run(
+            [
+                "python3",
+                str(_gate_script),
+                "--baseline-run-id",
+                baseline_id,
+                "--candidate-run-id",
+                candidate_id,
+                "--scorer",
+                "correctness",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(_gate_script.parent),
+        )
+        print(result.stdout)
+        if result.returncode != 0:
+            print(f"Gate exit code: {result.returncode}")
+            if result.stderr:
+                print(result.stderr)
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## 4.4 Workshop summary and next steps
 # MAGIC
 # MAGIC Here is what we built in 55 minutes:

@@ -191,13 +191,22 @@ def run_gate(
     cd_acc = float(np.mean(cd_values))
     delta = cd_acc - bl_acc
 
-    regressions = int(np.sum((bl_values > cd_values)))
-    improvements = int(np.sum((cd_values > bl_values)))
-    regression_rate = regressions / n
-
     # Detect whether scores are binary (0/1) or continuous
     unique_values = set(np.unique(bl_values)) | set(np.unique(cd_values))
     is_binary = unique_values <= {0.0, 1.0}
+
+    if is_binary:
+        regressions = int(np.sum((bl_values > cd_values)))
+        improvements = int(np.sum((cd_values > bl_values)))
+    else:
+        # For continuous scores, only count meaningful changes.
+        # A decrease must exceed 5% of the observed score range to qualify
+        # as a regression, filtering out noise-level fluctuations.
+        score_range = max(float(np.max(bl_values) - np.min(bl_values)), 0.01)
+        min_delta = 0.05 * score_range
+        regressions = int(np.sum((bl_values - cd_values) > min_delta))
+        improvements = int(np.sum((cd_values - bl_values) > min_delta))
+    regression_rate = regressions / n
 
     if is_binary:
         # McNemar's test for binary scorers (matches notebook Module 4)
@@ -209,20 +218,18 @@ def run_gate(
             p_value = 1.0
         test_name = "McNemar"
     else:
-        # Paired bootstrap for continuous/graded scorers
+        # Paired permutation test for continuous/graded scorers.
+        # Under the null hypothesis, the sign of each paired difference
+        # is equally likely to be positive or negative.
         diffs = cd_values - bl_values
         observed_delta = float(np.mean(diffs))
         rng = np.random.default_rng(42)
-        n_boot = 10_000
-        boot_deltas = np.array(
-            [
-                float(np.mean(rng.choice(diffs, size=n, replace=True)))
-                for _ in range(n_boot)
-            ]
-        )
-        # Two-sided p-value: proportion of bootstrap deltas at least as extreme
-        p_value = float(np.mean(np.abs(boot_deltas) >= abs(observed_delta)))
-        test_name = "Bootstrap"
+        n_perm = 10_000
+        # Random sign flips simulate the null distribution
+        signs = rng.choice([-1, 1], size=(n_perm, n))
+        perm_deltas = np.mean(signs * diffs, axis=1)
+        p_value = float(np.mean(np.abs(perm_deltas) >= abs(observed_delta)))
+        test_name = "Permutation"
 
     # Cohen's d effect size
     diffs = cd_values - bl_values
