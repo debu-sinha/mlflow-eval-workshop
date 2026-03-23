@@ -54,13 +54,14 @@ export OPENAI_API_KEY="sk-..."
 mlflow server --backend-store-uri sqlite:///mlflow_workshop.db --port 5000 &
 ```
 
-Open the notebooks as Python scripts in VS Code, or convert to Jupyter:
+Open the notebooks as Python scripts. The Databricks-exported `.py` format uses
+`# COMMAND ----------` cell boundaries. In VS Code, install the
+[Databricks extension](https://marketplace.visualstudio.com/items?itemName=databricks.databricks)
+for native cell execution, or convert to `.ipynb` for standard Jupyter:
 
 ```bash
-# The notebooks are Databricks-exported .py files. Each "# COMMAND ----------"
-# line is a cell boundary. VS Code and Databricks both handle this natively.
-# To convert to .ipynb for Jupyter, use jupytext:
-pip install jupytext
+# Convert to .ipynb (jupytext is included in the local extras)
+pip install -e ".[local]"
 jupytext --to notebook notebooks/01_mlflow_evaluation_ecosystem.py
 ```
 
@@ -146,7 +147,7 @@ Built MLflow's first third-party scorer integrations ([Phoenix](https://github.c
 - [LinkedIn](https://linkedin.com/in/debusinha)
 - [GitHub](https://github.com/debu-sinha)
 
-Presented at [ODSC AI East 2026](https://odsc.com/boston/), Boston, April 28-30.
+Accepted workshop at [ODSC AI East 2026](https://odsc.com/boston/), Boston, April 28-30.
 
 ## License
 

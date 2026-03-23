@@ -80,18 +80,30 @@ import nltk
 
 nltk.download("punkt_tab", quiet=True)
 
-_validators = ["hub://guardrails/detect_pii"]
-for _v in _validators:
-    _result = subprocess.run(
-        ["guardrails", "hub", "install", _v, "--quiet", "--no-install-local-models"],
-        capture_output=True,
-        text=True,
-    )
-    _name = _v.split("/")[-1]
-    if _result.returncode == 0:
-        print(f"Installed: {_name}")
-    else:
-        print(f"Install issue ({_name}): {_result.stderr.strip()[:200]}")
+GUARDRAILS_AVAILABLE = False
+try:
+    _validators = ["hub://guardrails/detect_pii"]
+    for _v in _validators:
+        _result = subprocess.run(
+            [
+                "guardrails",
+                "hub",
+                "install",
+                _v,
+                "--quiet",
+                "--no-install-local-models",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        _name = _v.split("/")[-1]
+        if _result.returncode == 0:
+            print(f"Installed: {_name}")
+            GUARDRAILS_AVAILABLE = True
+        else:
+            print(f"Guardrails optional, skipping: {_result.stderr.strip()[:120]}")
+except FileNotFoundError:
+    print("Guardrails CLI not installed. Skipping DetectPII (optional).")
 
 # COMMAND ----------
 

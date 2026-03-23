@@ -12,6 +12,11 @@ hashing the request body when they are not set.
 Wire this into GitHub Actions, GitLab CI, or any CI system that checks
 exit codes.
 
+Gate policy (same as notebook Module 4):
+    1. Regression rate > threshold -> FAIL
+    2. McNemar p-value < significance AND candidate accuracy lower -> FAIL
+    3. Otherwise -> PASS
+
 Usage:
     python eval_gate.py --baseline-run-id <RUN_ID> --candidate-run-id <RUN_ID>
     python eval_gate.py --baseline-run-id <RUN_ID> --candidate-run-id <RUN_ID> --threshold 0.05
@@ -21,12 +26,13 @@ Environment:
 
 Exit codes:
     0: Candidate passes (no significant regression)
-    1: Candidate fails (regression exceeds threshold)
+    1: Candidate fails (regression exceeds threshold or significant p-value)
 """
 
 import argparse
 import hashlib
 import sys
+from math import erfc, sqrt
 
 import mlflow
 import numpy as np
@@ -146,12 +152,17 @@ def run_gate(
     baseline_scores: dict[str, float],
     candidate_scores: dict[str, float],
     max_regression_rate: float = 0.10,
+    significance_threshold: float = 0.05,
     min_overlap: int = _MIN_OVERLAP,
 ) -> tuple[bool, str]:
     """Compare baseline and candidate scores aligned by sample key.
 
-    Performs an inner join on the shared keys so that only samples
-    present in both runs are compared. Fails closed when overlap is
+    Uses the same three-check policy as the notebook gate in Module 4:
+      1. Regression rate exceeds threshold -> FAIL
+      2. McNemar p-value significant AND candidate worse -> FAIL
+      3. Otherwise -> PASS
+
+    Performs an inner join on shared keys. Fails closed when overlap is
     below min_overlap.
 
     Returns (passed, reason).
@@ -184,11 +195,26 @@ def run_gate(
     improvements = int(np.sum((cd_values > bl_values)))
     regression_rate = regressions / n
 
+    # McNemar's test (matches notebook Module 4 implementation)
+    discordant = regressions + improvements
+    if discordant > 0:
+        chi2 = (abs(regressions - improvements) - 1) ** 2 / discordant
+        p_value = erfc(sqrt(chi2 / 2))
+    else:
+        p_value = 1.0
+
+    # Cohen's d effect size
+    diffs = cd_values - bl_values
+    sd = float(np.std(diffs, ddof=1)) if n > 1 else 0.0
+    effect_size = float(np.mean(diffs)) / sd if sd > 0 else 0.0
+
     print(f"Baseline mean:      {bl_acc:.1%}")
     print(f"Candidate mean:     {cd_acc:.1%}")
     print(f"Delta:              {delta:+.1%}")
     print(f"Regressions:        {regressions}/{n} ({regression_rate:.1%})")
     print(f"Improvements:       {improvements}/{n}")
+    print(f"McNemar p-value:    {p_value:.4f}")
+    print(f"Cohen's d:          {effect_size:.3f}")
     print(f"Threshold:          {max_regression_rate:.1%}")
 
     if regression_rate > max_regression_rate:
@@ -196,8 +222,11 @@ def run_gate(
             False,
             f"Regression rate {regression_rate:.1%} exceeds threshold {max_regression_rate:.1%}",
         )
-    if delta < -max_regression_rate:
-        return False, f"Score drop {delta:+.1%} exceeds threshold"
+    if p_value < significance_threshold and cd_acc < bl_acc:
+        return (
+            False,
+            f"Significant regression detected (p={p_value:.4f}, d={effect_size:.3f})",
+        )
     return True, "No significant regression detected"
 
 
@@ -221,6 +250,12 @@ def main():
         help="Max regression rate (default: 0.10)",
     )
     parser.add_argument(
+        "--significance",
+        type=float,
+        default=0.05,
+        help="McNemar significance threshold (default: 0.05)",
+    )
+    parser.add_argument(
         "--min-overlap",
         type=int,
         default=_MIN_OVERLAP,
@@ -242,7 +277,11 @@ def main():
     print()
 
     passed, reason = run_gate(
-        baseline_scores, candidate_scores, args.threshold, args.min_overlap
+        baseline_scores,
+        candidate_scores,
+        args.threshold,
+        args.significance,
+        args.min_overlap,
     )
 
     print()

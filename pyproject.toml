@@ -24,8 +24,9 @@ guardrails = [
     "nltk>=3.9",
 ]
 databricks = ["databricks-agents>=0.14"]
+local = ["jupytext>=1.16"]
 all = [
-    "mlflow-eval-workshop[guardrails,databricks]",
+    "mlflow-eval-workshop[guardrails,databricks,local]",
 ]
 
 [dependency-groups]
