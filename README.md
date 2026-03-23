@@ -62,7 +62,24 @@ pip install jupytext
 jupytext --to notebook notebooks/01_mlflow_evaluation_ecosystem.py
 ```
 
-**Guardrails AI scorers (optional):** `DetectPII` needs a Hub token. Sign up at [hub.guardrailsai.com](https://hub.guardrailsai.com), then `export GUARDRAILS_API_KEY="..."`. The workshop runs fine without it; `DetectPII` will show an install warning and can be skipped.
+### Guardrails AI setup (optional)
+
+The `DetectPII` scorer in Module 1 uses a Guardrails Hub validator that requires an API token. The rest of the workshop works without it.
+
+1. Create a free account at [hub.guardrailsai.com](https://hub.guardrailsai.com)
+2. After signing in, go to **Settings > API Keys** and copy your token
+3. Set it as an environment variable before running the notebooks:
+
+```bash
+# Local
+export GUARDRAILS_API_KEY="your-token-here"
+
+# Databricks: set as a cluster environment variable or store in a secret scope
+# Cluster env var: GUARDRAILS_API_KEY=your-token-here
+# Secret scope: dbutils.secrets.get(scope="guardrails-hub", key="api-token")
+```
+
+If you skip this step, Module 1 will print a warning when it tries to install the `detect_pii` validator. All other scorers (Correctness, Safety, Hallucination, Groundedness, and custom scorers) work without it.
 
 ## What you'll learn
 
