@@ -22,7 +22,7 @@ A production evaluation pipeline that goes from scorer selection to deployment g
 
 ### Option A: Databricks Workspace (recommended for the live workshop)
 
-Sign up for the [Databricks Free Edition](https://www.databricks.com/try-databricks-free) if you don't have a workspace. Free Edition includes serverless compute, MLflow tracking, and Git Folders.
+Sign up for the [Databricks Free Edition](https://login.databricks.com/signup) if you don't have a workspace. Free Edition includes serverless compute, MLflow tracking, and Git Folders.
 
 1. In the sidebar, click **Workspace > Repos** and open your user folder
 2. Click **Create Git folder**, paste `https://github.com/debu-sinha/mlflow-eval-workshop`
