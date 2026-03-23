@@ -10,7 +10,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] arize-phoenix databricks-agents -q
+# MAGIC %pip install --upgrade mlflow[genai] arize-phoenix-evals databricks-agents -q
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
@@ -40,7 +40,13 @@ else:
 import mlflow
 
 if ON_DATABRICKS:
-    _user = dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()  # noqa: F821
+    _user = (
+        dbutils.notebook.entry_point.getDbutils()
+        .notebook()
+        .getContext()
+        .userName()
+        .get()
+    )  # noqa: F821
     mlflow.set_experiment(f"/Users/{_user}/odsc-workshop-m2")
 else:
     mlflow.set_tracking_uri("sqlite:///mlflow_workshop.db")
@@ -181,7 +187,7 @@ for name, value in results_deterministic_v2.metrics.items():
 
 from mlflow.genai.scorers.phoenix import Hallucination
 
-# Limit to 2 concurrent scorer workers (default is unbounded)
+# Limit to 2 concurrent scorer workers (default is 10)
 os.environ["MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS"] = "2"
 
 results_limited = mlflow.genai.evaluate(
