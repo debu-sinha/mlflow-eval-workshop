@@ -9,8 +9,8 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] arize-phoenix-evals trulens guardrails-ai trulens-providers-litellm databricks-agents -q
-# MAGIC dbutils.library.restartPython()
+# MAGIC %md
+# MAGIC > **Prerequisites:** Run `00_setup` first (or `pip install -e .` locally).
 
 # COMMAND ----------
 
@@ -23,7 +23,6 @@
 # COMMAND ----------
 
 import os
-import subprocess
 
 ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
 
@@ -45,72 +44,9 @@ else:
     assert os.environ.get("OPENAI_API_KEY"), "Set OPENAI_API_KEY to run locally"
     print(f"Running locally. Judge model: {JUDGE_MODEL}")
 
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Guardrails Hub setup (optional, skip for live demo)
-# MAGIC
-# MAGIC Guardrails DetectPII is optional. It needs outbound internet access to
-# MAGIC install Hub validators, which Databricks Free Edition restricts. The
-# MAGIC must-succeed path for this workshop is built-in judges + Phoenix + TruLens.
-# MAGIC
-# MAGIC Hub validators live on a private PyPI index and need an API token.
-# MAGIC On Databricks the token is read from a secret scope. Locally it comes
-# MAGIC from the `GUARDRAILS_API_KEY` environment variable.
-
-# COMMAND ----------
-
-_rc_path = os.path.expanduser("~/.guardrailsrc")
-if not os.path.exists(_rc_path):
-    if ON_DATABRICKS:
-        try:
-            _token = dbutils.secrets.get(scope="guardrails-hub", key="api-token")  # noqa: F821
-        except Exception:
-            _token = os.environ.get("GUARDRAILS_API_KEY", "")
-    else:
-        _token = os.environ.get("GUARDRAILS_API_KEY", "")
-
-    if _token:
-        with open(_rc_path, "w") as f:
-            f.write(f"token={_token}\n")
-        print("Guardrails Hub token configured")
-    else:
-        print(
-            "No Guardrails Hub token found. Set GUARDRAILS_API_KEY or run: guardrails configure"
-        )
-
-# Download NLTK data needed by TruLens (nltk is a transitive dep of trulens)
-try:
-    import nltk
-
-    nltk.download("punkt_tab", quiet=True)
-except ImportError:
-    print("nltk not installed. TruLens scorers may not work.")
-
+# Guardrails is optional. 00_setup handles installation.
+# This flag is set based on whether the import succeeds later.
 GUARDRAILS_AVAILABLE = False
-try:
-    _validators = ["hub://guardrails/detect_pii"]
-    for _v in _validators:
-        _result = subprocess.run(
-            [
-                "guardrails",
-                "hub",
-                "install",
-                _v,
-                "--quiet",
-                "--no-install-local-models",
-            ],
-            capture_output=True,
-            text=True,
-        )
-        _name = _v.split("/")[-1]
-        if _result.returncode == 0:
-            print(f"Installed: {_name}")
-            GUARDRAILS_AVAILABLE = True
-        else:
-            print(f"Guardrails optional, skipping: {_result.stderr.strip()[:120]}")
-except FileNotFoundError:
-    print("Guardrails CLI not installed. Skipping DetectPII (optional).")
 
 # COMMAND ----------
 

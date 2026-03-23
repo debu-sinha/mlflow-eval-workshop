@@ -12,6 +12,7 @@ A production evaluation pipeline that goes from scorer selection to deployment g
 
 | # | Module | Time | What you'll do |
 |---|--------|------|----------------|
+| 0 | Setup | Pre-workshop | Install all dependencies once (run `00_setup` on Databricks, or `pip install -e .` locally) |
 | 1 | MLflow Evaluation Ecosystem | 20 min | Run built-in, third-party, and custom scorers in one `evaluate()` call |
 | 2 | Production Infrastructure | 8 min | Control judge temperature for determinism, manage scorer concurrency |
 | 3 | Comparing Runs and Regressions | 12 min | Align samples across runs, detect regressions, test significance |

@@ -9,8 +9,8 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] numpy databricks-agents -q
-# MAGIC dbutils.library.restartPython()
+# MAGIC %md
+# MAGIC > **Prerequisites:** Run `00_setup` first (or `pip install -e .` locally).
 
 # COMMAND ----------
 
