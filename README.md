@@ -40,15 +40,17 @@ No API keys needed. The notebooks auto-detect Databricks and use Foundation Mode
 git clone https://github.com/debu-sinha/mlflow-eval-workshop.git
 cd mlflow-eval-workshop
 
-# Install dependencies (pick one)
-pip install -e .                    # from pyproject.toml
-# or
-pip install mlflow[genai]>=3.1 arize-phoenix-evals trulens trulens-providers-litellm scikit-learn numpy openai
+# Install core dependencies (enough to run all modules except Guardrails DetectPII)
+pip install .
+
+# Or with Guardrails support
+pip install ".[guardrails]"
 
 # Set your OpenAI key (needed for LLM-based scorers)
 export OPENAI_API_KEY="sk-..."
 
-# Start tracking server with the same SQLite backend the notebooks use
+# Start MLflow UI (the notebooks connect to SQLite directly, the server
+# just gives you the web UI at localhost:5000 to browse results)
 mlflow server --backend-store-uri sqlite:///mlflow_workshop.db --port 5000 &
 ```
 
@@ -103,7 +105,7 @@ MLflow's evaluation surface is broader than what fits in 60 minutes. Features wo
 
 ## The evaluation gate
 
-The repo includes `eval_gate.py`, a standalone script that compares two MLflow evaluation runs and exits with code 1 if the candidate regresses. It aligns samples by hashing the input content (not by trace ID, which differs across runs), performs an inner join on the shared keys, and reports overlap statistics.
+The repo includes `eval_gate.py`, a standalone script that compares two MLflow evaluation runs and exits with code 1 if the candidate regresses. It aligns samples using MLflow-native identifiers (`client_request_id`, `dataset_record_id`) when available, falling back to a request content hash. The gate fails closed: if fewer than 2 samples overlap, it blocks rather than silently passing. Score parsing handles binary labels (`yes`/`no`), Phoenix-style labels (`factual`/`hallucinated`), booleans, and numeric values.
 
 ```bash
 python eval_gate.py \
