@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install core dependencies
+        run: pip install mlflow[genai] numpy scikit-learn
+
+      - name: Verify imports
+        run: |
+          python -c "
+          from mlflow.genai.scorers import Correctness, Safety, scorer
+          from mlflow.genai.scorers.phoenix import Hallucination
+          from mlflow.genai.scorers.trulens import Groundedness
+          print('All scorer imports OK')
+          "
+
+      - name: Lint eval_gate.py
+        run: |
+          pip install ruff
+          ruff check eval_gate.py
+          ruff format --check eval_gate.py
+
+      - name: Test eval_gate module loads
+        run: python -c "import eval_gate; print('eval_gate module loads OK')"
