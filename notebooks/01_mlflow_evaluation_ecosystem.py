@@ -206,21 +206,29 @@ for name, value in results_builtin.metrics.items():
 
 # COMMAND ----------
 
-from mlflow.genai.scorers.guardrails import DetectPII
 from mlflow.genai.scorers.phoenix import Hallucination
 from mlflow.genai.scorers.trulens import Groundedness
 
-# Quick sanity check on DetectPII (no LLM required)
-pii_scorer = DetectPII()
-feedback_clean = pii_scorer(
-    outputs="The project was completed successfully by the engineering team.",
-)
-print(f"PII check (clean text): {feedback_clean.value}")
+# DetectPII requires a Guardrails Hub token and validator install.
+# If that setup failed, we skip it gracefully.
+try:
+    from mlflow.genai.scorers.guardrails import DetectPII
 
-feedback_pii = pii_scorer(
-    outputs="Contact John Smith at john.smith@example.com or call 555-123-4567.",
-)
-print(f"PII check (contains PII): {feedback_pii.value}")
+    pii_scorer = DetectPII()
+    feedback_clean = pii_scorer(
+        outputs="The project was completed successfully by the engineering team.",
+    )
+    print(f"PII check (clean text): {feedback_clean.value}")
+
+    feedback_pii = pii_scorer(
+        outputs="Contact John Smith at john.smith@example.com or call 555-123-4567.",
+    )
+    print(f"PII check (contains PII): {feedback_pii.value}")
+    GUARDRAILS_AVAILABLE = True
+except Exception as _guardrails_err:
+    print(f"Guardrails DetectPII not available: {_guardrails_err}")
+    print("Skipping PII scorer. Set GUARDRAILS_API_KEY to enable it.")
+    GUARDRAILS_AVAILABLE = False
 
 # COMMAND ----------
 
@@ -229,14 +237,17 @@ print(f"PII check (contains PII): {feedback_pii.value}")
 
 # COMMAND ----------
 
+_thirdparty_scorers = [
+    Correctness(),
+    Safety(),
+    Hallucination(model=JUDGE_MODEL),
+]
+if GUARDRAILS_AVAILABLE:
+    _thirdparty_scorers.append(DetectPII())
+
 results_thirdparty = mlflow.genai.evaluate(
     data=eval_dataset,
-    scorers=[
-        Correctness(),
-        Safety(),
-        Hallucination(model=JUDGE_MODEL),
-        DetectPII(),
-    ],
+    scorers=_thirdparty_scorers,
 )
 
 print("Combined results (built-in + third-party):")
@@ -260,14 +271,16 @@ for name, value in results_thirdparty.metrics.items():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC %md
 # MAGIC ### RAG evaluation with retrieval context
 # MAGIC
-# MAGIC For RAG pipelines, pass retrieved chunks in the `context` field so
-# MAGIC `Groundedness` can evaluate whether the output is supported by what
-# MAGIC the retriever actually returned.
+# MAGIC For RAG pipelines, pass retrieved chunks in the `context` field.
+# MAGIC MLflow has built-in RAG judges (`RelevanceToQuery`, `Groundedness`)
+# MAGIC that need no third-party dependencies. We show the built-in judge first,
+# MAGIC then the TruLens `Groundedness` scorer for comparison.
 
 # COMMAND ----------
+
+from mlflow.genai.scorers import RelevanceToQuery
 
 rag_dataset = [
     {
@@ -292,12 +305,31 @@ rag_dataset = [
     },
 ]
 
+# Built-in MLflow RAG judge (no third-party deps needed)
+results_builtin_rag = mlflow.genai.evaluate(
+    data=rag_dataset,
+    scorers=[RelevanceToQuery()],
+)
+
+print("Built-in RAG judge (RelevanceToQuery):")
+for name, value in results_builtin_rag.metrics.items():
+    print(f"  {name}: {value}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Now compare with TruLens Groundedness. Same data, different scoring angle:
+# MAGIC RelevanceToQuery checks if the answer addresses the question,
+# MAGIC Groundedness checks if the answer is supported by the retrieved context.
+
+# COMMAND ----------
+
 results_rag = mlflow.genai.evaluate(
     data=rag_dataset,
     scorers=[Groundedness(model=JUDGE_MODEL)],
 )
 
-print("RAG Groundedness results:")
+print("Third-party RAG scorer (TruLens Groundedness):")
 for name, value in results_rag.metrics.items():
     print(f"  {name}: {value}")
 print(
@@ -325,14 +357,17 @@ def response_length_check(outputs) -> bool:
 
 
 # Run all three kinds (built-in, third-party, custom) in one call
+_all_scorers = [
+    Correctness(),
+    Hallucination(model=JUDGE_MODEL),
+    response_length_check,
+]
+if GUARDRAILS_AVAILABLE:
+    _all_scorers.append(DetectPII())
+
 results_all = mlflow.genai.evaluate(
     data=eval_dataset,
-    scorers=[
-        Correctness(),
-        Hallucination(model=JUDGE_MODEL),
-        DetectPII(),
-        response_length_check,
-    ],
+    scorers=_all_scorers,
 )
 
 print("All scorers combined:")
