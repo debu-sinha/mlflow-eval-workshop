@@ -3090,9 +3090,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "arize-phoenix-evals" },
-    { name = "guardrails-ai" },
     { name = "mlflow", extra = ["genai"] },
-    { name = "nltk" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "openai" },
@@ -3103,8 +3101,17 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "databricks-agents" },
+    { name = "guardrails-ai" },
+    { name = "nltk" },
+]
 databricks = [
     { name = "databricks-agents" },
+]
+guardrails = [
+    { name = "guardrails-ai" },
+    { name = "nltk" },
 ]
 
 [package.dev-dependencies]
@@ -3117,16 +3124,17 @@ dev = [
 requires-dist = [
     { name = "arize-phoenix-evals", specifier = ">=0.22" },
     { name = "databricks-agents", marker = "extra == 'databricks'", specifier = ">=0.14" },
-    { name = "guardrails-ai", specifier = ">=0.6" },
+    { name = "guardrails-ai", marker = "extra == 'guardrails'", specifier = ">=0.6,<1.0" },
     { name = "mlflow", extras = ["genai"], specifier = ">=3.1" },
-    { name = "nltk", specifier = ">=3.9" },
+    { name = "mlflow-eval-workshop", extras = ["guardrails", "databricks"], marker = "extra == 'all'" },
+    { name = "nltk", marker = "extra == 'guardrails'", specifier = ">=3.9" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "openai", specifier = ">=1.50" },
     { name = "scikit-learn", specifier = ">=1.4" },
     { name = "trulens", specifier = ">=1.4" },
     { name = "trulens-providers-litellm", specifier = ">=1.4" },
 ]
-provides-extras = ["databricks"]
+provides-extras = ["guardrails", "databricks", "all"]
 
 [package.metadata.requires-dev]
 dev = [
