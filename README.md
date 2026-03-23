@@ -12,7 +12,7 @@ A production evaluation pipeline that goes from scorer selection to deployment g
 
 | # | Module | Time | What you'll do |
 |---|--------|------|----------------|
-| 0 | Setup | Pre-workshop | Install all dependencies once (run `00_setup` on Databricks, or `pip install -e .` locally) |
+| 0 | Setup (optional) | Pre-workshop | Verify all imports work. Each notebook self-installs on Databricks; locally use `pip install .` |
 | 1 | MLflow Evaluation Ecosystem | 20 min | Run built-in, third-party, and custom scorers in one `evaluate()` call |
 | 2 | Production Infrastructure | 8 min | Control judge temperature for determinism, manage scorer concurrency |
 | 3 | Comparing Runs and Regressions | 12 min | Align samples across runs, detect regressions, test significance |
@@ -27,8 +27,8 @@ Sign up for the [Databricks Free Edition](https://login.databricks.com/signup) i
 
 1. In the sidebar, click **Workspace > Repos** and open your user folder
 2. Click **Create Git folder**, paste `https://github.com/debu-sinha/mlflow-eval-workshop`
-3. Open `notebooks/00_setup`, attach to any serverless cluster, and run all cells (installs deps once)
-4. Open `notebooks/01_mlflow_evaluation_ecosystem` and start the workshop
+3. Open `notebooks/01_mlflow_evaluation_ecosystem` and attach to any serverless cluster
+4. The first cell (`%pip install`) installs dependencies automatically
 
 No API keys needed. The notebooks auto-detect Databricks and use Foundation Model APIs. MLflow tracking is built in.
 

@@ -2,13 +2,14 @@
 # MAGIC %md
 # MAGIC # Workshop Setup
 # MAGIC
-# MAGIC Run this notebook **once** before starting the workshop. It installs all
-# MAGIC dependencies and restarts the Python environment so Modules 1-4 start
-# MAGIC immediately without per-notebook install churn.
+# MAGIC **Optional pre-workshop step.** Each notebook has its own `%pip install`
+# MAGIC cell that runs automatically on Databricks. This notebook is useful if you
+# MAGIC want to install everything once before the session starts, or if you want
+# MAGIC to verify that all imports work before going live.
 # MAGIC
-# MAGIC **Time:** 2-3 minutes (runs once, not during the live session)
+# MAGIC **Time:** 2-3 minutes
 # MAGIC
-# MAGIC If running locally, use `pip install -e .` from the repo root instead.
+# MAGIC **Local users:** Use `pip install -e .` or `uv sync` from the repo root instead.
 
 # COMMAND ----------
 
