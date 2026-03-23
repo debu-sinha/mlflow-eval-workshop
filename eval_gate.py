@@ -121,7 +121,7 @@ def get_per_sample_scores(
 
     experiment_id = client.get_run(run_id).info.experiment_id
     traces = client.search_traces(
-        experiment_ids=[experiment_id],
+        locations=[experiment_id],
         filter_string=f"metadata.`mlflow.sourceRun` = '{run_id}'",
     )
 
@@ -134,7 +134,14 @@ def get_per_sample_scores(
             continue
         for assessment in trace.info.assessments:
             if assessment.name == scorer_name and assessment.feedback:
-                raw = assessment.feedback.get("value")
+                fb = assessment.feedback
+                raw = (
+                    fb.value
+                    if hasattr(fb, "value")
+                    else fb.get("value")
+                    if hasattr(fb, "get")
+                    else None
+                )
                 parsed = _parse_score(raw)
                 if parsed is not None:
                     scores[key] = parsed
