@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Evaluation gate for CI/CD pipelines.
 
-Compares two MLflow evaluation runs and exits with code 1 if the candidate
-regresses beyond the configured threshold. Wire this into GitHub Actions,
-GitLab CI, or any CI system that checks exit codes.
+Compares two MLflow evaluation runs by aligning samples on a stable key
+(the input text hash) and exits with code 1 if the candidate regresses
+beyond the configured threshold.
+
+Wire this into GitHub Actions, GitLab CI, or any CI system that checks
+exit codes.
 
 Usage:
     python eval_gate.py --baseline-run-id <RUN_ID> --candidate-run-id <RUN_ID>
@@ -18,73 +21,105 @@ Exit codes:
 """
 
 import argparse
+import hashlib
 import sys
 
 import mlflow
 import numpy as np
 
 
-def get_per_sample_scores(run_id: str, scorer_name: str = "correctness") -> dict:
+def _stable_key(trace) -> str | None:
+    """Derive a stable sample key from the trace's request input.
+
+    Evaluation runs on the same dataset produce traces with the same
+    input content but different trace IDs. We hash the request body so
+    that samples align correctly across runs even if trace order differs.
+    Falls back to None if no request data is available.
+    """
+    request = trace.data.request
+    if request:
+        return hashlib.sha256(request.encode("utf-8")).hexdigest()[:16]
+    return None
+
+
+def get_per_sample_scores(
+    run_id: str, scorer_name: str = "correctness"
+) -> dict[str, float]:
     """Extract per-sample scores from an MLflow evaluation run.
 
-    Reads the evaluation result DataFrame from the run's artifacts
-    and returns a dict mapping trace_id to score value.
+    Returns a dict mapping a stable sample key (input hash) to the
+    binary score value. Samples without a parseable key are skipped.
     """
     client = mlflow.tracking.MlflowClient()
 
-    # Get traces for this run
     experiment_id = client.get_run(run_id).info.experiment_id
     traces = client.search_traces(
         experiment_ids=[experiment_id],
         filter_string=f"metadata.`mlflow.sourceRun` = '{run_id}'",
     )
 
-    scores = {}
+    scores: dict[str, float] = {}
     for trace in traces:
-        trace_id = trace.info.trace_id
+        key = _stable_key(trace)
+        if key is None:
+            continue
         for assessment in trace.info.assessments:
             if assessment.name == scorer_name and assessment.feedback:
                 value = assessment.feedback.get("value")
                 if value == "yes":
-                    scores[trace_id] = 1.0
+                    scores[key] = 1.0
                 elif value == "no":
-                    scores[trace_id] = 0.0
+                    scores[key] = 0.0
     return scores
 
 
 def run_gate(
-    baseline_scores: dict,
-    candidate_scores: dict,
+    baseline_scores: dict[str, float],
+    candidate_scores: dict[str, float],
     max_regression_rate: float = 0.10,
 ) -> tuple[bool, str]:
-    """Compare scores and decide pass/fail.
+    """Compare baseline and candidate scores aligned by sample key.
+
+    Performs an inner join on the shared keys so that only samples
+    present in both runs are compared. Reports overlap statistics.
 
     Returns (passed, reason).
     """
-    # Align by trace content (both runs evaluate same inputs)
-    bl_values = list(baseline_scores.values())
-    cd_values = list(candidate_scores.values())
+    shared_keys = sorted(set(baseline_scores) & set(candidate_scores))
+    bl_only = len(baseline_scores) - len(shared_keys)
+    cd_only = len(candidate_scores) - len(shared_keys)
 
-    if not bl_values or not cd_values:
-        return True, "No scores to compare"
+    if not shared_keys:
+        return True, "No overlapping samples to compare"
 
-    bl_acc = np.mean(bl_values)
-    cd_acc = np.mean(cd_values)
+    bl_values = np.array([baseline_scores[k] for k in shared_keys])
+    cd_values = np.array([candidate_scores[k] for k in shared_keys])
+    n = len(shared_keys)
+
+    bl_acc = float(np.mean(bl_values))
+    cd_acc = float(np.mean(cd_values))
     delta = cd_acc - bl_acc
 
-    # Count regressions (paired comparison needs same sample alignment)
-    n = min(len(bl_values), len(cd_values))
-    regressions = sum(1 for i in range(n) if bl_values[i] == 1.0 and cd_values[i] == 0.0)
-    regression_rate = regressions / n if n > 0 else 0.0
+    regressions = int(np.sum((bl_values == 1.0) & (cd_values == 0.0)))
+    improvements = int(np.sum((bl_values == 0.0) & (cd_values == 1.0)))
+    regression_rate = regressions / n
 
-    print(f"Baseline accuracy:  {bl_acc:.1%} ({len(bl_values)} samples)")
-    print(f"Candidate accuracy: {cd_acc:.1%} ({len(cd_values)} samples)")
-    print(f"Delta: {delta:+.1%}")
-    print(f"Regressions: {regressions}/{n} ({regression_rate:.1%})")
-    print(f"Threshold: {max_regression_rate:.1%}")
+    print(f"Aligned samples:    {n}")
+    if bl_only > 0 or cd_only > 0:
+        print(f"  Baseline-only:    {bl_only} (skipped)")
+        print(f"  Candidate-only:   {cd_only} (skipped)")
+    print(f"Baseline accuracy:  {bl_acc:.1%}")
+    print(f"Candidate accuracy: {cd_acc:.1%}")
+    print(f"Delta:              {delta:+.1%}")
+    print(f"Regressions:        {regressions}/{n} ({regression_rate:.1%})")
+    print(f"Improvements:       {improvements}/{n}")
+    print(f"Threshold:          {max_regression_rate:.1%}")
 
     if regression_rate > max_regression_rate:
-        return False, f"Regression rate {regression_rate:.1%} exceeds threshold {max_regression_rate:.1%}"
+        return (
+            False,
+            f"Regression rate {regression_rate:.1%} exceeds threshold {max_regression_rate:.1%}",
+        )
     if delta < -max_regression_rate:
         return False, f"Accuracy drop {delta:+.1%} exceeds threshold"
     return True, "No significant regression detected"
@@ -92,22 +127,35 @@ def run_gate(
 
 def main():
     parser = argparse.ArgumentParser(description="MLflow evaluation gate for CI/CD")
-    parser.add_argument("--baseline-run-id", required=True, help="MLflow run ID for baseline")
-    parser.add_argument("--candidate-run-id", required=True, help="MLflow run ID for candidate")
-    parser.add_argument("--scorer", default="correctness", help="Scorer name to compare (default: correctness)")
-    parser.add_argument("--threshold", type=float, default=0.10, help="Max regression rate (default: 0.10)")
+    parser.add_argument(
+        "--baseline-run-id", required=True, help="MLflow run ID for baseline"
+    )
+    parser.add_argument(
+        "--candidate-run-id", required=True, help="MLflow run ID for candidate"
+    )
+    parser.add_argument(
+        "--scorer",
+        default="correctness",
+        help="Scorer name to compare (default: correctness)",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.10,
+        help="Max regression rate (default: 0.10)",
+    )
     args = parser.parse_args()
 
-    print(f"Evaluation Gate")
-    print(f"Baseline: {args.baseline_run_id}")
+    print("Evaluation Gate")
+    print(f"Baseline:  {args.baseline_run_id}")
     print(f"Candidate: {args.candidate_run_id}")
-    print(f"Scorer: {args.scorer}")
+    print(f"Scorer:    {args.scorer}")
     print()
 
     baseline_scores = get_per_sample_scores(args.baseline_run_id, args.scorer)
     candidate_scores = get_per_sample_scores(args.candidate_run_id, args.scorer)
 
-    print(f"Baseline samples: {len(baseline_scores)}")
+    print(f"Baseline samples:  {len(baseline_scores)}")
     print(f"Candidate samples: {len(candidate_scores)}")
     print()
 
