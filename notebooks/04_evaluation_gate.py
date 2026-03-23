@@ -29,14 +29,14 @@ import mlflow
 import numpy as np
 
 if ON_DATABRICKS:
-    import json
-
-    _ctx = json.loads(
-        dbutils.notebook.entry_point.getDbutils().notebook().getContext().toJson()  # noqa: F821
-    )
-    mlflow.set_experiment(
-        _ctx.get("extraContext", {}).get("notebook_path", "/tmp/odsc-workshop")
-    )
+    _user = (
+        dbutils.notebook.entry_point.getDbutils()
+        .notebook()
+        .getContext()
+        .userName()
+        .get()
+    )  # noqa: F821
+    mlflow.set_experiment(f"/Users/{_user}/odsc-workshop-m4")
 else:
     mlflow.set_tracking_uri("sqlite:///mlflow_workshop.db")
     mlflow.set_experiment("odsc-eval-workshop")
