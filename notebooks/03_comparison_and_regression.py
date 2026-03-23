@@ -36,6 +36,9 @@ if ON_DATABRICKS:
     mlflow.set_experiment(
         _ctx.get("extraContext", {}).get("notebook_path", "/tmp/odsc-workshop")
     )
+else:
+    mlflow.set_tracking_uri("sqlite:///mlflow_workshop.db")
+    mlflow.set_experiment("odsc-eval-workshop")
 
 # COMMAND ----------
 
@@ -127,8 +130,12 @@ aligned = align_samples(baseline_dict, candidate_dict)
 print(f"Aligned {len(aligned)} samples")
 
 # Show what changed
-regressions = [s for s in aligned if s.baseline_score == 1.0 and s.candidate_score == 0.0]
-improvements = [s for s in aligned if s.baseline_score == 0.0 and s.candidate_score == 1.0]
+regressions = [
+    s for s in aligned if s.baseline_score == 1.0 and s.candidate_score == 0.0
+]
+improvements = [
+    s for s in aligned if s.baseline_score == 0.0 and s.candidate_score == 1.0
+]
 unchanged = [s for s in aligned if s.baseline_score == s.candidate_score]
 
 print(f"Regressions:  {len(regressions)} samples")
@@ -168,7 +175,12 @@ def mcnemars_test(
 
     discordant = b + c
     if discordant == 0:
-        return {"p_value": 1.0, "significant": False, "regressions": b, "improvements": c}
+        return {
+            "p_value": 1.0,
+            "significant": False,
+            "regressions": b,
+            "improvements": c,
+        }
 
     chi2 = (abs(b - c) - 1) ** 2 / discordant
     p_value = erfc(sqrt(chi2 / 2))
@@ -261,8 +273,16 @@ print("Comparison utilities loaded.")
 
 # COMMAND ----------
 
-bl_scores = [s.baseline_score for s in aligned if s.baseline_score is not None and s.candidate_score is not None]
-cd_scores = [s.candidate_score for s in aligned if s.baseline_score is not None and s.candidate_score is not None]
+bl_scores = [
+    s.baseline_score
+    for s in aligned
+    if s.baseline_score is not None and s.candidate_score is not None
+]
+cd_scores = [
+    s.candidate_score
+    for s in aligned
+    if s.baseline_score is not None and s.candidate_score is not None
+]
 
 mcnemar = mcnemars_test(
     [s == 1.0 for s in bl_scores],
@@ -381,7 +401,9 @@ print(f"Samples:   {len(bl_scores)} aligned")
 print()
 print(f"Delta:     {np.mean(cd_scores) - np.mean(bl_scores):+.1%}")
 print(f"Effect:    Cohen's d = {d:+.3f} ({magnitude})")
-print(f"McNemar:   p = {mcnemar['p_value']:.4f} ({'significant' if mcnemar['significant'] else 'not significant'})")
+print(
+    f"McNemar:   p = {mcnemar['p_value']:.4f} ({'significant' if mcnemar['significant'] else 'not significant'})"
+)
 print(f"Bootstrap: CI [{ci['ci_lower']:+.4f}, {ci['ci_upper']:+.4f}]")
 print(f"Win rate:  {wr['wins']}/{len(bl_scores)} ({wr['win_pct']:.1%})")
 print()

@@ -38,6 +38,9 @@ if ON_DATABRICKS:
     mlflow.set_experiment(
         _ctx.get("extraContext", {}).get("notebook_path", "/tmp/odsc-workshop")
     )
+else:
+    mlflow.set_tracking_uri("sqlite:///mlflow_workshop.db")
+    mlflow.set_experiment("odsc-eval-workshop")
 
 # COMMAND ----------
 

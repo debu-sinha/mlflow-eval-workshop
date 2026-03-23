@@ -37,6 +37,9 @@ if ON_DATABRICKS:
     mlflow.set_experiment(
         _ctx.get("extraContext", {}).get("notebook_path", "/tmp/odsc-workshop")
     )
+else:
+    mlflow.set_tracking_uri("sqlite:///mlflow_workshop.db")
+    mlflow.set_experiment("odsc-eval-workshop")
 
 # COMMAND ----------
 
@@ -143,6 +146,7 @@ def run_eval_gate(
         reason=reason,
     )
 
+
 # COMMAND ----------
 
 # MAGIC %md
@@ -170,7 +174,9 @@ print(f"Gate:       {'PASSED' if result_pass.passed else 'BLOCKED'}")
 print(f"Reason:     {result_pass.reason}")
 print(f"Baseline:   {result_pass.baseline_accuracy:.1%}")
 print(f"Candidate:  {result_pass.candidate_accuracy:.1%}")
-print(f"Regressions: {result_pass.regressions} | Improvements: {result_pass.improvements}")
+print(
+    f"Regressions: {result_pass.regressions} | Improvements: {result_pass.improvements}"
+)
 print(f"Regression rate: {result_pass.regression_rate:.1%}")
 print(f"p-value:    {result_pass.p_value:.4f}")
 print(f"Effect:     {result_pass.effect_size:+.3f}")
@@ -200,7 +206,9 @@ print(f"Gate:       {'PASSED' if result_fail.passed else 'BLOCKED'}")
 print(f"Reason:     {result_fail.reason}")
 print(f"Baseline:   {result_fail.baseline_accuracy:.1%}")
 print(f"Candidate:  {result_fail.candidate_accuracy:.1%}")
-print(f"Regressions: {result_fail.regressions} | Improvements: {result_fail.improvements}")
+print(
+    f"Regressions: {result_fail.regressions} | Improvements: {result_fail.improvements}"
+)
 print(f"Regression rate: {result_fail.regression_rate:.1%}")
 print(f"p-value:    {result_fail.p_value:.4f}")
 print(f"Effect:     {result_fail.effect_size:+.3f}")
