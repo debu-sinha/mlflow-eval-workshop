@@ -1,2 +1,9 @@
-mlflow.db
 *.db
+__pycache__/
+*.pyc
+.venv/
+dist/
+*.egg-info/
+.ruff_cache/
+mlruns/
+mlartifacts/
