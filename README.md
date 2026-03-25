@@ -151,10 +151,13 @@ MLflow is downloaded over 30 million times per month from PyPI.
 
 ## Prerequisites
 
-- Python 3.10+
-- An OpenAI API key (for LLM-based scorers when running locally)
+- A Databricks account ([Free Edition](https://login.databricks.com/signup) works) OR Python 3.10+ with an OpenAI API key
 - Basic familiarity with MLflow (experiment tracking, model logging)
 - No prior experience with Phoenix, TruLens, or Guardrails AI required
+
+### Setup instructions for attendees
+
+For those who wish to optionally follow along in class, please follow the [setup instructions above](#setup). I won't spend time in class for setup; this is optional.
 
 ## Speaker
 
@@ -165,7 +168,7 @@ Built MLflow's first third-party scorer integrations ([Phoenix](https://github.c
 - [LinkedIn](https://linkedin.com/in/debusinha)
 - [GitHub](https://github.com/debu-sinha)
 
-Accepted workshop at [ODSC AI East 2026](https://odsc.com/boston/), Boston, April 28-30.
+**ODSC AI East 2026** | April 29, 12:05 PM ET | Hynes Convention Center, Boston | 60 minutes
 
 ## License
 
