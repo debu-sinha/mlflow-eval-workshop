@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1020 280" width="1020" height="280">
+<defs>
+  <marker id="arr" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+    <polygon points="0 0, 10 3.5, 0 7" fill="#868e96" />
+  </marker>
+  <style>text { font-family: "DM Sans", "Segoe UI", system-ui, -apple-system, sans-serif; }</style>
+</defs>
+
+<!-- Title -->
+<text x="510" y="28" font-size="22" fill="#1971c2" text-anchor="middle" font-weight="600">Evaluating LLM Applications with MLflow</text>
+<text x="510" y="48" font-size="12" fill="#868e96" text-anchor="middle">ODSC AI East 2026  |  60 minutes  |  Hands-on</text>
+
+<!-- Module 1: Evaluation Ecosystem -->
+<rect x="20" y="72" width="185" height="120" rx="8" fill="#228be6" />
+<text x="112" y="102" font-size="14" fill="#f8f9fa" text-anchor="middle" font-weight="600">Module 1</text>
+<text x="112" y="122" font-size="12" fill="#f8f9fa" text-anchor="middle">Evaluation</text>
+<text x="112" y="140" font-size="12" fill="#f8f9fa" text-anchor="middle">Ecosystem</text>
+<text x="112" y="172" font-size="11" fill="#d0ebff" text-anchor="middle">20 min</text>
+
+<!-- Arrow 1→2 -->
+<path d="M 213 132 L 243 132" stroke="#868e96" fill="none" stroke-width="2" marker-end="url(#arr)" />
+
+<!-- Module 2: Production Infra -->
+<rect x="251" y="72" width="155" height="120" rx="8" fill="#3b5bdb" />
+<text x="328" y="102" font-size="14" fill="#f8f9fa" text-anchor="middle" font-weight="600">Module 2</text>
+<text x="328" y="122" font-size="12" fill="#f8f9fa" text-anchor="middle">Production</text>
+<text x="328" y="140" font-size="12" fill="#f8f9fa" text-anchor="middle">Infrastructure</text>
+<text x="328" y="172" font-size="11" fill="#d0ebff" text-anchor="middle">8 min</text>
+
+<!-- Arrow 2→3 -->
+<path d="M 414 132 L 444 132" stroke="#868e96" fill="none" stroke-width="2" marker-end="url(#arr)" />
+
+<!-- Module 3: Comparing Runs -->
+<rect x="452" y="72" width="165" height="120" rx="8" fill="#5c7cfa" />
+<text x="534" y="102" font-size="14" fill="#f8f9fa" text-anchor="middle" font-weight="600">Module 3</text>
+<text x="534" y="122" font-size="12" fill="#f8f9fa" text-anchor="middle">Comparing Runs</text>
+<text x="534" y="140" font-size="12" fill="#f8f9fa" text-anchor="middle">&amp; Regressions</text>
+<text x="534" y="172" font-size="11" fill="#d0ebff" text-anchor="middle">12 min</text>
+
+<!-- Arrow 3→4 -->
+<path d="M 625 132 L 655 132" stroke="#868e96" fill="none" stroke-width="2" marker-end="url(#arr)" />
+
+<!-- Module 4: Evaluation Gate -->
+<rect x="663" y="72" width="185" height="120" rx="8" fill="#e03131" />
+<text x="755" y="102" font-size="14" fill="#f8f9fa" text-anchor="middle" font-weight="600">Module 4</text>
+<text x="755" y="122" font-size="12" fill="#f8f9fa" text-anchor="middle">Evaluation</text>
+<text x="755" y="140" font-size="12" fill="#f8f9fa" text-anchor="middle">Gate</text>
+<text x="755" y="172" font-size="11" fill="#ffe3e3" text-anchor="middle">15 min</text>
+
+<!-- Bonus: uv Dependencies -->
+<rect x="876" y="72" width="124" height="120" rx="8" fill="#495057" stroke="#868e96" stroke-width="1" stroke-dasharray="6,3" />
+<text x="938" y="102" font-size="14" fill="#f8f9fa" text-anchor="middle" font-weight="600">Bonus</text>
+<text x="938" y="122" font-size="12" fill="#f8f9fa" text-anchor="middle">uv</text>
+<text x="938" y="140" font-size="12" fill="#f8f9fa" text-anchor="middle">Dependencies</text>
+<text x="938" y="172" font-size="11" fill="#adb5bd" text-anchor="middle">5 min</text>
+
+<!-- Subtitles under each module -->
+<text x="112" y="214" font-size="11" fill="#495057" text-anchor="middle">Score outputs with</text>
+<text x="112" y="228" font-size="11" fill="#495057" text-anchor="middle">4 scorer types in</text>
+<text x="112" y="242" font-size="11" fill="#495057" text-anchor="middle">one evaluate() call</text>
+
+<text x="328" y="214" font-size="11" fill="#495057" text-anchor="middle">Control judge temp</text>
+<text x="328" y="228" font-size="11" fill="#495057" text-anchor="middle">and concurrency for</text>
+<text x="328" y="242" font-size="11" fill="#495057" text-anchor="middle">reproducibility</text>
+
+<text x="534" y="214" font-size="11" fill="#495057" text-anchor="middle">Detect regressions</text>
+<text x="534" y="228" font-size="11" fill="#495057" text-anchor="middle">with McNemar, bootstrap</text>
+<text x="534" y="242" font-size="11" fill="#495057" text-anchor="middle">CI, Cohen's d</text>
+
+<text x="755" y="214" font-size="11" fill="#495057" text-anchor="middle">Block bad models</text>
+<text x="755" y="228" font-size="11" fill="#495057" text-anchor="middle">from shipping with</text>
+<text x="755" y="242" font-size="11" fill="#495057" text-anchor="middle">automated CI/CD gate</text>
+
+<text x="938" y="214" font-size="11" fill="#868e96" text-anchor="middle">Pin transitive deps</text>
+<text x="938" y="228" font-size="11" fill="#868e96" text-anchor="middle">with uv lockfiles</text>
+
+</svg>
