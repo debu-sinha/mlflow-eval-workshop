@@ -20,35 +20,6 @@
 # MAGIC %md
 # MAGIC ## Workshop Flow
 # MAGIC
-# MAGIC ```
-# MAGIC                    Evaluating LLM Applications with MLflow
-# MAGIC
-# MAGIC  ┌─────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-# MAGIC  │  MODULE 1    │   │  MODULE 2     │   │  MODULE 3     │   │  MODULE 4     │
-# MAGIC  │              │   │               │   │               │   │               │
-# MAGIC  │  Evaluation  │──▶│  Production   │──▶│  Comparing    │──▶│  Evaluation   │
-# MAGIC  │  Ecosystem   │   │  Infra        │   │  Runs         │   │  Gate         │
-# MAGIC  │              │   │               │   │               │   │               │
-# MAGIC  │  20 min      │   │  8 min        │   │  12 min       │   │  15 min       │
-# MAGIC  └─────────────┘   └──────────────┘   └──────────────┘   └──────────────┘
-# MAGIC
-# MAGIC  Score outputs        Control judge       Detect regressions    Block bad models
-# MAGIC  with 4 scorer        temperature and     with McNemar,         from shipping
-# MAGIC  types in one         concurrency for     bootstrap CI,         with automated
-# MAGIC  evaluate() call      reproducibility     Cohen's d             CI/CD gate
-# MAGIC
-# MAGIC                                                            ┌──────────────┐
-# MAGIC                                                            │  BONUS        │
-# MAGIC                                                            │  uv Deps      │
-# MAGIC                                                            │  5 min        │
-# MAGIC                                                            └──────────────┘
-# MAGIC ```
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Modules
-# MAGIC
 # MAGIC ![Workshop Flow](images/workshop-flow.png)
 
 # COMMAND ----------
