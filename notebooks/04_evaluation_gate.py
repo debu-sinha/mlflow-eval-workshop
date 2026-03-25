@@ -408,9 +408,16 @@ else:
     print(f"Candidate run: {candidate_id}")
     print()
 
+    # Print the manual command in case auto-discovery fails on your system
+    print(
+        f"Manual command:\n  python eval_gate.py --baseline-run-id {baseline_id} --candidate-run-id {candidate_id} --scorer correctness\n"
+    )
+
+    import sys
+
     result = subprocess.run(
         [
-            "python3",
+            sys.executable,
             str(_gate_script),
             "--baseline-run-id",
             baseline_id,
