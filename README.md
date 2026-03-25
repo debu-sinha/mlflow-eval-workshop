@@ -161,7 +161,7 @@ For those who wish to optionally follow along in class, please follow the [setup
 
 ## Speaker
 
-**Debu Sinha** | Lead Specialist Solutions Architect @ Databricks
+**Debu Sinha** | Lead Specialist Solutions Architect @ Databricks, focused on AI/ML evaluation infrastructure and model deployment tooling
 
 Built MLflow's first third-party scorer integrations ([Phoenix](https://github.com/mlflow/mlflow/pull/19473), [TruLens](https://github.com/mlflow/mlflow/pull/19492), [Guardrails](https://github.com/mlflow/mlflow/pull/20038)) and the first MLflow tracking integration for [Inspect AI](https://github.com/UKGovernmentBEIS/inspect_ai/pull/3433). Author of *Practical Machine Learning on Databricks* (Packt, 2023).
 
