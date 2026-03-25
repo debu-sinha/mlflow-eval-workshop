@@ -638,14 +638,3 @@ _handoff_path = os.path.join(
 with open(_handoff_path, "w") as _f:
     _json_m3.dump(_run_ids, _f)
 print(f"Run IDs saved to {_handoff_path} for Module 4")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC **Where this is going:** The comparison and statistical testing patterns shown
-# MAGIC here are being contributed upstream to the
-# MAGIC [Inspect AI](https://github.com/UKGovernmentBEIS/inspect_ai) framework as a
-# MAGIC built-in comparison module
-# MAGIC ([PR #3511](https://github.com/UKGovernmentBEIS/inspect_ai/pull/3511)). The
-# MAGIC goal is to make regression detection a first-class feature of AI safety
-# MAGIC evaluation, not something teams build ad hoc.

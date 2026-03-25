@@ -461,22 +461,3 @@ if results_all.result_df is not None:
         print(results_all.result_df.iloc[:, :8].to_string())
 
 # COMMAND ----------
-
-# MAGIC %md
-# MAGIC ---
-# MAGIC ## Appendix: How the third-party scorer integrations work
-# MAGIC
-# MAGIC Each external library has its own scorer interface, but MLflow wraps them
-# MAGIC in a unified `Scorer` base class. The wrapper handles:
-# MAGIC - **Model routing**: Databricks managed judge, OpenAI, Anthropic, or any
-# MAGIC   LiteLLM-supported provider. You pass `model="openai:/gpt-4o-mini"` or
-# MAGIC   `model="databricks:/endpoint"` and the wrapper resolves the right adapter.
-# MAGIC - **Error handling**: Returns `Feedback` with an error field instead of raising,
-# MAGIC   so one scorer failure does not crash the entire evaluation run.
-# MAGIC - **Metadata propagation**: The `mlflow.scorer.framework` key in every Feedback
-# MAGIC   object tells you which library produced each score.
-# MAGIC
-# MAGIC The integrations were contributed to MLflow core:
-# MAGIC - Phoenix: [PR #19473](https://github.com/mlflow/mlflow/pull/19473)
-# MAGIC - TruLens: [PR #19492](https://github.com/mlflow/mlflow/pull/19492)
-# MAGIC - Guardrails AI: [PR #20038](https://github.com/mlflow/mlflow/pull/20038)

@@ -232,43 +232,24 @@ print("=" * 50)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Pattern 1: Generic Python script (GitHub Actions, GitLab CI, etc.)
+# MAGIC ### Pattern 1: CLI script (GitHub Actions, GitLab CI, etc.)
 # MAGIC
-# MAGIC ```python
-# MAGIC # eval_gate.py - runs in any CI environment
-# MAGIC import sys
-# MAGIC import mlflow
-# MAGIC import numpy as np
+# MAGIC The repo includes `eval_gate.py` which handles sample alignment, score
+# MAGIC parsing, and statistical testing. Call it with named flags:
 # MAGIC
-# MAGIC BASELINE_RUN_ID = sys.argv[1]
-# MAGIC CANDIDATE_RUN_ID = sys.argv[2]
-# MAGIC MAX_REGRESSION_RATE = float(sys.argv[3]) if len(sys.argv) > 3 else 0.10
-# MAGIC
-# MAGIC # Load scores from MLflow runs
-# MAGIC baseline_run = mlflow.get_run(BASELINE_RUN_ID)
-# MAGIC candidate_run = mlflow.get_run(CANDIDATE_RUN_ID)
-# MAGIC
-# MAGIC # ... extract per-sample scores from evaluation artifacts ...
-# MAGIC
-# MAGIC result = run_eval_gate(baseline_scores, candidate_scores, MAX_REGRESSION_RATE)
-# MAGIC
-# MAGIC # Log the gate result
-# MAGIC with mlflow.start_run(run_name="eval-gate"):
-# MAGIC     mlflow.log_metric("baseline_accuracy", result.baseline_accuracy)
-# MAGIC     mlflow.log_metric("candidate_accuracy", result.candidate_accuracy)
-# MAGIC     mlflow.log_metric("regressions", result.regressions)
-# MAGIC     mlflow.log_metric("p_value", result.p_value)
-# MAGIC     mlflow.log_param("gate_passed", result.passed)
-# MAGIC     mlflow.log_param("gate_reason", result.reason)
-# MAGIC
-# MAGIC if not result.passed:
-# MAGIC     print(f"BLOCKED: {result.reason}")
-# MAGIC     sys.exit(1)
-# MAGIC
-# MAGIC print("PASSED: Safe to deploy.")
+# MAGIC ```bash
+# MAGIC python eval_gate.py \
+# MAGIC     --baseline-run-id $BASELINE_RUN_ID \
+# MAGIC     --candidate-run-id $CANDIDATE_RUN_ID \
+# MAGIC     --scorer correctness \
+# MAGIC     --threshold 0.10
+# MAGIC # Exit code 0 = pass, 1 = blocked
 # MAGIC ```
 # MAGIC
-# MAGIC In GitHub Actions, call it with named flags (matches the actual workflow):
+# MAGIC The script logs results to stdout and exits with code 1 if the candidate
+# MAGIC regresses. Any CI system that checks exit codes can use it directly.
+# MAGIC
+# MAGIC In GitHub Actions:
 # MAGIC ```yaml
 # MAGIC - name: Run eval gate
 # MAGIC   run: |
