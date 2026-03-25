@@ -34,6 +34,12 @@ if ON_DATABRICKS:
     # Enterprise:    use "databricks:/databricks-gpt-5-4" or other premium models
     #
     # Override via WORKSHOP_JUDGE_MODEL env var on your cluster if needed.
+    #
+    # Guardrails Hub API key (required for DetectPII scorer):
+    # Option 1: Set as cluster env var: GUARDRAILS_API_KEY=your-token
+    # Option 2: Set here (replace with your token from hub.guardrailsai.com):
+    # os.environ["GUARDRAILS_API_KEY"] = "your-guardrails-hub-token"
+    #
     _default_model = "databricks:/databricks-gpt-oss-120b"
     JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", _default_model)
     print(f"Running on Databricks. Judge model: {JUDGE_MODEL}")

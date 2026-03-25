@@ -83,10 +83,20 @@ The `DetectPII` scorer in Module 1 uses a Guardrails Hub validator that requires
 ```bash
 # Local
 export GUARDRAILS_API_KEY="your-token-here"
+```
 
-# Databricks: set as a cluster environment variable or store in a secret scope
-# Cluster env var: GUARDRAILS_API_KEY=your-token-here
-# Secret scope: dbutils.secrets.get(scope="guardrails-hub", key="api-token")
+On Databricks, use one of these options:
+
+```python
+# Option 1: Set directly in the notebook config cell (simplest for workshops)
+os.environ["GUARDRAILS_API_KEY"] = "your-token-here"
+
+# Option 2: Cluster environment variable
+# Go to Compute > your cluster > Advanced Options > Environment Variables
+# Add: GUARDRAILS_API_KEY=your-token-here
+
+# Option 3: Secret scope (most secure, recommended for production)
+# os.environ["GUARDRAILS_API_KEY"] = dbutils.secrets.get(scope="guardrails-hub", key="api-token")
 ```
 
 If you skip this step, Module 1 will print a warning when it tries to install the `detect_pii` validator. All other scorers (Correctness, Safety, Hallucination, Groundedness, and custom scorers) work without it.
