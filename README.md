@@ -12,6 +12,7 @@ A production evaluation pipeline that goes from scorer selection to deployment g
 
 | # | Module | Time | What you'll do |
 |---|--------|------|----------------|
+| - | Intro | 2 min | Workshop agenda, module flow chart, and links to each notebook |
 | 0 | Setup (optional) | Pre-workshop | Verify all imports work. Each notebook self-installs on Databricks; locally use `pip install .` |
 | 1 | MLflow Evaluation Ecosystem | 20 min | Run built-in, third-party, and custom scorers in one `evaluate()` call |
 | 2 | Production Infrastructure | 8 min | Control judge temperature for determinism, manage scorer concurrency |
