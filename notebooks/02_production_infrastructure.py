@@ -10,8 +10,6 @@
 
 # COMMAND ----------
 
-# COMMAND ----------
-
 _nb_path = (
     dbutils.notebook.entry_point.getDbutils()  # noqa: F821
     .notebook()
@@ -144,29 +142,16 @@ eval_data = [
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Default judge (model defaults, typically temperature=1.0)
-
-# COMMAND ----------
-
-from mlflow.genai.scorers import Correctness
-
-results_default = mlflow.genai.evaluate(
-    data=eval_data,
-    scorers=[Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS)],
-)
-
-print("Default temperature results:")
-for name, value in results_default.metrics.items():
-    print(f"  {name}: {value}")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Custom judge with temperature=0.0
+# MAGIC ### Build two scorers: a built-in and a custom one
+# MAGIC
+# MAGIC We run both scorers in the same `evaluate()` call so each run has both
+# MAGIC columns populated. No null cells in the comparison view.
 
 # COMMAND ----------
 
 from typing import Literal
+
+from mlflow.genai.scorers import Correctness
 
 deterministic_judge = mlflow.genai.make_judge(
     name="correctness_deterministic",
@@ -178,40 +163,71 @@ deterministic_judge = mlflow.genai.make_judge(
         "Expected: {{ expectations }}"
     ),
     # feedback_value_type pins the judge output to the allowed labels via
-    # the provider's structured-output mode. This is more reliable than
-    # trusting the judge to follow a "return yes or no" instruction in prose.
+    # the provider's structured-output mode. More reliable than trusting
+    # the judge to follow a "return yes or no" instruction in prose.
     feedback_value_type=Literal["yes", "no"],
-    inference_params={"temperature": 0.0, "max_tokens": 50},
+    # max_tokens=256 leaves room for reasoning-model judges that consume
+    # tokens on internal reasoning before emitting structured output.
+    inference_params={"temperature": 0.0, "max_tokens": 256},
 )
 
-results_deterministic = mlflow.genai.evaluate(
-    data=eval_data,
-    scorers=[deterministic_judge],
-)
+_scorers = [
+    Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
+    deterministic_judge,
+]
 
-print("Deterministic judge results (temperature=0.0):")
-for name, value in results_deterministic.metrics.items():
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### First run
+# MAGIC
+# MAGIC Both scorers evaluate every sample. One run, two scorer columns:
+# MAGIC `correctness` and `correctness_deterministic`.
+
+# COMMAND ----------
+
+results_pair_v1 = mlflow.genai.evaluate(data=eval_data, scorers=_scorers)
+
+print(f"Run 1 ID: {results_pair_v1.run_id}")
+for name, value in results_pair_v1.metrics.items():
     print(f"  {name}: {value}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Run the deterministic judge twice on the same data. With `temperature=0.0`,
-# MAGIC results are substantially more reproducible across runs. Provider behavior
-# MAGIC can still vary slightly (caching, sampling tie-breaks), but this removes
-# MAGIC the largest source of judge randomness and gives you a stable baseline
-# MAGIC to compare against.
+# MAGIC ### Second run (same data, same scorers)
+# MAGIC
+# MAGIC Run the identical evaluation again. Both scorers have `temperature=0.0`,
+# MAGIC so per-sample outputs should be stable across the two runs. Provider
+# MAGIC behavior can still vary slightly (caching, sampling tie-breaks), but
+# MAGIC setting temperature to 0 removes the largest source of judge randomness
+# MAGIC and gives you a stable baseline to compare against.
 
 # COMMAND ----------
 
-results_deterministic_v2 = mlflow.genai.evaluate(
-    data=eval_data,
-    scorers=[deterministic_judge],
-)
+results_pair_v2 = mlflow.genai.evaluate(data=eval_data, scorers=_scorers)
 
-print("Second run (same data, same judge):")
-for name, value in results_deterministic_v2.metrics.items():
+print(f"Run 2 ID: {results_pair_v2.run_id}")
+for name, value in results_pair_v2.metrics.items():
     print(f"  {name}: {value}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Compare the two runs in the Evaluation UI
+# MAGIC
+# MAGIC Open the Experiments page for this notebook, select the two run IDs
+# MAGIC printed above, and click **Compare**. Both runs ran the same two
+# MAGIC scorers on the same data, so:
+# MAGIC
+# MAGIC - `correctness` and `correctness_deterministic` columns are populated
+# MAGIC   for every sample in both runs (no null cells).
+# MAGIC - Per-sample values should match across the two runs for both
+# MAGIC   scorers, because both have `temperature=0.0`.
+# MAGIC
+# MAGIC The takeaway: `inference_params` gives you reproducible judge output,
+# MAGIC and `make_judge` lets you build a custom judge with full control over
+# MAGIC the prompt, allowed labels, and inference parameters.
 
 # COMMAND ----------
 
