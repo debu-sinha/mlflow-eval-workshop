@@ -13,7 +13,7 @@ A production evaluation pipeline that goes from scorer selection to deployment g
 | # | Module | Time | What you'll do |
 |---|--------|------|----------------|
 | - | Intro | 2 min | Workshop agenda, module flow chart, and links to each notebook |
-| 0 | Setup (optional) | Pre-workshop | Verify all imports work. Each notebook self-installs on Databricks. Locally, use `pip install .` |
+| 0 | Verify environment (optional) | 1 min | Print pinned package versions and run import checks in the current notebook session |
 | 1 | MLflow Evaluation Ecosystem | 20 min | Run built-in, third-party, and custom scorers in one `evaluate()` call |
 | 2 | Production Infrastructure | 8 min | Control judge temperature for determinism, manage scorer concurrency |
 | 3 | Comparing Runs and Regressions | 12 min | Align samples across runs, detect regressions, test significance |
@@ -26,12 +26,22 @@ A production evaluation pipeline that goes from scorer selection to deployment g
 
 Sign up for the [Databricks Free Edition](https://login.databricks.com/signup) if you don't have a workspace. Free Edition includes serverless compute, MLflow tracking, and Git Folders.
 
-1. In the sidebar, click **Workspace > Repos** and open your user folder
-2. Click **Create Git folder**, paste `https://github.com/debu-sinha/mlflow-eval-workshop`
-3. Open `notebooks/01_mlflow_evaluation_ecosystem` and attach to any serverless cluster
-4. The first cell (`%pip install`) installs dependencies automatically
+1. In the sidebar, click **Workspace** and open your user folder.
+2. Click **Create Git folder**, paste `https://github.com/debu-sinha/mlflow-eval-workshop`.
+3. Open `notebooks/01_mlflow_evaluation_ecosystem`.
+4. The first two cells compute an absolute path to `requirements-workshop.txt` and install the pinned workshop dependencies. Each module repeats this pattern because notebook-scoped libraries on Databricks Serverless do not carry across notebooks or sessions.
 
 No API keys needed. The notebooks auto-detect Databricks and use Foundation Model APIs. MLflow tracking is built in.
+
+#### Alternative: Databricks Serverless Environment panel
+
+For a faster instructor or attendee setup, configure the notebook environment through the Environment side panel and add the pinned requirements file as a dependency:
+
+```
+-r /Workspace/Users/<your-email>/mlflow-eval-workshop/requirements-workshop.txt
+```
+
+Click **Apply**. Databricks installs the dependencies in the notebook virtual environment and restarts Python automatically. For reuse across all six notebooks, either apply the same custom environment spec to each notebook or use a workspace base environment if your workspace admin has configured one (workspace base environments are Public Preview and admin-managed).
 
 **Model availability:**
 - **Free Edition**: `databricks-gpt-oss-120b` (sufficient for the workshop)
@@ -47,6 +57,9 @@ cd mlflow-eval-workshop
 # (the repo ships uv.lock, which is what the bonus module teaches)
 uv sync
 uv pip install -e .
+
+# Regenerate the Databricks-facing pinned file (only if the lockfile changes):
+# uv export --frozen --no-dev --extra databricks --no-hashes -o requirements-workshop.txt
 
 # Or with plain pip (no lockfile pinning)
 pip install .
@@ -162,6 +175,15 @@ MLflow is downloaded over 30 million times per month from PyPI.
 ### Setup instructions for attendees
 
 For those who wish to optionally follow along in class, please follow the [setup instructions above](#setup). I won't spend time in class for setup, and this step is optional.
+
+### Before running the workshop
+
+Verify the flow end-to-end on a fresh Databricks Free Edition workspace before the live session. Two specific things to check:
+
+1. The computed absolute path in each module's install cell resolves correctly from the Git Folder location.
+2. PyPI is reachable from Serverless compute (Free Edition restricts outbound to a trusted-domain list that is not officially documented).
+
+If (1) fails, switch the install cell to a literal `/Workspace/Users/<your-email>/mlflow-eval-workshop/requirements-workshop.txt` path or use the Environment side panel. If (2) fails, pre-stage wheels in a UC volume.
 
 ## Speaker
 
