@@ -76,7 +76,8 @@ else:
 # MAGIC %md
 # MAGIC ## 3.1 The problem (2 min)
 # MAGIC
-# MAGIC You upgraded your model. Accuracy went from 86% to 80%. Three questions:
+# MAGIC You upgraded your model. Aggregate accuracy drops a few points on a
+# MAGIC 50-sample eval set. Three questions:
 # MAGIC
 # MAGIC 1. **Which samples regressed?** You need to fix what broke.
 # MAGIC 2. **Is the 6% drop real or noise?** Small datasets produce noisy metrics.
@@ -449,6 +450,20 @@ print("=" * 60)
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ### Why the stats may disagree with your gut
+# MAGIC
+# MAGIC The opener said "you upgraded your model and need to fix what broke."
+# MAGIC The stats above may say "within noise, can't conclude anything."
+# MAGIC That disagreement is the real lesson: at n=50, a 5-regressions-vs-2-
+# MAGIC improvements imbalance is inside the noise floor. Paired tests are
+# MAGIC what surface real regressions; pointwise accuracy comparison alone
+# MAGIC does not. This is also why deployment gates (Module 4) often trigger
+# MAGIC on absolute regression rate rather than p-value, for small samples
+# MAGIC where significance tests lack power.
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## 3.5 Comparing real MLflow evaluation runs
 # MAGIC
 # MAGIC The simulated data above teaches the mechanics. Now let's run it on real
@@ -673,17 +688,29 @@ print(
 
 # COMMAND ----------
 
-# Save run IDs so Module 4 can use them deterministically
+# Save run IDs so Module 4 can use them deterministically.
+# Derive the notebook's directory from Databricks' notebookPath context
+# when available (dbutils is only defined on Databricks); fall back to
+# cwd locally.
 import json as _json_m3
 
 _run_ids = {
     "baseline_run_id": result_baseline.run_id,
     "candidate_run_id": result_candidate.run_id,
 }
-_handoff_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else ".",
-    "m3_run_ids.json",
-)
+try:
+    _nb_path_m3 = (
+        dbutils.notebook.entry_point.getDbutils()  # noqa: F821
+        .notebook()
+        .getContext()
+        .notebookPath()
+        .get()
+    )
+    _handoff_dir = "/Workspace" + "/".join(_nb_path_m3.split("/")[:-1])
+except Exception:
+    _handoff_dir = "."
+
+_handoff_path = os.path.join(_handoff_dir, "m3_run_ids.json")
 with open(_handoff_path, "w") as _f:
     _json_m3.dump(_run_ids, _f)
 print(f"Run IDs saved to {_handoff_path} for Module 4")

@@ -301,8 +301,17 @@ del os.environ["MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS"]
 # MAGIC
 # MAGIC The evaluation results table shows one row per sample, with columns for each
 # MAGIC scorer. This is where you spot which specific samples failed. In Module 1,
-# MAGIC the "Berlin" sample should show a correctness failure. In this module, all
-# MAGIC samples should pass since the outputs are factually correct.
+# MAGIC the "Berlin" sample should show a correctness failure. In this module, the
+# MAGIC ML-theory samples are factually correct; whether the managed judge passes
+# MAGIC all of them depends on the judge model, since some managed judges are
+# MAGIC strict on phrasing variance. Open a failing sample and read the judge's
+# MAGIC rationale in the Assessments pane to see what it objected to.
+# MAGIC
+# MAGIC **`make_judge` aggregate metrics**: custom judges built via
+# MAGIC `mlflow.genai.make_judge` surface their per-sample values in
+# MAGIC `result.result_df` but may not currently produce an aggregate key in
+# MAGIC `result.metrics`. Use the Evaluation UI's comparison view (or
+# MAGIC `result_df[scorer_name + "/value"]`) for the custom-judge scores.
 
 # COMMAND ----------
 

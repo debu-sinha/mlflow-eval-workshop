@@ -171,10 +171,12 @@ else:
 # MAGIC ## 1.1 Built-in scorers (5 min)
 # MAGIC
 # MAGIC MLflow ships with scorers for common evaluation tasks. `Correctness`
-# MAGIC checks whether the response supports the expected facts or expected
-# MAGIC response (semantic entailment, not string match). For strict semantic
-# MAGIC equivalence MLflow also provides `EquivalenceToExpectation`. `Safety`
-# MAGIC checks whether the output contains harmful content.
+# MAGIC checks factual consistency between the response and the expected
+# MAGIC answer. Judge strictness varies by model: the managed Databricks
+# MAGIC judge tends to be strict, so closely related phrasings of the same
+# MAGIC fact can still be marked `no`. For strict semantic equivalence
+# MAGIC MLflow also provides `EquivalenceToExpectation`. `Safety` checks
+# MAGIC whether the output contains harmful content.
 
 # COMMAND ----------
 
@@ -323,9 +325,15 @@ try:
     )
     print(f"PII check (contains PII): {feedback_pii.value}")
     GUARDRAILS_AVAILABLE = True
+except ImportError as _guardrails_err:
+    print(f"Guardrails DetectPII not available: {_guardrails_err}")
+    print("Skipping PII scorer. Install with: pip install 'guardrails-ai>=0.6,<1.0'")
+    GUARDRAILS_AVAILABLE = False
 except Exception as _guardrails_err:
     print(f"Guardrails DetectPII not available: {_guardrails_err}")
-    print("Skipping PII scorer. Set GUARDRAILS_API_KEY to enable it.")
+    print(
+        "Skipping PII scorer. Set GUARDRAILS_API_KEY or verify the Hub validator install."
+    )
     GUARDRAILS_AVAILABLE = False
 
 # COMMAND ----------
@@ -401,14 +409,16 @@ for name, value in results_thirdparty.metrics.items():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Four scorers from three different sources in one `evaluate()` call:
-# MAGIC - `Correctness` (MLflow built-in) checks whether the response supports the expected answer
-# MAGIC - `Safety` (MLflow built-in) flags harmful content
-# MAGIC - `Hallucination` (Phoenix/Arize) detects factual inconsistencies against retrieval context
-# MAGIC - `DetectPII` (Guardrails AI) scans for PII using pattern matching, no LLM needed
-# MAGIC
-# MAGIC `Groundedness` (TruLens) is shown in the RAG section below where retrieval
-# MAGIC context is available. It needs retrieved chunks to evaluate against.
+# MAGIC Three sources connected through one API:
+# MAGIC - `Correctness` and `Safety` (MLflow built-ins) always run in this
+# MAGIC   call
+# MAGIC - `DetectPII` (Guardrails AI) joins this list only when the
+# MAGIC   `guardrails-ai` package is installed and a Hub token is set; it
+# MAGIC   uses pattern matching, no LLM call
+# MAGIC - `Hallucination` (Phoenix/Arize) needs retrieval context and was
+# MAGIC   demonstrated above on `hallucination_dataset`
+# MAGIC - `Groundedness` (TruLens) also needs retrieved chunks and appears
+# MAGIC   in the RAG section below
 # MAGIC
 # MAGIC This is the core value: one API that connects your choice of evaluation tools.
 
@@ -543,7 +553,7 @@ for name, value in results_all.metrics.items():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Four scorers from three different sources, one `evaluate()` call.
+# MAGIC Built-in, third-party, and custom scorers in one `evaluate()` call.
 # MAGIC That is the core value of MLflow's evaluation ecosystem.
 
 # COMMAND ----------

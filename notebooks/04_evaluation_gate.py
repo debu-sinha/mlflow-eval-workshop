@@ -70,18 +70,18 @@ else:
 # COMMAND ----------
 
 print("=" * 60)
-print("EVALUATION GATE RESULT")
+print("EVALUATION GATE RESULT (illustrative)")
 print("=" * 60)
 print("Status:     BLOCKED")
-print("Reason:     Regression rate 15.0% exceeds threshold 10.0%")
+print("Reason:     Regression rate exceeds threshold")
 print()
-print("Baseline accuracy:  85.0%")
-print("Candidate accuracy: 72.0%")
-print("Regressions: 15 | Improvements: 2 | p-value: 0.0026")
+print("Baseline accuracy:  <baseline>")
+print("Candidate accuracy: <candidate>")
+print("Regressions: <r> | Improvements: <i> | p-value: <p>")
 print("=" * 60)
 print()
 print("This gate prevented a bad model from reaching production.")
-print("Let's build it.")
+print("The real numbers from our simulation appear in the next section.")
 
 # COMMAND ----------
 
@@ -470,11 +470,30 @@ else:
         cwd=str(_gate_script.parent),
         env=_gate_env,
     )
-    print(result.stdout)
+
+    # Strip known-noise lines from the subprocess output so attendees do
+    # not see the Databricks Connect Spark-context warning that fires when
+    # MLflow initializes on Serverless. The gate itself uses the MLflow
+    # REST client and does not need Spark.
+    _noise_patterns = (
+        "Failed to initialize spark connection",
+        "CONTEXT_UNAVAILABLE_FOR_REMOTE_CLIENT",
+        "Remote client cannot create a SparkContext",
+    )
+
+    def _filter_noise(stream: str) -> str:
+        return "\n".join(
+            line
+            for line in (stream or "").splitlines()
+            if not any(p in line for p in _noise_patterns)
+        )
+
+    print(_filter_noise(result.stdout))
     if result.returncode != 0:
         print(f"Gate exit code: {result.returncode}")
-        if result.stderr:
-            print(result.stderr)
+        _err = _filter_noise(result.stderr)
+        if _err.strip():
+            print(_err)
 
 # COMMAND ----------
 
