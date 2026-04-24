@@ -9,3 +9,8 @@ mlruns/
 mlartifacts/
 .guardrails/
 m3_run_ids.json
+
+# Private working notes that should never land in the public repo.
+*AUDIT*.md
+*PRIVATE*.md
+*STRATEGY*.md
