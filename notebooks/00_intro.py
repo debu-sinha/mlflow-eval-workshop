@@ -102,9 +102,10 @@
 # MAGIC %md
 # MAGIC ## Prerequisites
 # MAGIC
-# MAGIC **On Databricks:** Each module has its own install cell that reads
-# MAGIC the pinned `requirements-workshop.txt`. Open `00_verify_environment`
-# MAGIC at any time to confirm versions and imports in the current session.
+# MAGIC **On Databricks:** Each module has three preamble cells: compute an
+# MAGIC absolute path to `requirements-workshop.txt`, install it with `%pip`,
+# MAGIC and `%run ./_verify_environment` to confirm the pinned versions
+# MAGIC loaded. The verify helper is not meant to be run on its own.
 # MAGIC
 # MAGIC **Locally:** `pip install .` from the repo root. Set `OPENAI_API_KEY`.
 # MAGIC Start MLflow: `mlflow server --backend-store-uri sqlite:///mlflow_workshop.db --port 5000`

@@ -13,7 +13,6 @@ A production evaluation pipeline that goes from scorer selection to deployment g
 | # | Module | Time | What you'll do |
 |---|--------|------|----------------|
 | - | Intro | 2 min | Workshop agenda, module flow chart, and links to each notebook |
-| 0 | Verify environment (optional) | 1 min | Print pinned package versions and run import checks in the current notebook session |
 | 1 | MLflow Evaluation Ecosystem | 20 min | Run built-in, third-party, and custom scorers in one `evaluate()` call |
 | 2 | Production Infrastructure | 8 min | Control judge temperature for determinism, manage scorer concurrency |
 | 3 | Comparing Runs and Regressions | 12 min | Align samples across runs, detect regressions, test significance |
@@ -29,7 +28,7 @@ Sign up for the [Databricks Free Edition](https://login.databricks.com/signup) i
 1. In the sidebar, click **Workspace** and open your user folder.
 2. Click **Create Git folder**, paste `https://github.com/debu-sinha/mlflow-eval-workshop`.
 3. Open `notebooks/01_mlflow_evaluation_ecosystem`.
-4. The first two cells compute an absolute path to `requirements-workshop.txt` and install the pinned workshop dependencies. Each module repeats this pattern because notebook-scoped libraries on Databricks Serverless do not carry across notebooks or sessions.
+4. The first three cells compute an absolute path to `requirements-workshop.txt`, install the pinned workshop dependencies, and then `%run` the shared `_verify_environment` helper to confirm the versions are what the module expects. Each module repeats this pattern because notebook-scoped libraries on Databricks Serverless do not carry across notebooks or sessions. Do not run `_verify_environment` by itself — it does not install anything.
 
 No API keys needed. The notebooks auto-detect Databricks and use Foundation Model APIs. MLflow tracking is built in.
 

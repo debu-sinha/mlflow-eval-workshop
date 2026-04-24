@@ -29,6 +29,10 @@ print(f"Installing workshop requirements from: {REQ_PATH}")
 
 # COMMAND ----------
 
+# MAGIC %run ./_verify_environment
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Configuration
 

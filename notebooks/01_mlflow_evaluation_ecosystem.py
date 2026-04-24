@@ -33,6 +33,10 @@ print(f"Installing workshop requirements from: {REQ_PATH}")
 
 # COMMAND ----------
 
+# MAGIC %run ./_verify_environment
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Configuration
 # MAGIC
@@ -191,8 +195,53 @@ for name, value in results_builtin.metrics.items():
 from mlflow.genai.scorers.phoenix import Hallucination
 from mlflow.genai.scorers.trulens import Groundedness
 
-# DetectPII requires a Guardrails Hub token and validator install.
-# If that setup failed, we skip it gracefully.
+# Guardrails DetectPII setup (optional).
+# - Needs a Hub token in GUARDRAILS_API_KEY or a Databricks secret scope.
+# - Installs the Hub validator via the guardrails CLI. Free Edition may
+#   restrict outbound access; failures are swallowed so the rest of the
+#   module continues without DetectPII.
+import os
+import shutil
+import subprocess
+
+_rc_path = os.path.expanduser("~/.guardrailsrc")
+if not os.path.exists(_rc_path):
+    if ON_DATABRICKS:
+        try:
+            _token = dbutils.secrets.get(scope="guardrails-hub", key="api-token")  # noqa: F821
+        except Exception:
+            _token = os.environ.get("GUARDRAILS_API_KEY", "")
+    else:
+        _token = os.environ.get("GUARDRAILS_API_KEY", "")
+    if _token:
+        with open(_rc_path, "w") as f:
+            f.write(f"token={_token}\n")
+
+if shutil.which("guardrails") is not None:
+    try:
+        _install_res = subprocess.run(
+            [
+                "guardrails",
+                "hub",
+                "install",
+                "hub://guardrails/detect_pii",
+                "--quiet",
+                "--no-install-local-models",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
+        if _install_res.returncode != 0:
+            print(
+                "Guardrails DetectPII validator install skipped: "
+                f"{_install_res.stderr.strip()[:160]}"
+            )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as _gi_err:
+        print(f"Guardrails CLI not available: {_gi_err}")
+
+# If DetectPII fails to import or instantiate (no token, no validator,
+# restricted network), skip it without breaking the module.
 try:
     from mlflow.genai.scorers.guardrails import DetectPII
 
