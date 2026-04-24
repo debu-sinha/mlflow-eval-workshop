@@ -102,8 +102,9 @@
 # MAGIC %md
 # MAGIC ## Prerequisites
 # MAGIC
-# MAGIC **On Databricks:** Run `00_setup` first, then open Module 1.
-# MAGIC Each notebook has its own `%pip install` cell that runs automatically.
+# MAGIC **On Databricks:** Each module has its own install cell that reads
+# MAGIC the pinned `requirements-workshop.txt`. Open `00_verify_environment`
+# MAGIC at any time to confirm versions and imports in the current session.
 # MAGIC
 # MAGIC **Locally:** `pip install .` from the repo root. Set `OPENAI_API_KEY`.
 # MAGIC Start MLflow: `mlflow server --backend-store-uri sqlite:///mlflow_workshop.db --port 5000`

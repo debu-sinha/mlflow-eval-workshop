@@ -1,33 +1,56 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Workshop Setup
+# MAGIC # Verify Workshop Environment
 # MAGIC
-# MAGIC **Optional pre-workshop step.** Each notebook has its own `%pip install`
-# MAGIC cell that runs automatically on Databricks. This notebook is useful if you
-# MAGIC want to install everything once before the session starts, or if you want
-# MAGIC to verify that all imports work before going live.
+# MAGIC **This notebook does not install dependencies.**
 # MAGIC
-# MAGIC **Time:** 2-3 minutes
+# MAGIC Use it after either:
 # MAGIC
-# MAGIC **Local users:** Use `pip install -e .` or `uv sync` from the repo root instead.
-
-# COMMAND ----------
-
-# MAGIC %pip install mlflow[genai] arize-phoenix-evals trulens trulens-providers-litellm numpy scikit-learn databricks-agents -q
+# MAGIC 1. configuring the Databricks Serverless Environment side panel to
+# MAGIC    point at `requirements-workshop.txt`, or
+# MAGIC 2. running the first install cell in the notebook you plan to use.
+# MAGIC
+# MAGIC On Databricks Serverless, notebook-scoped installs are scoped to the
+# MAGIC current notebook/session, so this verification notebook does not
+# MAGIC prepare the other modules. Each module has its own install cell.
+# MAGIC
+# MAGIC **Time:** 1 minute.
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Restart the Python environment so all packages are available.
+# MAGIC ## Pinned package versions
+# MAGIC
+# MAGIC If a package shows `NOT INSTALLED`, go back to the Serverless Environment
+# MAGIC panel or the install cell in the module you want to run.
 
 # COMMAND ----------
 
-# MAGIC dbutils.library.restartPython()
+import importlib.metadata as md
+
+_packages = [
+    "mlflow",
+    "arize-phoenix-evals",
+    "trulens",
+    "trulens-providers-litellm",
+    "litellm",
+    "databricks-agents",
+    "openai",
+    "numpy",
+    "scikit-learn",
+    "nltk",
+]
+
+for package in _packages:
+    try:
+        print(f"{package}: {md.version(package)}")
+    except md.PackageNotFoundError:
+        print(f"{package}: NOT INSTALLED")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Verify installation
+# MAGIC ## Core scorer imports
 
 # COMMAND ----------
 
@@ -48,7 +71,7 @@ print("Core scorers: OK")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Optional: Guardrails AI setup
+# MAGIC ## Optional: Guardrails AI setup
 # MAGIC
 # MAGIC DetectPII needs outbound internet to install Hub validators.
 # MAGIC Databricks Free Edition restricts this. Skip if it fails.
@@ -57,6 +80,7 @@ print("Core scorers: OK")
 # COMMAND ----------
 
 import os
+import shutil
 import subprocess
 
 _rc_path = os.path.expanduser("~/.guardrailsrc")
@@ -84,31 +108,37 @@ try:
 except ImportError:
     pass
 
-try:
-    _result = subprocess.run(
-        [
-            "guardrails",
-            "hub",
-            "install",
-            "hub://guardrails/detect_pii",
-            "--quiet",
-            "--no-install-local-models",
-        ],
-        capture_output=True,
-        text=True,
-    )
-    if _result.returncode == 0:
-        print("Guardrails DetectPII: installed")
-    else:
-        print(f"Guardrails optional, skipping: {_result.stderr.strip()[:120]}")
-except FileNotFoundError:
-    print("Guardrails CLI not installed. DetectPII will be skipped.")
+if shutil.which("guardrails") is None:
+    print("Guardrails CLI not installed. Skipping optional DetectPII validator setup.")
+else:
+    try:
+        _result = subprocess.run(
+            [
+                "guardrails",
+                "hub",
+                "install",
+                "hub://guardrails/detect_pii",
+                "--quiet",
+                "--no-install-local-models",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if _result.returncode == 0:
+            print("Guardrails DetectPII: installed")
+        else:
+            print(f"Guardrails optional, skipping: {_result.stderr.strip()[:120]}")
+    except FileNotFoundError:
+        print("Guardrails CLI not installed. DetectPII will be skipped.")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Setup complete
+# MAGIC ### Verification complete
 # MAGIC
-# MAGIC You can now run Modules 1-4 without any per-notebook install steps.
+# MAGIC If every package showed a version and the scorer imports succeeded, the
+# MAGIC current notebook environment is ready. Remember that this environment
+# MAGIC does not carry over to the other modules on Serverless: each module has
+# MAGIC its own install cell at the top.
 # MAGIC
 # MAGIC **Next:** Open `01_mlflow_evaluation_ecosystem` and start the workshop.
