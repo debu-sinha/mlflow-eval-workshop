@@ -14,7 +14,9 @@ exit codes.
 
 Gate policy (same as notebook Module 4):
     1. Regression rate > threshold -> FAIL
-    2. McNemar p-value < significance AND candidate accuracy lower -> FAIL
+    2. Paired significance test detects a candidate loss -> FAIL
+       (McNemar with exact binomial fallback for small samples on binary
+        scorers, paired sign-flip permutation test on continuous scorers)
     3. Otherwise -> PASS
 
 Usage:
@@ -31,8 +33,10 @@ Exit codes:
 
 import argparse
 import hashlib
+import json
+import re
 import sys
-from math import erfc, sqrt
+from math import comb, erfc, sqrt
 
 import mlflow
 import numpy as np
@@ -40,7 +44,31 @@ import numpy as np
 # Minimum number of aligned samples required before the gate will pass.
 # Below this count, the gate fails closed to prevent misconfigured pipelines
 # from silently promoting bad models.
+#
+# Workshop demos use 2 so the small sample sets in Modules 3 and 4 can
+# exercise the full path. Production gates should set --min-overlap to
+# 30 or higher; see README.md "Production usage" for guidance.
 _MIN_OVERLAP = 2
+
+# MLflow run IDs are 32-character lowercase hex strings. Validate before
+# interpolating into a search filter to prevent injection.
+_RUN_ID_RE = re.compile(r"^[0-9a-f]{32}$")
+
+# Threshold below which the asymptotic chi-square approximation for
+# McNemar's test is unreliable. Below this we use the exact binomial
+# test instead (two-sided mid-p on discordant pairs).
+_MCNEMAR_EXACT_THRESHOLD = 25
+
+# Page size for search_traces pagination. MLflow defaults to 100 per page
+# and returns a PagedList whose .token continues the next page.
+_TRACE_PAGE_SIZE = 500
+
+_POSITIVE_LABELS = frozenset(
+    {"yes", "pass", "true", "factual", "correct", "grounded", "safe"}
+)
+_NEGATIVE_LABELS = frozenset(
+    {"no", "fail", "false", "hallucinated", "incorrect", "ungrounded", "unsafe"}
+)
 
 
 def _stable_key(trace) -> str | None:
@@ -60,45 +88,43 @@ def _stable_key(trace) -> str | None:
             return native_id
 
     request = trace.data.request if trace.data else None
-    if request:
-        return hashlib.sha256(request.encode("utf-8")).hexdigest()[:16]
-    return None
+    if request is None:
+        return None
+
+    if isinstance(request, str):
+        payload = request
+    else:
+        # Structured inputs (dicts, lists) come back from some trace stores.
+        # Serialize with sorted keys so equal inputs hash to the same key.
+        payload = json.dumps(request, sort_keys=True, default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
 def _parse_score(value) -> float | None:
     """Convert a scorer feedback value to a numeric score.
 
     Handles the common value formats returned by MLflow scorers:
-      - Binary strings: "yes"/"no", "pass"/"fail"
-      - Phoenix-style labels: "factual"/"hallucinated"
       - Booleans: True/False
       - Numeric: int or float pass through directly
+      - Binary strings: "yes"/"no", "pass"/"fail"
+      - Phoenix-style labels: "factual"/"hallucinated"
     Returns None if the value cannot be parsed.
     """
     if value is None:
         return None
 
-    if isinstance(value, (int, float)):
-        return float(value)
-
+    # Check bool before int/float because bool is a subclass of int.
     if isinstance(value, bool):
         return 1.0 if value else 0.0
 
+    if isinstance(value, (int, float)):
+        return float(value)
+
     if isinstance(value, str):
         lower = value.lower().strip()
-        _positive = {"yes", "pass", "true", "factual", "correct", "grounded", "safe"}
-        _negative = {
-            "no",
-            "fail",
-            "false",
-            "hallucinated",
-            "incorrect",
-            "ungrounded",
-            "unsafe",
-        }
-        if lower in _positive:
+        if lower in _POSITIVE_LABELS:
             return 1.0
-        if lower in _negative:
+        if lower in _NEGATIVE_LABELS:
             return 0.0
         try:
             return float(lower)
@@ -106,6 +132,29 @@ def _parse_score(value) -> float | None:
             return None
 
     return None
+
+
+def _search_all_traces(client, experiment_id: str, run_id: str):
+    """Paginate through every trace for a given evaluation run.
+
+    MlflowClient.search_traces defaults to 100 results per page and returns
+    a PagedList with a .token continuation cursor. Without pagination, a
+    large evaluation run is silently truncated.
+    """
+    all_traces = []
+    page_token = None
+    while True:
+        page = client.search_traces(
+            locations=[experiment_id],
+            filter_string=f"metadata.`mlflow.sourceRun` = '{run_id}'",
+            max_results=_TRACE_PAGE_SIZE,
+            page_token=page_token,
+        )
+        all_traces.extend(page)
+        page_token = getattr(page, "token", None)
+        if not page_token:
+            break
+    return all_traces
 
 
 def get_per_sample_scores(
@@ -117,13 +166,15 @@ def get_per_sample_scores(
     Samples without a parseable key or an unparseable value are skipped
     with a warning.
     """
+    if not _RUN_ID_RE.match(run_id):
+        raise ValueError(
+            f"Invalid run ID {run_id!r}. Expected 32-character lowercase hex."
+        )
+
     client = mlflow.tracking.MlflowClient()
 
     experiment_id = client.get_run(run_id).info.experiment_id
-    traces = client.search_traces(
-        locations=[experiment_id],
-        filter_string=f"metadata.`mlflow.sourceRun` = '{run_id}'",
-    )
+    traces = _search_all_traces(client, experiment_id, run_id)
 
     scores: dict[str, float] = {}
     skipped = 0
@@ -133,26 +184,43 @@ def get_per_sample_scores(
             skipped += 1
             continue
         for assessment in trace.info.assessments:
-            if assessment.name == scorer_name and assessment.feedback:
-                fb = assessment.feedback
-                raw = (
-                    fb.value
-                    if hasattr(fb, "value")
-                    else fb.get("value")
-                    if hasattr(fb, "get")
-                    else None
+            if assessment.name != scorer_name or not assessment.feedback:
+                continue
+            fb = assessment.feedback
+            if hasattr(fb, "value"):
+                raw = fb.value
+            elif hasattr(fb, "get"):
+                raw = fb.get("value")
+            else:
+                raw = None
+            parsed = _parse_score(raw)
+            if parsed is not None:
+                scores[key] = parsed
+            else:
+                skipped += 1
+                print(
+                    f"  Warning: unparseable score value {raw!r} for trace {trace.info.trace_id}"
                 )
-                parsed = _parse_score(raw)
-                if parsed is not None:
-                    scores[key] = parsed
-                else:
-                    skipped += 1
-                    print(
-                        f"  Warning: unparseable score value {raw!r} for trace {trace.info.trace_id}"
-                    )
+            break
     if skipped:
         print(f"  Skipped {skipped} samples (no key or unparseable value)")
     return scores
+
+
+def _mcnemar_exact_pvalue(b: int, c: int) -> float:
+    """Two-sided exact binomial p-value for McNemar's test.
+
+    Under H0, each discordant pair is equally likely to favor baseline or
+    candidate (prob 0.5). The test statistic is min(b, c). The two-sided
+    p-value is the probability of observing a split at least as extreme as
+    the one seen, doubled.
+    """
+    n = b + c
+    if n == 0:
+        return 1.0
+    k = min(b, c)
+    tail = sum(comb(n, i) for i in range(k + 1)) / (2**n)
+    return min(1.0, 2 * tail)
 
 
 def run_gate(
@@ -166,8 +234,13 @@ def run_gate(
 
     Uses the same three-check policy as the notebook gate in Module 4:
       1. Regression rate exceeds threshold -> FAIL
-      2. McNemar p-value significant AND candidate worse -> FAIL
+      2. Paired significance test detects candidate loss -> FAIL
       3. Otherwise -> PASS
+
+    Binary scorers (all values in {0.0, 1.0}) use McNemar's test, falling
+    back to the exact binomial test when the discordant pair count is too
+    small for the chi-square approximation. Continuous scorers use a
+    sign-flip permutation test on the paired differences.
 
     Performs an inner join on shared keys. Fails closed when overlap is
     below min_overlap.
@@ -198,48 +271,57 @@ def run_gate(
     cd_acc = float(np.mean(cd_values))
     delta = cd_acc - bl_acc
 
-    # Detect whether scores are binary (0/1) or continuous
+    # Detect whether scores are binary (0/1) or continuous. Inferred from
+    # the observed sample values; a graded scorer that happens to produce
+    # only 0.0/1.0 in this run will be treated as binary.
     unique_values = set(np.unique(bl_values)) | set(np.unique(cd_values))
     is_binary = unique_values <= {0.0, 1.0}
 
     if is_binary:
-        regressions = int(np.sum((bl_values > cd_values)))
-        improvements = int(np.sum((cd_values > bl_values)))
+        regressions = int(np.sum(bl_values > cd_values))
+        improvements = int(np.sum(cd_values > bl_values))
     else:
-        # For continuous scores, only count meaningful changes.
-        # A decrease must exceed 5% of the observed score range to qualify
-        # as a regression, filtering out noise-level fluctuations.
-        score_range = max(float(np.max(bl_values) - np.min(bl_values)), 0.01)
+        # For continuous scores, only count meaningful changes. A decrease
+        # must exceed 5% of the observed score range (combined across both
+        # runs) to qualify as a regression, filtering out noise.
+        combined_range = float(
+            max(np.max(bl_values), np.max(cd_values))
+            - min(np.min(bl_values), np.min(cd_values))
+        )
+        score_range = max(combined_range, 0.01)
         min_delta = 0.05 * score_range
         regressions = int(np.sum((bl_values - cd_values) > min_delta))
         improvements = int(np.sum((cd_values - bl_values) > min_delta))
     regression_rate = regressions / n
 
+    diffs = cd_values - bl_values
+
     if is_binary:
-        # McNemar's test for binary scorers (matches notebook Module 4)
         discordant = regressions + improvements
-        if discordant > 0:
+        if discordant == 0:
+            p_value = 1.0
+            test_name = "McNemar"
+        elif discordant < _MCNEMAR_EXACT_THRESHOLD:
+            p_value = _mcnemar_exact_pvalue(regressions, improvements)
+            test_name = "McNemar-exact"
+        else:
             chi2 = (abs(regressions - improvements) - 1) ** 2 / discordant
             p_value = erfc(sqrt(chi2 / 2))
-        else:
-            p_value = 1.0
-        test_name = "McNemar"
+            test_name = "McNemar"
     else:
-        # Paired permutation test for continuous/graded scorers.
-        # Under the null hypothesis, the sign of each paired difference
-        # is equally likely to be positive or negative.
-        diffs = cd_values - bl_values
+        # Paired sign-flip permutation test. Under H0 (no systematic
+        # direction), the sign of each paired difference is equally likely
+        # to be positive or negative, so flipping signs generates the null
+        # distribution of the mean difference.
         observed_delta = float(np.mean(diffs))
         rng = np.random.default_rng(42)
         n_perm = 10_000
-        # Random sign flips simulate the null distribution
         signs = rng.choice([-1, 1], size=(n_perm, n))
         perm_deltas = np.mean(signs * diffs, axis=1)
         p_value = float(np.mean(np.abs(perm_deltas) >= abs(observed_delta)))
         test_name = "Permutation"
 
-    # Cohen's d effect size
-    diffs = cd_values - bl_values
+    # Cohen's d_z for paired differences.
     sd = float(np.std(diffs, ddof=1)) if n > 1 else 0.0
     effect_size = float(np.mean(diffs)) / sd if sd > 0 else 0.0
 
@@ -295,7 +377,10 @@ def main():
         "--min-overlap",
         type=int,
         default=_MIN_OVERLAP,
-        help=f"Minimum overlapping samples required to pass (default: {_MIN_OVERLAP})",
+        help=(
+            f"Minimum overlapping samples required to pass (default: {_MIN_OVERLAP}). "
+            "Production gates should use 30 or higher."
+        ),
     )
     args = parser.parse_args()
 
