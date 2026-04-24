@@ -9,7 +9,22 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install mlflow[genai] numpy databricks-agents -q
+# COMMAND ----------
+
+_nb_path = (
+    dbutils.notebook.entry_point.getDbutils()  # noqa: F821
+    .notebook()
+    .getContext()
+    .notebookPath()
+    .get()
+)
+_repo_root = "/Workspace" + "/".join(_nb_path.split("/")[:-2])
+REQ_PATH = f"{_repo_root}/requirements-workshop.txt"
+print(f"Installing workshop requirements from: {REQ_PATH}")
+
+# COMMAND ----------
+
+# MAGIC %pip install -q -r $REQ_PATH
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------

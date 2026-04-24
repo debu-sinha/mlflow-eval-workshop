@@ -9,7 +9,26 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install mlflow[genai] arize-phoenix-evals trulens trulens-providers-litellm nltk databricks-agents -q
+# COMMAND ----------
+
+# Compute an absolute /Workspace/... path to the pinned requirements file.
+# This avoids relying on relative-path resolution, which is undocumented on
+# Serverless. Skip this cell entirely if you configured the Serverless
+# Environment panel to point at requirements-workshop.txt.
+_nb_path = (
+    dbutils.notebook.entry_point.getDbutils()  # noqa: F821
+    .notebook()
+    .getContext()
+    .notebookPath()
+    .get()
+)
+_repo_root = "/Workspace" + "/".join(_nb_path.split("/")[:-2])
+REQ_PATH = f"{_repo_root}/requirements-workshop.txt"
+print(f"Installing workshop requirements from: {REQ_PATH}")
+
+# COMMAND ----------
+
+# MAGIC %pip install -q -r $REQ_PATH
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
