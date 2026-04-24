@@ -41,18 +41,30 @@ print(f"Installing workshop requirements from: {REQ_PATH}")
 
 import os
 
+# Match Module 1: serial evaluation, extra retries, managed judge on
+# Databricks. See Module 1 for rationale.
+os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_WORKERS", "1")
+os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS", "1")
+os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_RETRIES", "5")
+
 ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
 
 if ON_DATABRICKS:
-    # Free Edition: "databricks:/databricks-gpt-oss-120b"
-    # Enterprise:   "databricks:/databricks-gpt-5-4" or other premium models
-    _default_model = "databricks:/databricks-gpt-oss-120b"
-    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", _default_model)
+    # Managed Databricks judge for evaluation; GPT OSS stays the demo
+    # app model. Do not use GPT OSS as the judge: its reasoning-token
+    # budget can consume the output and leave nothing to parse.
+    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", "databricks")
+    APP_MODEL = os.environ.get("WORKSHOP_APP_MODEL", "databricks-gpt-oss-120b")
     print(f"Running on Databricks. Judge model: {JUDGE_MODEL}")
+    print(f"App model:   {APP_MODEL}")
 else:
-    JUDGE_MODEL = "openai:/gpt-4o-mini"
+    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", "openai:/gpt-4o-mini")
+    APP_MODEL = os.environ.get("WORKSHOP_APP_MODEL", "gpt-4o-mini")
     assert os.environ.get("OPENAI_API_KEY"), "Set OPENAI_API_KEY to run locally"
     print(f"Running locally. Judge model: {JUDGE_MODEL}")
+    print(f"App model:   {APP_MODEL}")
+
+JUDGE_PARAMS = {"temperature": 0.0, "max_tokens": 512}
 
 # COMMAND ----------
 
@@ -140,7 +152,7 @@ from mlflow.genai.scorers import Correctness
 
 results_default = mlflow.genai.evaluate(
     data=eval_data,
-    scorers=[Correctness()],
+    scorers=[Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS)],
 )
 
 print("Default temperature results:")
@@ -220,7 +232,7 @@ os.environ["MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS"] = "2"
 results_limited = mlflow.genai.evaluate(
     data=eval_data,
     scorers=[
-        Correctness(),
+        Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
         Hallucination(model=JUDGE_MODEL),
     ],
 )

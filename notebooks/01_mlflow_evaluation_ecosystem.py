@@ -47,31 +47,95 @@ print(f"Installing workshop requirements from: {REQ_PATH}")
 
 import os
 
+# Keep evaluation stable on Databricks Free Edition and shared endpoints:
+# run scorers and samples serially, and allow more retries per call.
+# MLFLOW_GENAI_EVAL_MAX_WORKERS  = per-sample concurrency
+# MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS = per-scorer concurrency within a sample
+# Total concurrent judge calls ~ product of the two.
+os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_WORKERS", "1")
+os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS", "1")
+os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_RETRIES", "5")
+
 ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
 
 if ON_DATABRICKS:
-    # Databricks Foundation Model APIs provide hosted LLMs as judge models.
+    # Two separate model roles:
+    #   JUDGE_MODEL: the LLM used by scorers to grade outputs. On Databricks,
+    #                use the managed MLflow judge ("databricks") which is
+    #                configured for structured feedback output. Do NOT point
+    #                this at databricks-gpt-oss-120b: it is a reasoning model
+    #                whose reasoning tokens consume the output budget and
+    #                leave nothing for MLflow to parse.
+    #   APP_MODEL:   the LLM whose output we are evaluating. Free Edition
+    #                ships databricks-gpt-oss-120b; Enterprise workspaces can
+    #                point at premium endpoints.
     #
-    # Free Edition:  use "databricks:/databricks-gpt-oss-120b"
-    #                (limited model selection, but no API key needed)
-    # Enterprise:    use "databricks:/databricks-gpt-5-4" or other premium models
-    #
-    # Override via WORKSHOP_JUDGE_MODEL env var on your cluster if needed.
+    # Override either via cluster env vars WORKSHOP_JUDGE_MODEL or
+    # WORKSHOP_APP_MODEL.
     #
     # Guardrails Hub API key (required for DetectPII scorer):
     # Option 1: Set as cluster env var: GUARDRAILS_API_KEY=your-token
-    # Option 2: Set here (replace with your token from hub.guardrailsai.com):
-    # os.environ["GUARDRAILS_API_KEY"] = "your-guardrails-hub-token"
-    #
-    _default_model = "databricks:/databricks-gpt-oss-120b"
-    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", _default_model)
+    # Option 2: Secret scope: dbutils.secrets.get("guardrails-hub", "api-token")
+    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", "databricks")
+    APP_MODEL = os.environ.get("WORKSHOP_APP_MODEL", "databricks-gpt-oss-120b")
     print(f"Running on Databricks. Judge model: {JUDGE_MODEL}")
-    print("Tip: Free Edition has limited model capacity. Enterprise workspaces")
-    print("     can use premium models like databricks-gpt-5-4.")
+    print(f"App model:   {APP_MODEL}")
 else:
-    JUDGE_MODEL = "openai:/gpt-4o-mini"
+    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", "openai:/gpt-4o-mini")
+    APP_MODEL = os.environ.get("WORKSHOP_APP_MODEL", "gpt-4o-mini")
     assert os.environ.get("OPENAI_API_KEY"), "Set OPENAI_API_KEY to run locally"
     print(f"Running locally. Judge model: {JUDGE_MODEL}")
+    print(f"App model:   {APP_MODEL}")
+
+# Judge inference settings. temperature=0 removes the largest source of
+# judge randomness; max_tokens=512 leaves headroom for reasoning models
+# that would otherwise burn the output budget on internal reasoning and
+# return empty visible output.
+JUDGE_PARAMS = {"temperature": 0.0, "max_tokens": 512}
+
+
+def diagnose_databricks_endpoint(model_uri: str) -> None:
+    """Sanity-check that a databricks:/ endpoint returns non-empty content.
+
+    Skips silently for non-endpoint URIs like "databricks" (managed judge)
+    or "openai:/...". Helpful when a judge model silently returns empty
+    strings and scorers fail with JSONDecodeError.
+    """
+    import openai
+    from mlflow.utils.databricks_utils import get_databricks_host_creds
+
+    if not model_uri.startswith("databricks:/"):
+        print(
+            f"Skipping direct endpoint diagnostic for {model_uri!r}. "
+            "Only concrete databricks:/ endpoint URIs are testable this way."
+        )
+        return
+
+    creds = get_databricks_host_creds()
+    client = openai.OpenAI(
+        api_key=creds.token,
+        base_url=f"{creds.host}/serving-endpoints",
+    )
+    endpoint_name = model_uri.replace("databricks:/", "")
+    resp = client.chat.completions.create(
+        model=endpoint_name,
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    "Reply with exactly this JSON and nothing else: "
+                    '{"result":"yes","rationale":"ok"}'
+                ),
+            }
+        ],
+        max_tokens=256,
+        temperature=0,
+    )
+    content = resp.choices[0].message.content
+    print(f"Endpoint: {endpoint_name}")
+    print(f"Content repr: {content!r}")
+    print(f"Content length: {len(content or '')}")
+
 
 # Guardrails is optional. 00_setup handles installation.
 # This flag is set based on whether the import succeeds later.
@@ -165,7 +229,10 @@ print(f"Evaluation dataset: {len(eval_dataset)} samples")
 
 results_builtin = mlflow.genai.evaluate(
     data=eval_dataset,
-    scorers=[Correctness(), Safety()],
+    scorers=[
+        Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
+        Safety(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
+    ],
 )
 
 print("Built-in scorer results:")
@@ -316,8 +383,8 @@ for name, value in results_phoenix.metrics.items():
 # COMMAND ----------
 
 _thirdparty_scorers = [
-    Correctness(),
-    Safety(),
+    Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
+    Safety(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
 ]
 if GUARDRAILS_AVAILABLE:
     _thirdparty_scorers.append(DetectPII())
@@ -395,7 +462,7 @@ rag_dataset = [
 # Response-relevance built-in. Does not read expectations.context.
 results_builtin_rag = mlflow.genai.evaluate(
     data=rag_dataset,
-    scorers=[RelevanceToQuery()],
+    scorers=[RelevanceToQuery(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS)],
 )
 
 print("Response relevance (RelevanceToQuery):")
@@ -457,8 +524,8 @@ def response_length_check(outputs) -> bool:
 # Hallucination runs on the RAG dataset because it needs context; the
 # non-RAG eval_dataset here gets response-level scorers only.
 _all_scorers = [
-    Correctness(),
-    Safety(),
+    Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
+    Safety(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
     response_length_check,
 ]
 if GUARDRAILS_AVAILABLE:
@@ -500,12 +567,10 @@ if ON_DATABRICKS:
         api_key=creds.token,
         base_url=f"{creds.host}/serving-endpoints",
     )
-    # Use same model config as JUDGE_MODEL but for direct LLM calls.
-    # Strip the "databricks:/" prefix for the OpenAI-compatible API.
-    LLM_MODEL = JUDGE_MODEL.replace("databricks:/", "")
+    LLM_MODEL = APP_MODEL
 else:
     client = openai.OpenAI()
-    LLM_MODEL = "gpt-4o-mini"
+    LLM_MODEL = APP_MODEL
 
 
 @mlflow.trace
@@ -553,8 +618,8 @@ results_live = mlflow.genai.evaluate(
     predict_fn=lambda question: ask_llm(question),
     data=live_questions,
     scorers=[
-        Correctness(),
-        Safety(),
+        Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
+        Safety(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
         response_length_check,
     ],
 )

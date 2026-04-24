@@ -40,7 +40,19 @@ print(f"Installing workshop requirements from: {REQ_PATH}")
 
 import os
 
+# Match Modules 1 and 2: serial evaluation, managed judge on Databricks.
+os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_WORKERS", "1")
+os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS", "1")
+os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_RETRIES", "5")
+
 ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
+
+if ON_DATABRICKS:
+    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", "databricks")
+else:
+    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", "openai:/gpt-4o-mini")
+
+JUDGE_PARAMS = {"temperature": 0.0, "max_tokens": 512}
 
 # COMMAND ----------
 
@@ -500,12 +512,18 @@ candidate_data = [
 ]
 
 print("Running baseline evaluation...")
-result_baseline = mlflow.genai.evaluate(data=baseline_data, scorers=[Correctness()])
+result_baseline = mlflow.genai.evaluate(
+    data=baseline_data,
+    scorers=[Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS)],
+)
 print(f"  Run ID: {result_baseline.run_id}")
 print(f"  Metrics: {result_baseline.metrics}")
 
 print("\nRunning candidate evaluation...")
-result_candidate = mlflow.genai.evaluate(data=candidate_data, scorers=[Correctness()])
+result_candidate = mlflow.genai.evaluate(
+    data=candidate_data,
+    scorers=[Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS)],
+)
 print(f"  Run ID: {result_candidate.run_id}")
 print(f"  Metrics: {result_candidate.metrics}")
 

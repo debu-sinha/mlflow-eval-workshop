@@ -175,6 +175,42 @@ MLflow is downloaded over 30 million times per month from PyPI.
 
 For those who wish to optionally follow along in class, please follow the [setup instructions above](#setup). I won't spend time in class for setup, and this step is optional.
 
+### Troubleshooting: `Failed to parse response from judge model`
+
+If a built-in scorer (`Correctness`, `Safety`, `RelevanceToQuery`) fails with:
+
+```
+MlflowException: Failed to parse response from judge model. Response:
+```
+
+the judge model returned an empty or malformed response. On Databricks Free Edition or shared pay-per-token endpoints, the usual causes are rate limits, a low output-token budget, or a reasoning model whose reasoning tokens consumed the entire output budget and left nothing visible to parse.
+
+Fixes, in order of impact:
+
+1. Use the Databricks managed judge instead of a reasoning endpoint:
+   ```python
+   JUDGE_MODEL = "databricks"
+   ```
+   The workshop defaults to this. If you overrode `WORKSHOP_JUDGE_MODEL` to point at `databricks-gpt-oss-120b` or similar, unset it.
+
+2. Run scorers serially:
+   ```python
+   os.environ["MLFLOW_GENAI_EVAL_MAX_WORKERS"] = "1"
+   os.environ["MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS"] = "1"
+   ```
+   The modules set this by default at the top of the config cell.
+
+3. Give the judge more output budget:
+   ```python
+   Correctness(model=JUDGE_MODEL, inference_params={"temperature": 0.0, "max_tokens": 512})
+   ```
+
+4. Keep `databricks-gpt-oss-120b` as the application model, not the judge:
+   ```python
+   APP_MODEL = "databricks-gpt-oss-120b"   # the model being evaluated
+   JUDGE_MODEL = "databricks"              # the model doing the grading
+   ```
+
 ### Before running the workshop
 
 Verify the flow end-to-end on a fresh Databricks Free Edition workspace before the live session. Two specific things to check:
