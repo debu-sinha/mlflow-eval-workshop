@@ -13,7 +13,7 @@ A production evaluation pipeline that goes from scorer selection to deployment g
 | # | Module | Time | What you'll do |
 |---|--------|------|----------------|
 | - | Intro | 2 min | Workshop agenda, module flow chart, and links to each notebook |
-| 0 | Setup (optional) | Pre-workshop | Verify all imports work. Each notebook self-installs on Databricks; locally use `pip install .` |
+| 0 | Setup (optional) | Pre-workshop | Verify all imports work. Each notebook self-installs on Databricks. Locally, use `pip install .` |
 | 1 | MLflow Evaluation Ecosystem | 20 min | Run built-in, third-party, and custom scorers in one `evaluate()` call |
 | 2 | Production Infrastructure | 8 min | Control judge temperature for determinism, manage scorer concurrency |
 | 3 | Comparing Runs and Regressions | 12 min | Align samples across runs, detect regressions, test significance |
@@ -44,7 +44,7 @@ git clone https://github.com/debu-sinha/mlflow-eval-workshop.git
 cd mlflow-eval-workshop
 
 # Recommended: install with uv for reproducible, lockfile-pinned deps
-# (the repo ships uv.lock; this is what the bonus module teaches)
+# (the repo ships uv.lock, which is what the bonus module teaches)
 uv sync
 uv pip install -e .
 
@@ -116,7 +116,7 @@ If you skip this step, Module 1 will print a warning when it tries to install th
 MLflow's evaluation surface is broader than what fits in 60 minutes. Features worth exploring after the workshop:
 
 - **Evaluation datasets**: First-class dataset objects for evaluation-driven development ([docs](https://mlflow.org/docs/latest/genai/datasets/))
-- **Built-in RAG judges**: `Groundedness`, `RelevanceToQuery`, `ChunkRelevance` without third-party deps ([docs](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/llm-judge/predefined/))
+- **Built-in RAG judges**: `RetrievalGroundedness`, `RetrievalRelevance`, and `RetrievalSufficiency` evaluate a trace with a `RETRIEVER` span, and `RelevanceToQuery` evaluates response relevance without a retrieval trace ([docs](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/llm-judge/predefined/))
 - **Judge Builder UI**: Visual judge creation in the MLflow UI (requires MLflow >= 3.9) ([docs](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/llm-judge/predefined/))
 - **Trace-based evaluation**: Pass `mlflow.search_traces()` output directly into `evaluate()` ([docs](https://mlflow.org/docs/latest/genai/eval-monitor/running-evaluation/traces/))
 - **Scheduled scorers**: Automatically evaluate production traces on a schedule ([docs](https://mlflow.org/docs/latest/python_api/mlflow.genai.html))
@@ -124,7 +124,7 @@ MLflow's evaluation surface is broader than what fits in 60 minutes. Features wo
 
 ## The evaluation gate
 
-The repo includes `eval_gate.py`, a standalone script that compares two MLflow evaluation runs and exits with code 1 if the candidate regresses. It aligns samples using MLflow-native identifiers (`client_request_id`, `dataset_record_id`) when available, falling back to a request content hash. The gate fails closed: if fewer than 2 samples overlap, it blocks rather than silently passing. Score parsing handles binary labels (`yes`/`no`), Phoenix-style labels (`factual`/`hallucinated`), booleans, and numeric values.
+The repo includes `eval_gate.py`, a standalone script that compares two MLflow evaluation runs and exits with code 1 if the candidate regresses. It aligns samples using MLflow-native identifiers (`client_request_id`, `dataset_record_id`) when available, falling back to a request content hash. The gate paginates through `search_traces`, validates run IDs before interpolating them into the filter, and fails closed when the number of overlapping samples drops below `--min-overlap`. Score parsing handles binary labels (`yes`/`no`), Phoenix-style labels (`factual`/`hallucinated`), booleans, and numeric values. For binary scorers with small sample counts, the gate falls back to an exact binomial McNemar test. Continuous scorers use a paired sign-flip permutation test.
 
 ```bash
 python eval_gate.py \
@@ -135,6 +135,10 @@ python eval_gate.py \
 ```
 
 The GitHub Actions workflow (`.github/workflows/eval-gate.yml`) wraps this for CI/CD. Point `MLFLOW_TRACKING_URI` at your tracking server and trigger manually with run IDs.
+
+### Production usage
+
+The default `--min-overlap 2` is set for the workshop demo so the small datasets in Modules 3 and 4 can exercise the full gate path. For real deployment gates, pass `--min-overlap 30` (or higher), pin a meaningful `--threshold`, and run the gate against evaluation runs with enough samples for the paired tests to be reliable (`--min-overlap >= 30` puts the binary McNemar path above the small-sample fallback). Unit tests for the gate logic live in `tests/` and run in CI.
 
 ![MLflow Traces with Assessment Data](notebooks/images/mlflow-traces-with-data.png)
 
@@ -157,7 +161,7 @@ MLflow is downloaded over 30 million times per month from PyPI.
 
 ### Setup instructions for attendees
 
-For those who wish to optionally follow along in class, please follow the [setup instructions above](#setup). I won't spend time in class for setup; this is optional.
+For those who wish to optionally follow along in class, please follow the [setup instructions above](#setup). I won't spend time in class for setup, and this step is optional.
 
 ## Speaker
 

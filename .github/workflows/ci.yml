@@ -19,11 +19,11 @@ jobs:
       - name: Install ruff
         run: pip install ruff
 
-      - name: Lint eval_gate.py
-        run: ruff check eval_gate.py
+      - name: Lint eval_gate.py and tests
+        run: ruff check eval_gate.py tests/
 
-      - name: Format check eval_gate.py
-        run: ruff format --check eval_gate.py
+      - name: Format check eval_gate.py and tests
+        run: ruff format --check eval_gate.py tests/
 
   smoke-test:
     runs-on: ubuntu-latest
@@ -35,43 +35,35 @@ jobs:
           python-version: '3.12'
 
       - name: Install package (same as README local path)
-        run: pip install .
+        run: pip install ".[local]" pytest
 
-      - name: Verify scorer imports
+      - name: Verify every scorer the notebooks use
         run: |
           python -c "
-          from mlflow.genai.scorers import Correctness, Safety, scorer
+          # Core scorers
+          from mlflow.genai.scorers import (
+              Correctness,
+              Safety,
+              RelevanceToQuery,
+              scorer,
+          )
+          # Custom judge builder
+          from mlflow.genai import make_judge
+
+          # Third-party scorers. Guardrails is optional (Hub token + validator install).
           from mlflow.genai.scorers.phoenix import Hallucination
           from mlflow.genai.scorers.trulens import Groundedness
-          print('All scorer imports OK')
+          try:
+              from mlflow.genai.scorers.guardrails import DetectPII
+              print('Guardrails DetectPII import OK')
+          except Exception as e:
+              print(f'Guardrails DetectPII unavailable (optional): {e}')
+
+          print('All required scorer imports OK')
           "
 
-      - name: Verify eval_gate module loads and gate logic works
-        run: |
-          python -c "
-          from eval_gate import run_gate, _parse_score
-
-          # Binary scorer parse
-          assert _parse_score('yes') == 1.0
-          assert _parse_score('no') == 0.0
-          assert _parse_score(0.75) == 0.75
-          assert _parse_score(None) is None
-
-          # Gate passes on low regression
-          bl = {f's{i}': 1.0 for i in range(20)}
-          bl['s19'] = 0.0
-          cd = dict(bl)
-          cd['s0'] = 0.0
-          cd['s19'] = 1.0
-          passed, _ = run_gate(bl, cd)
-          assert passed, 'Should pass with 5% regression'
-
-          # Gate fails closed on zero overlap
-          passed, _ = run_gate({'a': 1.0}, {'b': 1.0})
-          assert not passed, 'Should fail on zero overlap'
-
-          print('eval_gate OK')
-          "
+      - name: Run pytest
+        run: pytest tests/ -v
 
       - name: Verify notebooks parse
         run: |
