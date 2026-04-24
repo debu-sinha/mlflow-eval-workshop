@@ -10,7 +10,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] arize-phoenix-evals databricks-agents -q
+# MAGIC %pip install mlflow[genai] arize-phoenix-evals databricks-agents -q
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
@@ -135,6 +135,8 @@ for name, value in results_default.metrics.items():
 
 # COMMAND ----------
 
+from typing import Literal
+
 deterministic_judge = mlflow.genai.make_judge(
     name="correctness_deterministic",
     model=JUDGE_MODEL,
@@ -144,6 +146,10 @@ deterministic_judge = mlflow.genai.make_judge(
         "Response: {{ outputs }}\n"
         "Expected: {{ expectations }}"
     ),
+    # feedback_value_type pins the judge output to the allowed labels via
+    # the provider's structured-output mode. This is more reliable than
+    # trusting the judge to follow a "return yes or no" instruction in prose.
+    feedback_value_type=Literal["yes", "no"],
     inference_params={"temperature": 0.0, "max_tokens": 50},
 )
 
@@ -160,8 +166,10 @@ for name, value in results_deterministic.metrics.items():
 
 # MAGIC %md
 # MAGIC Run the deterministic judge twice on the same data. With `temperature=0.0`,
-# MAGIC the results should be identical across runs. This matters when you need
-# MAGIC reproducible evaluation baselines.
+# MAGIC results are substantially more reproducible across runs. Provider behavior
+# MAGIC can still vary slightly (caching, sampling tie-breaks), but this removes
+# MAGIC the largest source of judge randomness and gives you a stable baseline
+# MAGIC to compare against.
 
 # COMMAND ----------
 

@@ -9,7 +9,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] arize-phoenix-evals trulens trulens-providers-litellm nltk databricks-agents -q
+# MAGIC %pip install mlflow[genai] arize-phoenix-evals trulens trulens-providers-litellm nltk databricks-agents -q
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
@@ -83,9 +83,11 @@ else:
 # MAGIC %md
 # MAGIC ## 1.1 Built-in scorers (5 min)
 # MAGIC
-# MAGIC MLflow ships with scorers for common evaluation tasks. `Correctness` checks
-# MAGIC whether the output matches an expected answer. `Safety` checks whether the
-# MAGIC output contains harmful content.
+# MAGIC MLflow ships with scorers for common evaluation tasks. `Correctness`
+# MAGIC checks whether the response supports the expected facts or expected
+# MAGIC response (semantic entailment, not string match). For strict semantic
+# MAGIC equivalence MLflow also provides `EquivalenceToExpectation`. `Safety`
+# MAGIC checks whether the output contains harmful content.
 
 # COMMAND ----------
 
@@ -194,14 +196,60 @@ except Exception as _guardrails_err:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Now run both third-party scorers alongside a built-in scorer in a single call.
+# MAGIC ### Phoenix Hallucination with retrieval context
+# MAGIC
+# MAGIC Phoenix `Hallucination` detects factual inconsistencies by comparing
+# MAGIC the output against a reference. For meaningful detection, pass the
+# MAGIC reference passages via `expectations.context`. The second sample
+# MAGIC claims something not supported by the context, which is exactly what
+# MAGIC Hallucination should flag.
+
+# COMMAND ----------
+
+hallucination_dataset = [
+    {
+        "inputs": {"question": "What are the shipping options?"},
+        "outputs": "Standard shipping takes 5-7 business days.",
+        "expectations": {
+            "context": [
+                "Standard shipping takes 5-7 business days.",
+                "Express shipping takes 2 business days and costs $9.99.",
+            ]
+        },
+    },
+    {
+        "inputs": {"question": "What are the shipping options?"},
+        "outputs": "We offer free overnight shipping on all orders.",
+        "expectations": {
+            "context": [
+                "Standard shipping takes 5-7 business days.",
+                "Express shipping takes 2 business days and costs $9.99.",
+            ]
+        },
+    },
+]
+
+results_phoenix = mlflow.genai.evaluate(
+    data=hallucination_dataset,
+    scorers=[Hallucination(model=JUDGE_MODEL)],
+)
+
+print("Phoenix Hallucination (context-grounded):")
+for name, value in results_phoenix.metrics.items():
+    print(f"  {name}: {value}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Now combine third-party scorers with built-ins in one call. The
+# MAGIC non-RAG dataset (`eval_dataset`) has no retrieval context, so we
+# MAGIC only run scorers that do not require it here.
 
 # COMMAND ----------
 
 _thirdparty_scorers = [
     Correctness(),
     Safety(),
-    Hallucination(model=JUDGE_MODEL),
 ]
 if GUARDRAILS_AVAILABLE:
     _thirdparty_scorers.append(DetectPII())
@@ -219,9 +267,9 @@ for name, value in results_thirdparty.metrics.items():
 
 # MAGIC %md
 # MAGIC Four scorers from three different sources in one `evaluate()` call:
-# MAGIC - `Correctness` (MLflow built-in) checks answer accuracy against expected response
+# MAGIC - `Correctness` (MLflow built-in) checks whether the response supports the expected answer
 # MAGIC - `Safety` (MLflow built-in) flags harmful content
-# MAGIC - `Hallucination` (Phoenix/Arize) detects factual inconsistencies via LLM judge
+# MAGIC - `Hallucination` (Phoenix/Arize) detects factual inconsistencies against retrieval context
 # MAGIC - `DetectPII` (Guardrails AI) scans for PII using pattern matching, no LLM needed
 # MAGIC
 # MAGIC `Groundedness` (TruLens) is shown in the RAG section below where retrieval
@@ -232,12 +280,22 @@ for name, value in results_thirdparty.metrics.items():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### RAG evaluation with retrieval context
+# MAGIC ### RAG evaluation: response relevance and groundedness
 # MAGIC
-# MAGIC For RAG pipelines, pass retrieved chunks in the `context` field.
-# MAGIC MLflow has built-in RAG judges (`RelevanceToQuery`, `Groundedness`)
-# MAGIC that need no third-party dependencies. We show the built-in judge first,
-# MAGIC then the TruLens `Groundedness` scorer for comparison.
+# MAGIC MLflow has two flavors of RAG judges:
+# MAGIC
+# MAGIC - **Response-level, static context**: `RelevanceToQuery` checks whether
+# MAGIC   the answer addresses the question. It does not require a retrieval
+# MAGIC   trace and does not inspect the retrieved context.
+# MAGIC - **Trace-based, native RAG**: `RetrievalGroundedness`,
+# MAGIC   `RetrievalRelevance`, and `RetrievalSufficiency` require a trace with
+# MAGIC   a `RETRIEVER` span and evaluate the retrieved chunks directly. Use
+# MAGIC   these when your app is instrumented with MLflow tracing.
+# MAGIC
+# MAGIC For the static-context examples below, we use `RelevanceToQuery` for
+# MAGIC response relevance and TruLens `Groundedness` for context grounding.
+# MAGIC The TruLens scorer reads context from `expectations.context`, which is
+# MAGIC the documented integration pattern.
 
 # COMMAND ----------
 
@@ -266,22 +324,23 @@ rag_dataset = [
     },
 ]
 
-# Built-in MLflow RAG judge (no third-party deps needed)
+# Response-relevance built-in. Does not read expectations.context.
 results_builtin_rag = mlflow.genai.evaluate(
     data=rag_dataset,
     scorers=[RelevanceToQuery()],
 )
 
-print("Built-in RAG judge (RelevanceToQuery):")
+print("Response relevance (RelevanceToQuery):")
 for name, value in results_builtin_rag.metrics.items():
     print(f"  {name}: {value}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Now compare with TruLens Groundedness. Same data, different scoring angle:
-# MAGIC RelevanceToQuery checks if the answer addresses the question,
-# MAGIC Groundedness checks if the answer is supported by the retrieved context.
+# MAGIC Now TruLens Groundedness on the same data. Same inputs, different
+# MAGIC scoring angle: `RelevanceToQuery` checks if the answer addresses the
+# MAGIC question; `Groundedness` checks if the answer is supported by the
+# MAGIC retrieved context.
 
 # COMMAND ----------
 
@@ -297,6 +356,15 @@ print(
     "\nThe second sample claims 'free overnight shipping' but the context only mentions"
 )
 print("standard (5-7 days) and express ($9.99). Groundedness should flag this.")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC For trace-based RAG evaluation on a real retrieval pipeline, instrument
+# MAGIC your retriever with `@mlflow.trace(span_type="RETRIEVER")` and use
+# MAGIC `RetrievalGroundedness` against the trace. See the MLflow GenAI docs
+# MAGIC for the trace-based pattern: not covered here because it needs a real
+# MAGIC retriever integration.
 
 # COMMAND ----------
 
@@ -317,10 +385,12 @@ def response_length_check(outputs) -> bool:
     return len(str(outputs)) >= 20
 
 
-# Run all three kinds (built-in, third-party, custom) in one call
+# Run all three kinds (built-in, third-party, custom) in one call.
+# Hallucination runs on the RAG dataset because it needs context; the
+# non-RAG eval_dataset here gets response-level scorers only.
 _all_scorers = [
     Correctness(),
-    Hallucination(model=JUDGE_MODEL),
+    Safety(),
     response_length_check,
 ]
 if GUARDRAILS_AVAILABLE:
@@ -416,7 +486,6 @@ results_live = mlflow.genai.evaluate(
     data=live_questions,
     scorers=[
         Correctness(),
-        Hallucination(model=JUDGE_MODEL),
         Safety(),
         response_length_check,
     ],
