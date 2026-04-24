@@ -431,9 +431,24 @@ else:
     import sys
 
     # The parent notebook may have set the tracking URI via Python API
-    # (e.g. mlflow.set_tracking_uri("sqlite:///...")). That does not
-    # propagate to a subprocess, so we thread it through explicitly.
+    # (e.g. mlflow.set_tracking_uri("sqlite:///...")) and on Databricks it
+    # holds the host + token in the driver process. Neither propagates to a
+    # subprocess, so we thread both through explicitly.
     _gate_env = {**os.environ, "MLFLOW_TRACKING_URI": mlflow.get_tracking_uri()}
+
+    if ON_DATABRICKS:
+        try:
+            from mlflow.utils.databricks_utils import get_databricks_host_creds
+
+            _creds = get_databricks_host_creds()
+            if getattr(_creds, "host", None):
+                _gate_env["DATABRICKS_HOST"] = _creds.host
+            if getattr(_creds, "token", None):
+                _gate_env["DATABRICKS_TOKEN"] = _creds.token
+        except Exception as _auth_err:
+            print(
+                f"Could not extract Databricks credentials for subprocess: {_auth_err}"
+            )
 
     result = subprocess.run(
         [
