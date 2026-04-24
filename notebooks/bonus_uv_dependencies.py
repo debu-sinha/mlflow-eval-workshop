@@ -11,7 +11,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] scikit-learn -q
+# MAGIC %pip install mlflow[genai] scikit-learn -q
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
@@ -41,6 +41,36 @@ if ON_DATABRICKS:
 else:
     mlflow.set_tracking_uri("sqlite:///mlflow_workshop.db")
     mlflow.set_experiment("odsc-eval-workshop")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Check the working directory
+# MAGIC
+# MAGIC MLflow looks for `uv.lock` in the current working directory. If the
+# MAGIC notebook launched from `notebooks/` the lockfile is one level up,
+# MAGIC so we hop to the repo root before logging the model.
+
+# COMMAND ----------
+
+import shutil
+from pathlib import Path
+
+_repo_root = Path.cwd()
+if not (_repo_root / "uv.lock").exists():
+    _candidate = _repo_root.parent
+    if (_candidate / "uv.lock").exists():
+        os.chdir(_candidate)
+        _repo_root = _candidate
+
+print(f"Working directory: {_repo_root}")
+print(f"uv.lock present:   {(_repo_root / 'uv.lock').exists()}")
+
+if shutil.which("uv") is None:
+    print(
+        "uv binary not found on PATH. MLflow will fall back to runtime "
+        "dependency inference; the uv-pinned output below will not be produced."
+    )
 
 # COMMAND ----------
 

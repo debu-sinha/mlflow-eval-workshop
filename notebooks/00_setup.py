@@ -13,7 +13,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] arize-phoenix-evals trulens trulens-providers-litellm numpy scikit-learn databricks-agents -q
+# MAGIC %pip install mlflow[genai] arize-phoenix-evals trulens trulens-providers-litellm numpy scikit-learn databricks-agents -q
 
 # COMMAND ----------
 
@@ -32,9 +32,6 @@
 # COMMAND ----------
 
 import mlflow
-from mlflow.genai.scorers import Correctness, Safety, scorer
-from mlflow.genai.scorers.phoenix import Hallucination
-from mlflow.genai.scorers.trulens import Groundedness
 
 print(f"MLflow version: {mlflow.__version__}")
 print("Core scorers: OK")

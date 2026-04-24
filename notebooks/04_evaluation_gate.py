@@ -9,7 +9,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] numpy databricks-agents -q
+# MAGIC %pip install mlflow[genai] numpy databricks-agents -q
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
@@ -415,6 +415,11 @@ else:
 
     import sys
 
+    # The parent notebook may have set the tracking URI via Python API
+    # (e.g. mlflow.set_tracking_uri("sqlite:///...")). That does not
+    # propagate to a subprocess, so we thread it through explicitly.
+    _gate_env = {**os.environ, "MLFLOW_TRACKING_URI": mlflow.get_tracking_uri()}
+
     result = subprocess.run(
         [
             sys.executable,
@@ -429,6 +434,7 @@ else:
         capture_output=True,
         text=True,
         cwd=str(_gate_script.parent),
+        env=_gate_env,
     )
     print(result.stdout)
     if result.returncode != 0:

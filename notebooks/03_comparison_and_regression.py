@@ -9,7 +9,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] numpy databricks-agents -q
+# MAGIC %pip install mlflow[genai] numpy databricks-agents -q
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
@@ -167,8 +167,8 @@ def mcnemars_test(
     """McNemar's test for paired binary outcomes.
 
     Tests whether the rate of discordant pairs (regressions vs improvements)
-    differs significantly. Uses chi-square approximation with continuity
-    correction. No scipy required.
+    differs more than expected by chance. Uses chi-square approximation
+    with continuity correction. No scipy required.
     """
     b = sum(1 for bl, cd in zip(baseline_correct, candidate_correct) if bl and not cd)
     c = sum(1 for bl, cd in zip(baseline_correct, candidate_correct) if not bl and cd)
@@ -408,11 +408,11 @@ print(f"Bootstrap: CI [{ci['ci_lower']:+.4f}, {ci['ci_upper']:+.4f}]")
 print(f"Win rate:  {wr['wins']}/{len(bl_scores)} ({wr['win_pct']:.1%})")
 print()
 if mcnemar["significant"] and np.mean(cd_scores) < np.mean(bl_scores):
-    print("VERDICT: The candidate model is significantly worse. Do not deploy.")
+    print("VERDICT: The candidate is worse at p < 0.05. Do not deploy.")
 elif not mcnemar["significant"]:
-    print("VERDICT: The difference is not statistically significant at p=0.05.")
+    print("VERDICT: The difference is within noise at p=0.05.")
 else:
-    print("VERDICT: The candidate model is significantly better. Safe to deploy.")
+    print("VERDICT: The candidate is better at p < 0.05. Safe to deploy.")
 print("=" * 60)
 
 # COMMAND ----------
@@ -522,13 +522,25 @@ else:
 # COMMAND ----------
 
 
-# Convert yes/no to 1.0/0.0
+# Convert scorer feedback to 1.0/0.0/None. None means the scorer errored
+# or returned an unparseable value; we exclude those rather than count
+# them as failures, which would bias the gate toward regression.
 def _to_binary(value):
-    if value == "yes":
+    if isinstance(value, bool):
+        return 1.0 if value else 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+    if value is None:
+        return None
+    lower = str(value).strip().lower()
+    if lower in {"yes", "pass", "true", "correct", "factual", "grounded"}:
         return 1.0
-    if value == "no":
+    if lower in {"no", "fail", "false", "incorrect", "hallucinated", "ungrounded"}:
         return 0.0
-    return float(value) if value is not None else 0.0
+    try:
+        return float(lower)
+    except ValueError:
+        return None
 
 
 # Find the correctness column name (handle case variations)
