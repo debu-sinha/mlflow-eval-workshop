@@ -134,7 +134,7 @@ def _parse_score(value) -> float | None:
     return None
 
 
-def _search_all_traces(client, experiment_id: str, run_id: str):
+def _search_all_traces(client, experiment_id: str, run_id: str) -> list:
     """Paginate through every trace for a given evaluation run.
 
     MlflowClient.search_traces defaults to 100 results per page and returns

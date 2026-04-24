@@ -32,6 +32,15 @@
 # COMMAND ----------
 
 import mlflow
+from mlflow.genai import make_judge  # noqa: F401
+from mlflow.genai.scorers import (  # noqa: F401
+    Correctness,
+    RelevanceToQuery,
+    Safety,
+    scorer,
+)
+from mlflow.genai.scorers.phoenix import Hallucination  # noqa: F401
+from mlflow.genai.scorers.trulens import Groundedness  # noqa: F401
 
 print(f"MLflow version: {mlflow.__version__}")
 print("Core scorers: OK")
