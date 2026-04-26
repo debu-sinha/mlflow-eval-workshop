@@ -247,6 +247,18 @@ print("=" * 50)
 # MAGIC The eval gate runs as part of your deployment pipeline. Below are two
 # MAGIC patterns: a generic Python script for any CI system, and a Databricks
 # MAGIC Workflows configuration.
+# MAGIC
+# MAGIC ### When does the gate fire?
+# MAGIC
+# MAGIC Three common trigger patterns. Pick one based on your release cadence:
+# MAGIC
+# MAGIC - **PR-triggered**: every pull request that touches model config runs
+# MAGIC   the gate against the latest production run. Blocks merge on regression.
+# MAGIC - **Scheduled**: nightly job evaluates the latest staging model against
+# MAGIC   production. Pages oncall if the gate blocks.
+# MAGIC - **Manual (`workflow_dispatch`)**: for human review of a candidate
+# MAGIC   before promotion. The shipped `eval-gate.yml` in this repo uses this
+# MAGIC   trigger.
 
 # COMMAND ----------
 
@@ -278,6 +290,11 @@ print("=" * 50)
 # MAGIC       --scorer correctness \
 # MAGIC       --threshold 0.10
 # MAGIC ```
+# MAGIC
+# MAGIC The complete workflow file is at `.github/workflows/eval-gate.yml`
+# MAGIC in this repo. It adds the checkout, Python setup, secret-based
+# MAGIC tracking URI, and a `min_overlap` input for production use. Copy it
+# MAGIC into your own repo and customize the trigger.
 
 # COMMAND ----------
 
@@ -293,7 +310,7 @@ print("=" * 50)
 # MAGIC       tasks:
 # MAGIC         - task_key: evaluate_candidate
 # MAGIC           notebook_task:
-# MAGIC             notebook_path: /Repos/.../01_mlflow_evaluation_ecosystem
+# MAGIC             notebook_path: /Workspace/Users/<your-email>/mlflow-eval-workshop/notebooks/01_mlflow_evaluation_ecosystem
 # MAGIC           parameters:
 # MAGIC             model_uri: "{{model_uri}}"
 # MAGIC
@@ -301,7 +318,7 @@ print("=" * 50)
 # MAGIC           depends_on:
 # MAGIC             - task_key: evaluate_candidate
 # MAGIC           notebook_task:
-# MAGIC             notebook_path: /Repos/.../04_evaluation_gate
+# MAGIC             notebook_path: /Workspace/Users/<your-email>/mlflow-eval-workshop/notebooks/04_evaluation_gate
 # MAGIC           parameters:
 # MAGIC             baseline_run_id: "{{baseline_run_id}}"
 # MAGIC             candidate_run_id: "{{candidate_run_id}}"
@@ -311,7 +328,7 @@ print("=" * 50)
 # MAGIC           depends_on:
 # MAGIC             - task_key: compare_and_gate
 # MAGIC           notebook_task:
-# MAGIC             notebook_path: /Repos/.../promote_to_production
+# MAGIC             notebook_path: /Workspace/Users/<your-email>/mlflow-eval-workshop/notebooks/promote_to_production
 # MAGIC           # Only runs if compare_and_gate succeeds
 # MAGIC ```
 
@@ -319,6 +336,11 @@ print("=" * 50)
 
 # MAGIC %md
 # MAGIC ### Log gate results to MLflow
+# MAGIC
+# MAGIC Logging each gate decision as its own MLflow run gives you queryable
+# MAGIC history of every gate firing. Useful for incident review and quarterly
+# MAGIC model-quality reports: "show me every blocked model in Q1 with their
+# MAGIC regression rate" becomes one MLflow search query.
 
 # COMMAND ----------
 
