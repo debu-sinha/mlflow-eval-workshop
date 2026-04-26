@@ -65,3 +65,5 @@ from mlflow.genai.scorers.trulens import Groundedness  # noqa: F401
 print("Core scorers: OK")
 print("Phoenix scorer: OK")
 print("TruLens scorer: OK")
+print()
+print("READY. Continue to the next cell.")
