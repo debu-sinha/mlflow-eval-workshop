@@ -11,8 +11,6 @@
 
 # COMMAND ----------
 
-# COMMAND ----------
-
 _nb_path = (
     dbutils.notebook.entry_point.getDbutils()  # noqa: F821
     .notebook()
