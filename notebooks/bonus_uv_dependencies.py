@@ -24,7 +24,7 @@ print(f"Installing workshop requirements from: {REQ_PATH}")
 
 # COMMAND ----------
 
-# MAGIC %pip install -q -r $REQ_PATH
+# MAGIC %pip install -q -r $REQ_PATH uv
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
@@ -84,9 +84,12 @@ print(f"Working directory: {_repo_root}")
 print(f"uv.lock present:   {(_repo_root / 'uv.lock').exists()}")
 
 if shutil.which("uv") is None:
-    print(
-        "uv binary not found on PATH. MLflow will fall back to runtime "
-        "dependency inference; the uv-pinned output below will not be produced."
+    raise RuntimeError(
+        "uv binary not found on PATH after install. The lockfile-pinning "
+        "demo below cannot run because MLflow requires the uv CLI to "
+        "export from uv.lock. Verify the install cell at the top of this "
+        "notebook completed successfully and that the kernel restart "
+        "picked up the new venv bin directory."
     )
 
 # COMMAND ----------

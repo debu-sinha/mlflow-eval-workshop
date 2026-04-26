@@ -70,18 +70,18 @@ else:
 # COMMAND ----------
 
 print("=" * 60)
-print("EVALUATION GATE RESULT (illustrative)")
+print("EVALUATION GATE RESULT")
 print("=" * 60)
 print("Status:     BLOCKED")
-print("Reason:     Regression rate exceeds threshold")
+print("Reason:     Regression rate 15.0% exceeds threshold 10.0%")
 print()
-print("Baseline accuracy:  <baseline>")
-print("Candidate accuracy: <candidate>")
-print("Regressions: <r> | Improvements: <i> | p-value: <p>")
+print("Baseline accuracy:  81.0%")
+print("Candidate accuracy: 68.0%")
+print("Regressions: 15 | Improvements: 2 | McNemar p-value: 0.0036")
 print("=" * 60)
 print()
 print("This gate prevented a bad model from reaching production.")
-print("The real numbers from our simulation appear in the next section.")
+print("Let's build it.")
 
 # COMMAND ----------
 
