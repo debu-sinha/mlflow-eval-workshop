@@ -228,6 +228,7 @@ Built MLflow's first third-party scorer integrations ([Phoenix](https://github.c
 
 - [LinkedIn](https://linkedin.com/in/debusinha)
 - [GitHub](https://github.com/debu-sinha)
+- [ODSC AI East 2026 talk page](https://odsc.ai/speakers-portfolio/evaluating-llm-applications-with-mlflow/)
 
 **ODSC AI East 2026** | April 29, 12:05 PM ET | Hynes Convention Center, Boston | 60 minutes
 
