@@ -33,3 +33,10 @@ all = [
 
 [dependency-groups]
 dev = ["ruff>=0.14", "pytest>=8.0"]
+
+[tool.pytest.ini_options]
+# Put the repo root on sys.path so tests can import eval_gate without
+# needing a src/ layout or a package install. Required for pytest 9+,
+# whose default sys.path behavior no longer adds the rootdir
+# automatically when tests live in a non-package directory.
+pythonpath = ["."]
