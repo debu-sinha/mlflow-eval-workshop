@@ -12,9 +12,15 @@ readme = "README.md"
 # feedback_value_type, and that signature landed in MLflow 3.9.
 dependencies = [
     "mlflow[genai]>=3.9,<4.0",
-    "arize-phoenix-evals>=0.22",
-    "trulens>=1.4",
-    "trulens-providers-litellm>=1.4",
+    # arize-phoenix-evals 3.x dropped LiteLLMModel which MLflow's Phoenix
+    # scorer integration imports. Pin <3.0 until mlflow/mlflow updates.
+    "arize-phoenix-evals>=2.11,<3.0",
+    "trulens>=1.4,<3.0",
+    "trulens-providers-litellm>=1.4,<3.0",
+    # litellm 1.82.7 and 1.82.8 were reported as compromised supply-chain
+    # releases. The lockfile pins 1.82.6 (pre-incident); this exclude
+    # protects fresh local installs that resolve the latest version.
+    "litellm>=1.82.6,!=1.82.7,!=1.82.8",
     "scikit-learn>=1.4",
     "numpy>=1.26",
     "openai>=1.50",
