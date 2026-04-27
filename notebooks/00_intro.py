@@ -102,8 +102,20 @@
 # MAGIC %md
 # MAGIC ## Prerequisites
 # MAGIC
-# MAGIC **On Databricks:** Run `00_setup` first, then open Module 1.
-# MAGIC Each notebook has its own `%pip install` cell that runs automatically.
+# MAGIC **On Databricks:** Each module has three preamble cells: compute an
+# MAGIC absolute path to `requirements-workshop.txt`, install it with `%pip`,
+# MAGIC and `%run ./_verify_environment` to confirm the pinned versions
+# MAGIC loaded. The verify helper is not meant to be run on its own.
+# MAGIC
+# MAGIC **What to expect during install.** The `%pip install` cell prints a
+# MAGIC few `pip's dependency resolver` warnings about `numpy`, `protobuf`,
+# MAGIC `databricks-connect`, and `google-api-core`. These come from the
+# MAGIC Databricks Serverless base image asking for older versions of
+# MAGIC packages we are upgrading. They are cosmetic, do not affect the
+# MAGIC workshop, and clear themselves once Python restarts. The cell
+# MAGIC immediately after the restart prints `Workshop dependency
+# MAGIC versions:` followed by a clean version table — that is your signal
+# MAGIC that the environment is ready.
 # MAGIC
 # MAGIC **Locally:** `pip install .` from the repo root. Set `OPENAI_API_KEY`.
 # MAGIC Start MLflow: `mlflow server --backend-store-uri sqlite:///mlflow_workshop.db --port 5000`

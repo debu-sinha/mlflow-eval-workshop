@@ -11,8 +11,25 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] scikit-learn -q
+_nb_path = (
+    dbutils.notebook.entry_point.getDbutils()  # noqa: F821
+    .notebook()
+    .getContext()
+    .notebookPath()
+    .get()
+)
+_repo_root = "/Workspace" + "/".join(_nb_path.split("/")[:-2])
+REQ_PATH = f"{_repo_root}/requirements-workshop.txt"
+print(f"Installing workshop requirements from: {REQ_PATH}")
+
+# COMMAND ----------
+
+# MAGIC %pip install -q -r $REQ_PATH uv
 # MAGIC dbutils.library.restartPython()
+
+# COMMAND ----------
+
+# MAGIC %run ./_verify_environment
 
 # COMMAND ----------
 
@@ -41,6 +58,39 @@ if ON_DATABRICKS:
 else:
     mlflow.set_tracking_uri("sqlite:///mlflow_workshop.db")
     mlflow.set_experiment("odsc-eval-workshop")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Check the working directory
+# MAGIC
+# MAGIC MLflow looks for `uv.lock` in the current working directory. If the
+# MAGIC notebook launched from `notebooks/` the lockfile is one level up,
+# MAGIC so we hop to the repo root before logging the model.
+
+# COMMAND ----------
+
+import shutil
+from pathlib import Path
+
+_repo_root = Path.cwd()
+if not (_repo_root / "uv.lock").exists():
+    _candidate = _repo_root.parent
+    if (_candidate / "uv.lock").exists():
+        os.chdir(_candidate)
+        _repo_root = _candidate
+
+print(f"Working directory: {_repo_root}")
+print(f"uv.lock present:   {(_repo_root / 'uv.lock').exists()}")
+
+if shutil.which("uv") is None:
+    raise RuntimeError(
+        "uv binary not found on PATH after install. The lockfile-pinning "
+        "demo below cannot run because MLflow requires the uv CLI to "
+        "export from uv.lock. Verify the install cell at the top of this "
+        "notebook completed successfully and that the kernel restart "
+        "picked up the new venv bin directory."
+    )
 
 # COMMAND ----------
 

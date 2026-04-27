@@ -9,8 +9,27 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] numpy databricks-agents -q
+# COMMAND ----------
+
+_nb_path = (
+    dbutils.notebook.entry_point.getDbutils()  # noqa: F821
+    .notebook()
+    .getContext()
+    .notebookPath()
+    .get()
+)
+_repo_root = "/Workspace" + "/".join(_nb_path.split("/")[:-2])
+REQ_PATH = f"{_repo_root}/requirements-workshop.txt"
+print(f"Installing workshop requirements from: {REQ_PATH}")
+
+# COMMAND ----------
+
+# MAGIC %pip install -q -r $REQ_PATH
 # MAGIC dbutils.library.restartPython()
+
+# COMMAND ----------
+
+# MAGIC %run ./_verify_environment
 
 # COMMAND ----------
 
@@ -56,9 +75,9 @@ print("=" * 60)
 print("Status:     BLOCKED")
 print("Reason:     Regression rate 15.0% exceeds threshold 10.0%")
 print()
-print("Baseline accuracy:  85.0%")
-print("Candidate accuracy: 72.0%")
-print("Regressions: 15 | Improvements: 2 | p-value: 0.0026")
+print("Baseline accuracy:  81.0%")
+print("Candidate accuracy: 68.0%")
+print("Regressions: 15 | Improvements: 2 | McNemar p-value: 0.0036")
 print("=" * 60)
 print()
 print("This gate prevented a bad model from reaching production.")
@@ -228,6 +247,18 @@ print("=" * 50)
 # MAGIC The eval gate runs as part of your deployment pipeline. Below are two
 # MAGIC patterns: a generic Python script for any CI system, and a Databricks
 # MAGIC Workflows configuration.
+# MAGIC
+# MAGIC ### When does the gate fire?
+# MAGIC
+# MAGIC Three common trigger patterns. Pick one based on your release cadence:
+# MAGIC
+# MAGIC - **PR-triggered**: every pull request that touches model config runs
+# MAGIC   the gate against the latest production run. Blocks merge on regression.
+# MAGIC - **Scheduled**: nightly job evaluates the latest staging model against
+# MAGIC   production. Pages oncall if the gate blocks.
+# MAGIC - **Manual (`workflow_dispatch`)**: for human review of a candidate
+# MAGIC   before promotion. The shipped `eval-gate.yml` in this repo uses this
+# MAGIC   trigger.
 
 # COMMAND ----------
 
@@ -259,6 +290,11 @@ print("=" * 50)
 # MAGIC       --scorer correctness \
 # MAGIC       --threshold 0.10
 # MAGIC ```
+# MAGIC
+# MAGIC The complete workflow file is at `.github/workflows/eval-gate.yml`
+# MAGIC in this repo. It adds the checkout, Python setup, secret-based
+# MAGIC tracking URI, and a `min_overlap` input for production use. Copy it
+# MAGIC into your own repo and customize the trigger.
 
 # COMMAND ----------
 
@@ -274,7 +310,7 @@ print("=" * 50)
 # MAGIC       tasks:
 # MAGIC         - task_key: evaluate_candidate
 # MAGIC           notebook_task:
-# MAGIC             notebook_path: /Repos/.../01_mlflow_evaluation_ecosystem
+# MAGIC             notebook_path: /Workspace/Users/<your-email>/mlflow-eval-workshop/notebooks/01_mlflow_evaluation_ecosystem
 # MAGIC           parameters:
 # MAGIC             model_uri: "{{model_uri}}"
 # MAGIC
@@ -282,7 +318,7 @@ print("=" * 50)
 # MAGIC           depends_on:
 # MAGIC             - task_key: evaluate_candidate
 # MAGIC           notebook_task:
-# MAGIC             notebook_path: /Repos/.../04_evaluation_gate
+# MAGIC             notebook_path: /Workspace/Users/<your-email>/mlflow-eval-workshop/notebooks/04_evaluation_gate
 # MAGIC           parameters:
 # MAGIC             baseline_run_id: "{{baseline_run_id}}"
 # MAGIC             candidate_run_id: "{{candidate_run_id}}"
@@ -292,7 +328,7 @@ print("=" * 50)
 # MAGIC           depends_on:
 # MAGIC             - task_key: compare_and_gate
 # MAGIC           notebook_task:
-# MAGIC             notebook_path: /Repos/.../promote_to_production
+# MAGIC             notebook_path: /Workspace/Users/<your-email>/mlflow-eval-workshop/notebooks/promote_to_production
 # MAGIC           # Only runs if compare_and_gate succeeds
 # MAGIC ```
 
@@ -300,6 +336,11 @@ print("=" * 50)
 
 # MAGIC %md
 # MAGIC ### Log gate results to MLflow
+# MAGIC
+# MAGIC Logging each gate decision as its own MLflow run gives you queryable
+# MAGIC history of every gate firing. Useful for incident review and quarterly
+# MAGIC model-quality reports: "show me every blocked model in Q1 with their
+# MAGIC regression rate" becomes one MLflow search query.
 
 # COMMAND ----------
 
@@ -415,6 +456,26 @@ else:
 
     import sys
 
+    # The parent notebook may have set the tracking URI via Python API
+    # (e.g. mlflow.set_tracking_uri("sqlite:///...")) and on Databricks it
+    # holds the host + token in the driver process. Neither propagates to a
+    # subprocess, so we thread both through explicitly.
+    _gate_env = {**os.environ, "MLFLOW_TRACKING_URI": mlflow.get_tracking_uri()}
+
+    if ON_DATABRICKS:
+        try:
+            from mlflow.utils.databricks_utils import get_databricks_host_creds
+
+            _creds = get_databricks_host_creds()
+            if getattr(_creds, "host", None):
+                _gate_env["DATABRICKS_HOST"] = _creds.host
+            if getattr(_creds, "token", None):
+                _gate_env["DATABRICKS_TOKEN"] = _creds.token
+        except Exception as _auth_err:
+            print(
+                f"Could not extract Databricks credentials for subprocess: {_auth_err}"
+            )
+
     result = subprocess.run(
         [
             sys.executable,
@@ -429,12 +490,32 @@ else:
         capture_output=True,
         text=True,
         cwd=str(_gate_script.parent),
+        env=_gate_env,
     )
-    print(result.stdout)
+
+    # Strip known-noise lines from the subprocess output so attendees do
+    # not see the Databricks Connect Spark-context warning that fires when
+    # MLflow initializes on Serverless. The gate itself uses the MLflow
+    # REST client and does not need Spark.
+    _noise_patterns = (
+        "Failed to initialize spark connection",
+        "CONTEXT_UNAVAILABLE_FOR_REMOTE_CLIENT",
+        "Remote client cannot create a SparkContext",
+    )
+
+    def _filter_noise(stream: str) -> str:
+        return "\n".join(
+            line
+            for line in (stream or "").splitlines()
+            if not any(p in line for p in _noise_patterns)
+        )
+
+    print(_filter_noise(result.stdout))
     if result.returncode != 0:
         print(f"Gate exit code: {result.returncode}")
-        if result.stderr:
-            print(result.stderr)
+        _err = _filter_noise(result.stderr)
+        if _err.strip():
+            print(_err)
 
 # COMMAND ----------
 

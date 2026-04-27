@@ -13,7 +13,6 @@ A production evaluation pipeline that goes from scorer selection to deployment g
 | # | Module | Time | What you'll do |
 |---|--------|------|----------------|
 | - | Intro | 2 min | Workshop agenda, module flow chart, and links to each notebook |
-| 0 | Setup (optional) | Pre-workshop | Verify all imports work. Each notebook self-installs on Databricks; locally use `pip install .` |
 | 1 | MLflow Evaluation Ecosystem | 20 min | Run built-in, third-party, and custom scorers in one `evaluate()` call |
 | 2 | Production Infrastructure | 8 min | Control judge temperature for determinism, manage scorer concurrency |
 | 3 | Comparing Runs and Regressions | 12 min | Align samples across runs, detect regressions, test significance |
@@ -26,12 +25,22 @@ A production evaluation pipeline that goes from scorer selection to deployment g
 
 Sign up for the [Databricks Free Edition](https://login.databricks.com/signup) if you don't have a workspace. Free Edition includes serverless compute, MLflow tracking, and Git Folders.
 
-1. In the sidebar, click **Workspace > Repos** and open your user folder
-2. Click **Create Git folder**, paste `https://github.com/debu-sinha/mlflow-eval-workshop`
-3. Open `notebooks/01_mlflow_evaluation_ecosystem` and attach to any serverless cluster
-4. The first cell (`%pip install`) installs dependencies automatically
+1. In the sidebar, click **Workspace** and open your user folder.
+2. Click **Create Git folder**, paste `https://github.com/debu-sinha/mlflow-eval-workshop`.
+3. Open `notebooks/01_mlflow_evaluation_ecosystem`.
+4. The first three cells compute an absolute path to `requirements-workshop.txt`, install the pinned workshop dependencies, and then `%run` the shared `_verify_environment` helper to confirm the versions are what the module expects. Each module repeats this pattern because notebook-scoped libraries on Databricks Serverless do not carry across notebooks or sessions. Do not run `_verify_environment` by itself — it does not install anything.
 
 No API keys needed. The notebooks auto-detect Databricks and use Foundation Model APIs. MLflow tracking is built in.
+
+#### Alternative: Databricks Serverless Environment panel
+
+For a faster instructor or attendee setup, configure the notebook environment through the Environment side panel and add the pinned requirements file as a dependency:
+
+```
+-r /Workspace/Users/<your-email>/mlflow-eval-workshop/requirements-workshop.txt
+```
+
+Click **Apply**. Databricks installs the dependencies in the notebook virtual environment and restarts Python automatically. For reuse across all six notebooks, either apply the same custom environment spec to each notebook or use a workspace base environment if your workspace admin has configured one (workspace base environments are Public Preview and admin-managed).
 
 **Model availability:**
 - **Free Edition**: `databricks-gpt-oss-120b` (sufficient for the workshop)
@@ -44,9 +53,12 @@ git clone https://github.com/debu-sinha/mlflow-eval-workshop.git
 cd mlflow-eval-workshop
 
 # Recommended: install with uv for reproducible, lockfile-pinned deps
-# (the repo ships uv.lock; this is what the bonus module teaches)
+# (the repo ships uv.lock, which is what the bonus module teaches)
 uv sync
 uv pip install -e .
+
+# Regenerate the Databricks-facing pinned file (only if the lockfile changes):
+# uv export --frozen --no-dev --extra databricks --no-hashes -o requirements-workshop.txt
 
 # Or with plain pip (no lockfile pinning)
 pip install .
@@ -116,7 +128,7 @@ If you skip this step, Module 1 will print a warning when it tries to install th
 MLflow's evaluation surface is broader than what fits in 60 minutes. Features worth exploring after the workshop:
 
 - **Evaluation datasets**: First-class dataset objects for evaluation-driven development ([docs](https://mlflow.org/docs/latest/genai/datasets/))
-- **Built-in RAG judges**: `Groundedness`, `RelevanceToQuery`, `ChunkRelevance` without third-party deps ([docs](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/llm-judge/predefined/))
+- **Built-in RAG judges**: `RetrievalGroundedness`, `RetrievalRelevance`, and `RetrievalSufficiency` evaluate a trace with a `RETRIEVER` span, and `RelevanceToQuery` evaluates response relevance without a retrieval trace ([docs](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/llm-judge/predefined/))
 - **Judge Builder UI**: Visual judge creation in the MLflow UI (requires MLflow >= 3.9) ([docs](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/llm-judge/predefined/))
 - **Trace-based evaluation**: Pass `mlflow.search_traces()` output directly into `evaluate()` ([docs](https://mlflow.org/docs/latest/genai/eval-monitor/running-evaluation/traces/))
 - **Scheduled scorers**: Automatically evaluate production traces on a schedule ([docs](https://mlflow.org/docs/latest/python_api/mlflow.genai.html))
@@ -124,7 +136,7 @@ MLflow's evaluation surface is broader than what fits in 60 minutes. Features wo
 
 ## The evaluation gate
 
-The repo includes `eval_gate.py`, a standalone script that compares two MLflow evaluation runs and exits with code 1 if the candidate regresses. It aligns samples using MLflow-native identifiers (`client_request_id`, `dataset_record_id`) when available, falling back to a request content hash. The gate fails closed: if fewer than 2 samples overlap, it blocks rather than silently passing. Score parsing handles binary labels (`yes`/`no`), Phoenix-style labels (`factual`/`hallucinated`), booleans, and numeric values.
+The repo includes `eval_gate.py`, a standalone script that compares two MLflow evaluation runs and exits with code 1 if the candidate regresses. It aligns samples using MLflow-native identifiers (`client_request_id`, `dataset_record_id`) when available, falling back to a request content hash. The gate paginates through `search_traces`, validates run IDs before interpolating them into the filter, and fails closed when the number of overlapping samples drops below `--min-overlap`. Score parsing handles binary labels (`yes`/`no`), Phoenix-style labels (`factual`/`hallucinated`), booleans, and numeric values. For binary scorers with small sample counts, the gate falls back to an exact binomial McNemar test. Continuous scorers use a paired sign-flip permutation test.
 
 ```bash
 python eval_gate.py \
@@ -135,6 +147,10 @@ python eval_gate.py \
 ```
 
 The GitHub Actions workflow (`.github/workflows/eval-gate.yml`) wraps this for CI/CD. Point `MLFLOW_TRACKING_URI` at your tracking server and trigger manually with run IDs.
+
+### Production usage
+
+The default `--min-overlap 2` is set for the workshop demo so the small datasets in Modules 3 and 4 can exercise the full gate path. For real deployment gates, pass `--min-overlap 30` (or higher), pin a meaningful `--threshold`, and run the gate against evaluation runs with enough samples for the paired tests to be reliable (`--min-overlap >= 30` puts the binary McNemar path above the small-sample fallback). Unit tests for the gate logic live in `tests/` and run in CI.
 
 ![MLflow Traces with Assessment Data](notebooks/images/mlflow-traces-with-data.png)
 
@@ -157,7 +173,52 @@ MLflow is downloaded over 30 million times per month from PyPI.
 
 ### Setup instructions for attendees
 
-For those who wish to optionally follow along in class, please follow the [setup instructions above](#setup). I won't spend time in class for setup; this is optional.
+For those who wish to optionally follow along in class, please follow the [setup instructions above](#setup). I won't spend time in class for setup, and this step is optional.
+
+### Troubleshooting: `Failed to parse response from judge model`
+
+If a built-in scorer (`Correctness`, `Safety`, `RelevanceToQuery`) fails with:
+
+```
+MlflowException: Failed to parse response from judge model. Response:
+```
+
+the judge model returned an empty or malformed response. On Databricks Free Edition or shared pay-per-token endpoints, the usual causes are rate limits, a low output-token budget, or a reasoning model where reasoning tokens shared the `max_tokens` budget with the visible output and left nothing visible to parse.
+
+Fixes, in order of impact:
+
+1. Use the Databricks managed judge instead of a reasoning endpoint:
+   ```python
+   JUDGE_MODEL = "databricks"
+   ```
+   The workshop defaults to this. If you overrode `WORKSHOP_JUDGE_MODEL` to point at `databricks-gpt-oss-120b` or similar, unset it.
+
+2. Run scorers serially:
+   ```python
+   os.environ["MLFLOW_GENAI_EVAL_MAX_WORKERS"] = "1"
+   os.environ["MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS"] = "1"
+   ```
+   The modules set this by default at the top of the config cell.
+
+3. Give the judge more output budget:
+   ```python
+   Correctness(model=JUDGE_MODEL, inference_params={"temperature": 0.0, "max_tokens": 512})
+   ```
+
+4. Keep `databricks-gpt-oss-120b` as the application model, not the judge:
+   ```python
+   APP_MODEL = "databricks-gpt-oss-120b"   # the model being evaluated
+   JUDGE_MODEL = "databricks"              # the model doing the grading
+   ```
+
+### Before running the workshop
+
+Verify the flow end-to-end on a fresh Databricks Free Edition workspace before the live session. Two specific things to check:
+
+1. The computed absolute path in each module's install cell resolves correctly from the Git Folder location.
+2. PyPI is reachable from Serverless compute (Free Edition restricts outbound to a trusted-domain list that is not officially documented).
+
+If (1) fails, switch the install cell to a literal `/Workspace/Users/<your-email>/mlflow-eval-workshop/requirements-workshop.txt` path or use the Environment side panel. If (2) fails, pre-stage wheels in a UC volume.
 
 ## Speaker
 
@@ -167,6 +228,7 @@ Built MLflow's first third-party scorer integrations ([Phoenix](https://github.c
 
 - [LinkedIn](https://linkedin.com/in/debusinha)
 - [GitHub](https://github.com/debu-sinha)
+- [ODSC AI East 2026 talk page](https://odsc.ai/speakers-portfolio/evaluating-llm-applications-with-mlflow/)
 
 **ODSC AI East 2026** | April 29, 12:05 PM ET | Hynes Convention Center, Boston | 60 minutes
 

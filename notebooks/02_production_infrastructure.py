@@ -10,8 +10,25 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade mlflow[genai] arize-phoenix-evals databricks-agents -q
+_nb_path = (
+    dbutils.notebook.entry_point.getDbutils()  # noqa: F821
+    .notebook()
+    .getContext()
+    .notebookPath()
+    .get()
+)
+_repo_root = "/Workspace" + "/".join(_nb_path.split("/")[:-2])
+REQ_PATH = f"{_repo_root}/requirements-workshop.txt"
+print(f"Installing workshop requirements from: {REQ_PATH}")
+
+# COMMAND ----------
+
+# MAGIC %pip install -q -r $REQ_PATH
 # MAGIC dbutils.library.restartPython()
+
+# COMMAND ----------
+
+# MAGIC %run ./_verify_environment
 
 # COMMAND ----------
 
@@ -22,18 +39,31 @@
 
 import os
 
+# Match Module 1: serial evaluation, extra retries, managed judge on
+# Databricks. See Module 1 for rationale.
+os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_WORKERS", "1")
+os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS", "1")
+os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_RETRIES", "5")
+
 ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
 
 if ON_DATABRICKS:
-    # Free Edition: "databricks:/databricks-gpt-oss-120b"
-    # Enterprise:   "databricks:/databricks-gpt-5-4" or other premium models
-    _default_model = "databricks:/databricks-gpt-oss-120b"
-    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", _default_model)
+    # Managed Databricks judge for evaluation; GPT OSS stays the demo
+    # app model. Do not use GPT OSS as the judge: it is a reasoning
+    # model, so reasoning tokens share the max_tokens budget with the
+    # visible output and a low max_tokens can leave nothing to parse.
+    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", "databricks")
+    APP_MODEL = os.environ.get("WORKSHOP_APP_MODEL", "databricks-gpt-oss-120b")
     print(f"Running on Databricks. Judge model: {JUDGE_MODEL}")
+    print(f"App model:   {APP_MODEL}")
 else:
-    JUDGE_MODEL = "openai:/gpt-4o-mini"
+    JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", "openai:/gpt-4o-mini")
+    APP_MODEL = os.environ.get("WORKSHOP_APP_MODEL", "gpt-4o-mini")
     assert os.environ.get("OPENAI_API_KEY"), "Set OPENAI_API_KEY to run locally"
     print(f"Running locally. Judge model: {JUDGE_MODEL}")
+    print(f"App model:   {APP_MODEL}")
+
+JUDGE_PARAMS = {"temperature": 0.0, "max_tokens": 512}
 
 # COMMAND ----------
 
@@ -113,27 +143,16 @@ eval_data = [
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Default judge (model defaults, typically temperature=1.0)
+# MAGIC ### Build two scorers: a built-in and a custom one
+# MAGIC
+# MAGIC We run both scorers in the same `evaluate()` call so each run has both
+# MAGIC columns populated. No null cells in the comparison view.
 
 # COMMAND ----------
+
+from typing import Literal
 
 from mlflow.genai.scorers import Correctness
-
-results_default = mlflow.genai.evaluate(
-    data=eval_data,
-    scorers=[Correctness()],
-)
-
-print("Default temperature results:")
-for name, value in results_default.metrics.items():
-    print(f"  {name}: {value}")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Custom judge with temperature=0.0
-
-# COMMAND ----------
 
 deterministic_judge = mlflow.genai.make_judge(
     name="correctness_deterministic",
@@ -144,35 +163,72 @@ deterministic_judge = mlflow.genai.make_judge(
         "Response: {{ outputs }}\n"
         "Expected: {{ expectations }}"
     ),
-    inference_params={"temperature": 0.0, "max_tokens": 50},
+    # feedback_value_type pins the judge output to the allowed labels via
+    # the provider's structured-output mode. More reliable than trusting
+    # the judge to follow a "return yes or no" instruction in prose.
+    feedback_value_type=Literal["yes", "no"],
+    # max_tokens=256 leaves room for reasoning-model judges that consume
+    # tokens on internal reasoning before emitting structured output.
+    inference_params={"temperature": 0.0, "max_tokens": 256},
 )
 
-results_deterministic = mlflow.genai.evaluate(
-    data=eval_data,
-    scorers=[deterministic_judge],
-)
+_scorers = [
+    Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
+    deterministic_judge,
+]
 
-print("Deterministic judge results (temperature=0.0):")
-for name, value in results_deterministic.metrics.items():
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### First run
+# MAGIC
+# MAGIC Both scorers evaluate every sample. One run, two scorer columns:
+# MAGIC `correctness` and `correctness_deterministic`.
+
+# COMMAND ----------
+
+results_pair_v1 = mlflow.genai.evaluate(data=eval_data, scorers=_scorers)
+
+print(f"Run 1 ID: {results_pair_v1.run_id}")
+for name, value in results_pair_v1.metrics.items():
     print(f"  {name}: {value}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Run the deterministic judge twice on the same data. With `temperature=0.0`,
-# MAGIC the results should be identical across runs. This matters when you need
-# MAGIC reproducible evaluation baselines.
+# MAGIC ### Second run (same data, same scorers)
+# MAGIC
+# MAGIC Run the identical evaluation again. Both scorers have `temperature=0.0`,
+# MAGIC so per-sample outputs should be stable across the two runs. Provider
+# MAGIC behavior can still vary slightly (caching, sampling tie-breaks), but
+# MAGIC setting temperature to 0 removes the largest source of judge randomness
+# MAGIC and gives you a stable baseline to compare against.
 
 # COMMAND ----------
 
-results_deterministic_v2 = mlflow.genai.evaluate(
-    data=eval_data,
-    scorers=[deterministic_judge],
-)
+results_pair_v2 = mlflow.genai.evaluate(data=eval_data, scorers=_scorers)
 
-print("Second run (same data, same judge):")
-for name, value in results_deterministic_v2.metrics.items():
+print(f"Run 2 ID: {results_pair_v2.run_id}")
+for name, value in results_pair_v2.metrics.items():
     print(f"  {name}: {value}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Compare the two runs in the Evaluation UI
+# MAGIC
+# MAGIC Open the Experiments page for this notebook, select the two run IDs
+# MAGIC printed above, and click **Compare**. Both runs ran the same two
+# MAGIC scorers on the same data, so:
+# MAGIC
+# MAGIC - `correctness` and `correctness_deterministic` columns are populated
+# MAGIC   for every sample in both runs (no null cells).
+# MAGIC - Per-sample values should match across the two runs for both
+# MAGIC   scorers, because both have `temperature=0.0`.
+# MAGIC
+# MAGIC The takeaway: `inference_params` gives you reproducible judge output,
+# MAGIC and `make_judge` lets you build a custom judge with full control over
+# MAGIC the prompt, allowed labels, and inference parameters.
 
 # COMMAND ----------
 
@@ -193,7 +249,7 @@ os.environ["MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS"] = "2"
 results_limited = mlflow.genai.evaluate(
     data=eval_data,
     scorers=[
-        Correctness(),
+        Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
         Hallucination(model=JUDGE_MODEL),
     ],
 )
@@ -246,8 +302,17 @@ del os.environ["MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS"]
 # MAGIC
 # MAGIC The evaluation results table shows one row per sample, with columns for each
 # MAGIC scorer. This is where you spot which specific samples failed. In Module 1,
-# MAGIC the "Berlin" sample should show a correctness failure. In this module, all
-# MAGIC samples should pass since the outputs are factually correct.
+# MAGIC the "Berlin" sample should show a correctness failure. In this module, the
+# MAGIC ML-theory samples are factually correct; whether the managed judge passes
+# MAGIC all of them depends on the judge model, since some managed judges are
+# MAGIC strict on phrasing variance. Open a failing sample and read the judge's
+# MAGIC rationale in the Assessments pane to see what it objected to.
+# MAGIC
+# MAGIC **`make_judge` aggregate metrics**: custom judges built via
+# MAGIC `mlflow.genai.make_judge` surface their per-sample values in
+# MAGIC `result.result_df` but may not currently produce an aggregate key in
+# MAGIC `result.metrics`. Use the Evaluation UI's comparison view (or
+# MAGIC `result_df[scorer_name + "/value"]`) for the custom-judge scores.
 
 # COMMAND ----------
 
