@@ -183,7 +183,7 @@ If a built-in scorer (`Correctness`, `Safety`, `RelevanceToQuery`) fails with:
 MlflowException: Failed to parse response from judge model. Response:
 ```
 
-the judge model returned an empty or malformed response. On Databricks Free Edition or shared pay-per-token endpoints, the usual causes are rate limits, a low output-token budget, or a reasoning model whose reasoning tokens consumed the entire output budget and left nothing visible to parse.
+the judge model returned an empty or malformed response. On Databricks Free Edition or shared pay-per-token endpoints, the usual causes are rate limits, a low output-token budget, or a reasoning model where reasoning tokens shared the `max_tokens` budget with the visible output and left nothing visible to parse.
 
 Fixes, in order of impact:
 

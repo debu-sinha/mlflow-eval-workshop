@@ -91,8 +91,8 @@ else:
 
 # Judge inference settings. temperature=0 removes the largest source of
 # judge randomness; max_tokens=512 leaves headroom for reasoning models
-# that would otherwise burn the output budget on internal reasoning and
-# return empty visible output.
+# whose internal reasoning tokens count against the same budget as the
+# visible output.
 JUDGE_PARAMS = {"temperature": 0.0, "max_tokens": 512}
 
 
@@ -605,7 +605,10 @@ question = "What are the three main components of MLflow?"
 live_answer = ask_llm(question)
 print(f"Question: {question}")
 print(f"Answer: {live_answer}")
-print("(Check the Traces tab to see the LLM call span with latency and token counts)")
+print(
+    "(Check the Traces tab to see the LLM call span with inputs, outputs, and latency."
+)
+print(" Token counts appear when the OpenAI/LiteLLM autolog hooks are active.)")
 
 # COMMAND ----------
 

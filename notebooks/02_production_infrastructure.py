@@ -49,8 +49,9 @@ ON_DATABRICKS = "DATABRICKS_RUNTIME_VERSION" in os.environ
 
 if ON_DATABRICKS:
     # Managed Databricks judge for evaluation; GPT OSS stays the demo
-    # app model. Do not use GPT OSS as the judge: its reasoning-token
-    # budget can consume the output and leave nothing to parse.
+    # app model. Do not use GPT OSS as the judge: it is a reasoning
+    # model, so reasoning tokens share the max_tokens budget with the
+    # visible output and a low max_tokens can leave nothing to parse.
     JUDGE_MODEL = os.environ.get("WORKSHOP_JUDGE_MODEL", "databricks")
     APP_MODEL = os.environ.get("WORKSHOP_APP_MODEL", "databricks-gpt-oss-120b")
     print(f"Running on Databricks. Judge model: {JUDGE_MODEL}")
