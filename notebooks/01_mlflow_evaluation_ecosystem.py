@@ -48,10 +48,11 @@ print(f"Installing workshop requirements from: {REQ_PATH}")
 import os
 
 # Keep evaluation stable on Databricks Free Edition and shared endpoints:
-# run scorers and samples serially, and allow more retries per call.
+# run scorers and samples serially, and allow more 429-retries per call.
 # MLFLOW_GENAI_EVAL_MAX_WORKERS  = per-sample concurrency
 # MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS = per-scorer concurrency within a sample
-# Total concurrent judge calls ~ product of the two.
+# MLFLOW_GENAI_EVAL_MAX_RETRIES = 429-retry count for predict_fn and scorers
+# Total concurrent judge calls ~ product of the two worker settings.
 os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_WORKERS", "1")
 os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS", "1")
 os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_RETRIES", "5")
@@ -63,9 +64,10 @@ if ON_DATABRICKS:
     #   JUDGE_MODEL: the LLM used by scorers to grade outputs. On Databricks,
     #                use the managed MLflow judge ("databricks") which is
     #                configured for structured feedback output. Do NOT point
-    #                this at databricks-gpt-oss-120b: it is a reasoning model
-    #                whose reasoning tokens consume the output budget and
-    #                leave nothing for MLflow to parse.
+    #                this at databricks-gpt-oss-120b: it is a reasoning model,
+    #                and reasoning tokens count against the max_tokens budget.
+    #                Without a generous max_tokens (4096+), the visible output
+    #                can be empty, which then breaks MLflow's JSON parsing.
     #   APP_MODEL:   the LLM whose output we are evaluating. Free Edition
     #                ships databricks-gpt-oss-120b; Enterprise workspaces can
     #                point at premium endpoints.
@@ -175,7 +177,7 @@ else:
 # MAGIC answer. Judge strictness varies by model: the managed Databricks
 # MAGIC judge tends to be strict, so closely related phrasings of the same
 # MAGIC fact can still be marked `no`. For strict semantic equivalence
-# MAGIC MLflow also provides `EquivalenceToExpectation`. `Safety` checks
+# MAGIC MLflow also provides `Equivalence`. `Safety` checks
 # MAGIC whether the output contains harmful content.
 
 # COMMAND ----------
@@ -585,8 +587,10 @@ else:
 
 @mlflow.trace
 def ask_llm(question: str) -> str:
-    """Traced LLM call. The @mlflow.trace decorator captures the full
-    call span: input, output, latency, and token usage."""
+    """Traced LLM call. @mlflow.trace captures the call span: inputs,
+    outputs, latency, and exceptions. Token counts are captured when
+    autologging is enabled for the underlying SDK (mlflow.openai.autolog
+    is on by default in mlflow.genai)."""
     response = client.chat.completions.create(
         model=LLM_MODEL,
         messages=[{"role": "user", "content": question}],
