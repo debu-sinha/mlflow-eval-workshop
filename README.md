@@ -82,9 +82,18 @@ for native cell execution, or convert to `.ipynb` for standard Jupyter:
 
 ```bash
 # Convert to .ipynb (jupytext is included in the local extras)
-pip install -e ".[local]"
+pip install ".[local]"
 jupytext --to notebook notebooks/01_mlflow_evaluation_ecosystem.py
+jupyter notebook notebooks/01_mlflow_evaluation_ecosystem.ipynb
 ```
+
+**Skip these cells locally.** Each module's first three cells are the
+Databricks install dance: a `dbutils` path lookup, a `%pip install -r`
+magic, and a `%run ./_verify_environment` magic. The path-lookup cell
+detects local runs and prints a "Skip the next two cells" message — the
+two `%pip` / `%run` magics that follow are Databricks-only and should
+be skipped after `pip install ".[all]"` already gave you the deps. Start
+running cells from the `## Configuration` markdown header onward.
 
 ### Guardrails AI setup (optional)
 

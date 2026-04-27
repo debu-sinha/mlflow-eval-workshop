@@ -12,19 +12,30 @@
 # COMMAND ----------
 
 # Compute an absolute /Workspace/... path to the pinned requirements file.
-# This avoids relying on relative-path resolution, which is undocumented on
-# Serverless. Skip this cell entirely if you configured the Serverless
-# Environment panel to point at requirements-workshop.txt.
-_nb_path = (
-    dbutils.notebook.entry_point.getDbutils()  # noqa: F821
-    .notebook()
-    .getContext()
-    .notebookPath()
-    .get()
-)
-_repo_root = "/Workspace" + "/".join(_nb_path.split("/")[:-2])
-REQ_PATH = f"{_repo_root}/requirements-workshop.txt"
-print(f"Installing workshop requirements from: {REQ_PATH}")
+# On Databricks, this avoids relative-path resolution which is undocumented
+# on Serverless. Locally (no `dbutils`), this cell prints a skip message;
+# the next two cells (%pip install + %run) are Databricks magics and
+# should be skipped locally — install via `pip install '.[all]'` first.
+import os
+
+if "DATABRICKS_RUNTIME_VERSION" in os.environ:
+    _nb_path = (
+        dbutils.notebook.entry_point.getDbutils()  # noqa: F821
+        .notebook()
+        .getContext()
+        .notebookPath()
+        .get()
+    )
+    _repo_root = "/Workspace" + "/".join(_nb_path.split("/")[:-2])
+    REQ_PATH = f"{_repo_root}/requirements-workshop.txt"
+    print(f"Installing workshop requirements from: {REQ_PATH}")
+else:
+    REQ_PATH = None
+    print(
+        "Local run detected. Skip the next two cells (the Databricks "
+        "%pip install + %run helper). Make sure you have already run "
+        "`pip install '.[all]'` from the repo root."
+    )
 
 # COMMAND ----------
 
