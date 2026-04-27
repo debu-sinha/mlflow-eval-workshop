@@ -42,9 +42,10 @@ For a faster instructor or attendee setup, configure the notebook environment th
 
 Click **Apply**. Databricks installs the dependencies in the notebook virtual environment and restarts Python automatically. For reuse across all six notebooks, either apply the same custom environment spec to each notebook or use a workspace base environment if your workspace admin has configured one (workspace base environments are Public Preview and admin-managed).
 
-**Model availability:**
-- **Free Edition**: `databricks-gpt-oss-120b` (sufficient for the workshop)
-- **Enterprise**: Premium models like `databricks-gpt-5-4`. Set `WORKSHOP_JUDGE_MODEL` on the cluster to override.
+**Model roles:** the workshop uses two model identifiers, with separate defaults:
+
+- `JUDGE_MODEL` (the model that grades outputs) defaults to `"databricks"`, the managed MLflow judge. Override with the `WORKSHOP_JUDGE_MODEL` cluster env var. Do **not** point this at a reasoning model like `databricks-gpt-oss-120b` — see Troubleshooting below.
+- `APP_MODEL` (the model whose output is being evaluated) defaults to `databricks-gpt-oss-120b` on Free Edition. Override with the `WORKSHOP_APP_MODEL` env var. On Enterprise workspaces you can point this at a premium endpoint like `databricks-gpt-5-4`.
 
 ### Option B: Run locally
 
@@ -116,7 +117,7 @@ If you skip this step, Module 1 will print a warning when it tries to install th
 
 ## What you'll learn
 
-1. Run built-in scorers (`Correctness`, `Safety`) and third-party scorers (Phoenix `Hallucination`, TruLens `Groundedness`, Guardrails `DetectPII`) from a single `mlflow.genai.evaluate()` call
+1. Run built-in scorers (`Correctness`, `Safety`, `RelevanceToQuery`), third-party scorers (Phoenix `Hallucination`, TruLens `Groundedness`, Guardrails `DetectPII`), and custom scorers through `mlflow.genai.evaluate()` — picking the scorer set that matches each dataset shape (with or without retrieval context)
 2. Write custom scorers with the `@scorer` decorator and mix them with built-in and third-party scorers
 3. Call a real LLM, evaluate its response, and inspect traces in the MLflow UI
 4. Configure judge parameters (`temperature=0.0`) and scorer concurrency (`MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS`) for reproducible evaluations
