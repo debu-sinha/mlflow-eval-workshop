@@ -8,10 +8,10 @@ authors = [{ name = "Debu Sinha", email = "debusinha2009@gmail.com" }]
 readme = "README.md"
 
 # Core deps: enough to run all modules except Guardrails DetectPII.
-# mlflow pinned to >=3.9 because Module 2 uses mlflow.genai.make_judge with
-# feedback_value_type, and that signature landed in MLflow 3.9.
+# mlflow pinned to >=3.11 because the bonus_uv_dependencies notebook uses
+# uv lockfile auto-detection (mlflow.utils.uv_utils), which shipped in 3.11.0.
 dependencies = [
-    "mlflow[genai]>=3.9,<4.0",
+    "mlflow[genai]>=3.11,<4.0",
     # arize-phoenix-evals 3.x dropped LiteLLMModel which MLflow's Phoenix
     # scorer integration imports. Pin <3.0 until mlflow/mlflow updates.
     "arize-phoenix-evals>=2.11,<3.0",

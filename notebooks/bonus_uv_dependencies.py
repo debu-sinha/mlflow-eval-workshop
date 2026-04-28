@@ -34,7 +34,7 @@ else:
 
 # COMMAND ----------
 
-# MAGIC %pip install -q -r $REQ_PATH 'mlflow[genai]>=3.11' uv
+# MAGIC %pip install -q -r $REQ_PATH uv
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
