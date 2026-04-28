@@ -391,6 +391,9 @@ results_phoenix = mlflow.genai.evaluate(
 print("Phoenix Hallucination (context-grounded):")
 for name, value in results_phoenix.metrics.items():
     print(f"  {name}: {value}")
+# Phoenix returns string labels (hallucinated/factual), not numeric scores,
+# so aggregate metrics (mean/min/max) are empty. Per-sample results are
+# visible in the Traces tab above: click "View evaluation results in MLflow."
 
 # COMMAND ----------
 
