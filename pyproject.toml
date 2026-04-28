@@ -22,7 +22,8 @@ dependencies = [
     # protects fresh local installs that resolve the latest version.
     "litellm>=1.82.6,!=1.82.7,!=1.82.8",
     "scikit-learn>=1.4",
-    "numpy>=1.26",
+    "numpy>=1.26,<2",       # databricks-connect in the runtime requires <2
+    "protobuf>=4.25,<6",    # google-api-core/grpcio-status in the runtime require <6
     "openai>=1.50",
     "nltk>=3.9",
 ]

@@ -428,22 +428,7 @@ notebook-shim==0.2.4
     # via
     #   jupyterlab
     #   notebook
-numpy==2.2.6 ; python_full_version < '3.11'
-    # via
-    #   contourpy
-    #   databricks-agents
-    #   matplotlib
-    #   mlflow
-    #   mlflow-eval-workshop
-    #   pandas
-    #   pydeck
-    #   scikit-learn
-    #   scipy
-    #   skops
-    #   streamlit
-    #   trulens-core
-    #   trulens-feedback
-numpy==2.4.3 ; python_full_version >= '3.11'
+numpy==1.26.4
     # via
     #   contourpy
     #   databricks-agents
@@ -556,10 +541,11 @@ propcache==0.4.1
     # via
     #   aiohttp
     #   yarl
-protobuf==6.33.6
+protobuf==5.29.6
     # via
     #   databricks-sdk
     #   googleapis-common-protos
+    #   mlflow-eval-workshop
     #   mlflow-skinny
     #   mlflow-tracing
     #   opentelemetry-proto
