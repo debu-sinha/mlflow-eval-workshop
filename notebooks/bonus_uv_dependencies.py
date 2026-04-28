@@ -34,7 +34,7 @@ else:
 
 # COMMAND ----------
 
-# MAGIC %pip install -q -r $REQ_PATH uv
+# MAGIC %pip install -q -r $REQ_PATH 'mlflow[genai]>=3.11' uv
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
@@ -107,6 +107,10 @@ if shutil.which("uv") is None:
 # MAGIC %md
 # MAGIC ## How uv lockfiles work with MLflow
 # MAGIC
+# MAGIC **Requires MLflow >= 3.11.** uv lockfile auto-detection was added in
+# MAGIC [PR #20344](https://github.com/mlflow/mlflow/pull/20344) and shipped in
+# MAGIC MLflow 3.11.0.
+# MAGIC
 # MAGIC When you log a model from a uv-managed project, MLflow reads your
 # MAGIC `uv.lock` file and pins every dependency (including transitive ones)
 # MAGIC to the exact version you tested with.
@@ -114,6 +118,65 @@ if shutil.which("uv") is None:
 # MAGIC Without uv, MLflow infers dependencies from the Python runtime. With uv,
 # MAGIC MLflow gets exact pins from the lockfile. The result is a `requirements.txt`
 # MAGIC inside the model artifact that precisely matches your development environment.
+# MAGIC
+# MAGIC MLflow auto-detects `uv.lock` and `pyproject.toml` in the current working
+# MAGIC directory. On Databricks, the notebook's default cwd may not be the repo
+# MAGIC root, so we explicitly set it below.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Set working directory to repo root
+# MAGIC
+# MAGIC MLflow's uv auto-detection checks `Path.cwd()` for `uv.lock` and
+# MAGIC `pyproject.toml`. On Databricks, the default cwd is the driver directory,
+# MAGIC not the repo root. We fix that here.
+
+# COMMAND ----------
+
+import os
+from pathlib import Path
+
+if ON_DATABRICKS:
+    _repo_root = Path("/Workspace" + "/".join(_nb_path.split("/")[:-2]))
+else:
+    _repo_root = Path(__file__).resolve().parent.parent
+
+if (_repo_root / "uv.lock").exists():
+    os.chdir(_repo_root)
+    print(f"Working directory: {Path.cwd()}")
+    print(f"uv.lock found: {(_repo_root / 'uv.lock').exists()}")
+    print(f"pyproject.toml found: {(_repo_root / 'pyproject.toml').exists()}")
+else:
+    print(f"WARNING: uv.lock not found at {_repo_root}")
+    print("uv auto-detection will not work. Model will use runtime inference.")
+
+# COMMAND ----------
+
+# Verify uv is installed and MLflow can find it
+import shutil
+import subprocess
+
+uv_bin = shutil.which("uv")
+if uv_bin:
+    result = subprocess.run([uv_bin, "--version"], capture_output=True, text=True)
+    print(f"uv binary: {uv_bin}")
+    print(f"uv version: {result.stdout.strip()}")
+else:
+    print("WARNING: uv not found on PATH. Install with: pip install uv")
+
+# Verify MLflow version has uv support
+try:
+    from mlflow.utils.uv_utils import detect_uv_project
+
+    project = detect_uv_project()
+    if project:
+        print(f"MLflow detected uv project at: {project.uv_lock.parent}")
+    else:
+        print("MLflow did not detect a uv project at current directory")
+except ImportError:
+    print(f"ERROR: mlflow {mlflow.__version__} does not have uv support.")
+    print("uv lockfile auto-detection requires mlflow >= 3.11.0")
 
 # COMMAND ----------
 
