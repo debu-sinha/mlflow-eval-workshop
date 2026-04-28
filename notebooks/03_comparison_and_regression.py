@@ -9,8 +9,6 @@
 
 # COMMAND ----------
 
-# COMMAND ----------
-
 import os
 
 if "DATABRICKS_RUNTIME_VERSION" in os.environ:

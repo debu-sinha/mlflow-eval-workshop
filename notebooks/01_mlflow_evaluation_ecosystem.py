@@ -9,8 +9,6 @@
 
 # COMMAND ----------
 
-# COMMAND ----------
-
 # Compute an absolute /Workspace/... path to the pinned requirements file.
 # On Databricks, this avoids relative-path resolution which is undocumented
 # on Serverless. Locally (no `dbutils`), this cell prints a skip message;
