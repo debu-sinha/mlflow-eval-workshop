@@ -398,6 +398,15 @@ for name, value in results_phoenix.metrics.items():
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC **Expected result in the Traces tab:** Phoenix labels each sample as
+# MAGIC `hallucinated` or `factual`. Aggregate metrics are empty because you
+# MAGIC cannot average a string. The per-sample labels live in the Traces tab:
+# MAGIC
+# MAGIC ![Phoenix Hallucination traces](images/phoenix-hallucination-traces.png)
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC Now combine third-party scorers with built-ins in one call. The
 # MAGIC non-RAG dataset (`eval_dataset`) has no retrieval context, so we
 # MAGIC only run scorers that do not require it here.
