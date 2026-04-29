@@ -56,7 +56,7 @@
 
 <!-- Subtitles under each module -->
 <text x="112" y="214" font-size="11" fill="#495057" text-anchor="middle">Score outputs with</text>
-<text x="112" y="228" font-size="11" fill="#495057" text-anchor="middle">4 scorer types in</text>
+<text x="112" y="228" font-size="11" fill="#495057" text-anchor="middle">3 scorer types in</text>
 <text x="112" y="242" font-size="11" fill="#495057" text-anchor="middle">one evaluate() call</text>
 
 <text x="328" y="214" font-size="11" fill="#495057" text-anchor="middle">Control judge temp</text>
