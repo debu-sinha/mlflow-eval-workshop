@@ -407,16 +407,20 @@ for name, value in results_phoenix.metrics.items():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Now combine built-in scorers with an optional third-party scorer
-# MAGIC in one call. The non-RAG dataset (`eval_dataset`) has no retrieval
-# MAGIC context, so we only run scorers that do not require it here.
+# MAGIC Now combine built-in and third-party scorers in one `evaluate()` call.
+# MAGIC The non-RAG dataset (`eval_dataset`) has no retrieval context, so we
+# MAGIC only run scorers that do not require it. TruLens `Coherence` checks
+# MAGIC whether the response is logically consistent and well-structured.
 
 # COMMAND ----------
+
+from mlflow.genai.scorers.trulens import Coherence
 
 _combined_scorers = [
     Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
     Safety(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
     RelevanceToQuery(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
+    Coherence(model=JUDGE_MODEL),
 ]
 if GUARDRAILS_AVAILABLE:
     _combined_scorers.append(DetectPII())
@@ -426,7 +430,7 @@ results_combined = mlflow.genai.evaluate(
     scorers=_combined_scorers,
 )
 
-print("Combined results:")
+print("Combined results (built-in + TruLens):")
 for name, value in results_combined.metrics.items():
     print(f"  {name}: {value}")
 
