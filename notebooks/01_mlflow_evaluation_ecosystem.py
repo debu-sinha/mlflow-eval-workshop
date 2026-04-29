@@ -407,26 +407,26 @@ for name, value in results_phoenix.metrics.items():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Now combine third-party scorers with built-ins in one call. The
-# MAGIC non-RAG dataset (`eval_dataset`) has no retrieval context, so we
-# MAGIC only run scorers that do not require it here.
+# MAGIC Now combine built-in scorers with an optional third-party scorer
+# MAGIC in one call. The non-RAG dataset (`eval_dataset`) has no retrieval
+# MAGIC context, so we only run scorers that do not require it here.
 
 # COMMAND ----------
 
-_thirdparty_scorers = [
+_combined_scorers = [
     Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
     Safety(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
 ]
 if GUARDRAILS_AVAILABLE:
-    _thirdparty_scorers.append(DetectPII())
+    _combined_scorers.append(DetectPII())
 
-results_thirdparty = mlflow.genai.evaluate(
+results_combined = mlflow.genai.evaluate(
     data=eval_dataset,
-    scorers=_thirdparty_scorers,
+    scorers=_combined_scorers,
 )
 
 print("Combined results (built-in + third-party):")
-for name, value in results_thirdparty.metrics.items():
+for name, value in results_combined.metrics.items():
     print(f"  {name}: {value}")
 
 # COMMAND ----------
