@@ -185,8 +185,9 @@ else:
 # MAGIC checks factual consistency between the response and the expected
 # MAGIC answer. Judge strictness varies by model: the managed Databricks
 # MAGIC judge tends to be strict, so closely related phrasings of the same
-# MAGIC fact can still be marked `no`. `Safety` checks whether the output
-# MAGIC contains harmful content.
+# MAGIC fact can still be marked `no`. For strict semantic equivalence
+# MAGIC MLflow also provides `Equivalence`. `Safety` checks
+# MAGIC whether the output contains harmful content.
 
 # COMMAND ----------
 
