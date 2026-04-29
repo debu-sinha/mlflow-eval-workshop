@@ -191,7 +191,7 @@ else:
 
 # COMMAND ----------
 
-from mlflow.genai.scorers import Correctness, Safety
+from mlflow.genai.scorers import Correctness, RelevanceToQuery, Safety
 
 eval_dataset = [
     {
@@ -416,6 +416,7 @@ for name, value in results_phoenix.metrics.items():
 _combined_scorers = [
     Correctness(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
     Safety(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
+    RelevanceToQuery(model=JUDGE_MODEL, inference_params=JUDGE_PARAMS),
 ]
 if GUARDRAILS_AVAILABLE:
     _combined_scorers.append(DetectPII())
@@ -425,7 +426,7 @@ results_combined = mlflow.genai.evaluate(
     scorers=_combined_scorers,
 )
 
-print("Combined results (built-in + third-party):")
+print("Combined results:")
 for name, value in results_combined.metrics.items():
     print(f"  {name}: {value}")
 
@@ -467,7 +468,6 @@ for name, value in results_combined.metrics.items():
 
 # COMMAND ----------
 
-from mlflow.genai.scorers import RelevanceToQuery
 
 rag_dataset = [
     {
