@@ -1,49 +1,39 @@
 [project]
 name = "mlflow-eval-workshop"
 version = "0.1.0"
-description = "ODSC AI East 2026: Evaluating LLM Applications with MLflow"
-requires-python = ">=3.10"
+description = "ODSC AI West 2026: Evaluating LLM Applications with MLflow"
+# NumPy 1.26 supports Python 3.10-3.12. Use 3.12 for the local workshop.
+requires-python = ">=3.10,<3.13"
 license = "Apache-2.0"
 authors = [{ name = "Debu Sinha", email = "debusinha2009@gmail.com" }]
 readme = "README.md"
 
-# Core deps: enough to run all modules except Guardrails DetectPII.
-# mlflow pinned to >=3.11 because the bonus_uv_dependencies notebook uses
-# uv lockfile auto-detection (mlflow.utils.uv_utils), which shipped in 3.11.0.
+# Core dependencies for the West evaluation exercises.
+# Third-party evaluator frameworks are optional advanced material.
 dependencies = [
-    "mlflow[genai]>=3.11,<4.0",
-    # arize-phoenix-evals 3.x dropped LiteLLMModel which MLflow's Phoenix
-    # scorer integration imports. Pin <3.0 until mlflow/mlflow updates.
-    "arize-phoenix-evals>=2.11,<3.0",
-    "trulens>=1.4,<3.0",
-    "trulens-providers-litellm>=1.4,<3.0",
-    # litellm 1.82.7 and 1.82.8 were reported as compromised supply-chain
-    # releases. The lockfile pins 1.82.6 (pre-incident); this exclude
-    # protects fresh local installs that resolve the latest version.
-    "litellm>=1.82.6,!=1.82.7,!=1.82.8",
+    "mlflow[genai]==3.16.0",
     "scikit-learn>=1.4",
     "numpy>=1.26,<2",       # databricks-connect in the runtime requires <2
-    "protobuf>=5.26.1,<6",  # grpcio-status needs >=5.26.1; google-api-core warning is cosmetic
-    "openai>=1.50",
-    "nltk>=3.9",
+    "protobuf>=5.26.1,<6",  # retain the tested Databricks runtime constraint
+    "openai>=2.54",  # refreshable bearer-token callable for Databricks unified auth
 ]
 
 [project.optional-dependencies]
-guardrails = [
-    "guardrails-ai>=0.6,<1.0",
+ecosystem = [
+    # MLflow 3.16 still constructs the legacy *Evaluator Phoenix classes.
+    # Phoenix 3.x removed them. Importing the MLflow wrapper alone misses this.
+    "arize-phoenix-evals>=2.11,<3.0",
+    "trulens==2.14.0",
+    "trulens-providers-litellm==2.14.0",
+    "litellm>=1.82.6,!=1.82.7,!=1.82.8",
+    "nltk>=3.9",
 ]
 databricks = ["databricks-agents>=0.14"]
 local = ["jupytext>=1.16"]
 all = [
-    "mlflow-eval-workshop[guardrails,databricks,local]",
+    "mlflow-eval-workshop[ecosystem,databricks,local]",
 ]
 
-[dependency-groups]
-dev = ["ruff>=0.14", "pytest>=8.0"]
-
-[tool.pytest.ini_options]
-# Put the repo root on sys.path so tests can import eval_gate without
-# needing a src/ layout or a package install. Required for pytest 9+,
-# whose default sys.path behavior no longer adds the rootdir
-# automatically when tests live in a non-package directory.
-pythonpath = ["."]
+[tool.uv]
+# Preserve the explicit exclusions even when Databricks pulls LiteLLM transitively.
+constraint-dependencies = ["litellm!=1.82.7,!=1.82.8"]

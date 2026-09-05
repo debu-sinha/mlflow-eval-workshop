@@ -3,7 +3,7 @@
 
 Compares two MLflow evaluation runs by aligning samples on a stable key
 and exits with code 1 if the candidate regresses beyond the configured
-threshold.
+threshold. Missing, ambiguous, or nonfinite evidence blocks the gate.
 
 Sample alignment prefers MLflow-native identifiers (client_request_id or
 dataset_record_id from trace metadata) when available, and falls back to
@@ -12,12 +12,13 @@ hashing the request body when they are not set.
 Wire this into GitHub Actions, GitLab CI, or any CI system that checks
 exit codes.
 
-Gate policy (same as notebook Module 4):
-    1. Regression rate > threshold -> FAIL
-    2. Paired significance test detects a candidate loss -> FAIL
+Gate policy:
+    1. Invalid evidence or different case sets -> FAIL
+    2. Regression rate > threshold -> FAIL
+    3. Paired significance test detects a candidate loss -> FAIL
        (McNemar with exact binomial fallback for small samples on binary
         scorers, paired sign-flip permutation test on continuous scorers)
-    3. Otherwise -> PASS
+    4. Otherwise -> PASS
 
 Usage:
     python eval_gate.py --baseline-run-id <RUN_ID> --candidate-run-id <RUN_ID>
@@ -28,7 +29,8 @@ Environment:
 
 Exit codes:
     0: Candidate passes (no significant regression)
-    1: Candidate fails (regression exceeds threshold or significant p-value)
+    1: Candidate fails or required evidence is invalid
+    2: Command-line configuration is invalid
 """
 
 import argparse
@@ -36,7 +38,8 @@ import hashlib
 import json
 import re
 import sys
-from math import comb, erfc, sqrt
+from math import comb, erfc, isfinite, sqrt
+from numbers import Integral, Real
 
 import mlflow
 import numpy as np
@@ -47,7 +50,7 @@ import numpy as np
 #
 # Workshop demos use 2 so the small sample sets in Modules 3 and 4 can
 # exercise the full path. Production gates should set --min-overlap to
-# 30 or higher; see README.md "Production usage" for guidance.
+# 30 or higher. Choose the required coverage for the application.
 _MIN_OVERLAP = 2
 
 # MLflow run IDs are 32-character lowercase hex strings. Validate before
@@ -56,7 +59,7 @@ _RUN_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 
 # Threshold below which the asymptotic chi-square approximation for
 # McNemar's test is unreliable. Below this we use the exact binomial
-# test instead (two-sided mid-p on discordant pairs).
+# test instead (two-sided exact binomial on discordant pairs).
 _MCNEMAR_EXACT_THRESHOLD = 25
 
 # Page size for search_traces pagination. MLflow defaults to 100 per page
@@ -80,7 +83,14 @@ def _stable_key(trace) -> str | None:
     Falls back to hashing the request body when neither is present.
     Returns None if no key can be derived.
     """
-    metadata = getattr(trace.info, "metadata", None) or {}
+    native_request_id = getattr(trace.info, "client_request_id", None)
+    if native_request_id:
+        return native_request_id
+    metadata = (
+        getattr(trace.info, "trace_metadata", None)
+        or getattr(trace.info, "metadata", None)
+        or {}
+    )
 
     for id_field in ("client_request_id", "dataset_record_id"):
         native_id = metadata.get(id_field)
@@ -108,7 +118,7 @@ def _parse_score(value) -> float | None:
       - Numeric: int or float pass through directly
       - Binary strings: "yes"/"no", "pass"/"fail"
       - Phoenix-style labels: "factual"/"hallucinated"
-    Returns None if the value cannot be parsed.
+    Returns None if the value cannot be parsed or is not finite.
     """
     if value is None:
         return None
@@ -117,8 +127,12 @@ def _parse_score(value) -> float | None:
     if isinstance(value, bool):
         return 1.0 if value else 0.0
 
-    if isinstance(value, (int, float)):
-        return float(value)
+    if isinstance(value, Real):
+        try:
+            parsed = float(value)
+        except (OverflowError, ValueError):
+            return None
+        return parsed if isfinite(parsed) else None
 
     if isinstance(value, str):
         lower = value.lower().strip()
@@ -127,9 +141,10 @@ def _parse_score(value) -> float | None:
         if lower in _NEGATIVE_LABELS:
             return 0.0
         try:
-            return float(lower)
-        except ValueError:
+            parsed = float(lower)
+        except (OverflowError, ValueError):
             return None
+        return parsed if isfinite(parsed) else None
 
     return None
 
@@ -157,54 +172,92 @@ def _search_all_traces(client, experiment_id: str, run_id: str) -> list:
     return all_traces
 
 
+def _scores_from_traces(traces, scorer_name: str) -> dict[str, float]:
+    """Require one finite, valid assessment for each uniquely identified case."""
+    scores: dict[str, float] = {}
+    for trace in traces:
+        key = _stable_key(trace)
+        if not isinstance(key, str) or not key.strip():
+            raise ValueError("A trace has no usable sample key. No samples may be skipped.")
+        if key in scores:
+            raise ValueError("Duplicate sample key across traces. Resolve the ambiguous evidence.")
+        assessments = [
+            assessment
+            for assessment in (trace.info.assessments or [])
+            if assessment.name == scorer_name
+            and getattr(assessment, "valid", None) is not False
+        ]
+        if len(assessments) != 1:
+            raise ValueError(
+                f"Expected exactly one valid {scorer_name!r} assessment per sample, "
+                f"found {len(assessments)}. Resolve missing or duplicate evidence."
+            )
+        fb = assessments[0].feedback
+        if hasattr(fb, "value"):
+            raw = fb.value
+            error = getattr(fb, "error", None)
+        elif hasattr(fb, "get"):
+            raw = fb.get("value")
+            error = fb.get("error")
+        else:
+            raw, error = None, None
+        parsed = _parse_score(raw)
+        if error is not None or parsed is None:
+            raise ValueError(
+                f"A required {scorer_name!r} assessment is missing, failed, "
+                "unparseable, or nonfinite. No samples may be skipped."
+            )
+        scores[key] = parsed
+    return scores
+
+
 def get_per_sample_scores(
     run_id: str, scorer_name: str = "correctness"
 ) -> dict[str, float]:
-    """Extract per-sample scores from an MLflow evaluation run.
+    """Extract complete, unambiguous per-sample scores from an evaluation run.
 
-    Returns a dict mapping a stable sample key to a numeric score.
-    Samples without a parseable key or an unparseable value are skipped
-    with a warning.
+    Overridden assessments are ignored. Missing or invalid scores and duplicate
+    valid assessments or case keys raise ValueError instead of dropping evidence.
     """
-    if not _RUN_ID_RE.match(run_id):
-        raise ValueError(
-            f"Invalid run ID {run_id!r}. Expected 32-character lowercase hex."
-        )
+    if not _RUN_ID_RE.fullmatch(run_id):
+        raise ValueError("Invalid run ID. Expected 32-character lowercase hex.")
 
     client = mlflow.tracking.MlflowClient()
-
     experiment_id = client.get_run(run_id).info.experiment_id
     traces = _search_all_traces(client, experiment_id, run_id)
+    return _scores_from_traces(traces, scorer_name)
 
-    scores: dict[str, float] = {}
-    skipped = 0
-    for trace in traces:
-        key = _stable_key(trace)
-        if key is None:
-            skipped += 1
-            continue
-        for assessment in trace.info.assessments:
-            if assessment.name != scorer_name or not assessment.feedback:
-                continue
-            fb = assessment.feedback
-            if hasattr(fb, "value"):
-                raw = fb.value
-            elif hasattr(fb, "get"):
-                raw = fb.get("value")
-            else:
-                raw = None
-            parsed = _parse_score(raw)
-            if parsed is not None:
-                scores[key] = parsed
-            else:
-                skipped += 1
-                print(
-                    f"  Warning: unparseable score value {raw!r} for trace {trace.info.trace_id}"
-                )
-            break
-    if skipped:
-        print(f"  Skipped {skipped} samples (no key or unparseable value)")
-    return scores
+
+def _configuration_error(
+    max_regression_rate, significance_threshold, min_overlap, min_delta
+):
+    """Return a readable configuration error before any evaluation or API call."""
+    for name, value in (
+        ("max_regression_rate", max_regression_rate),
+        ("significance_threshold", significance_threshold),
+        ("min_delta", min_delta),
+    ):
+        if isinstance(value, bool) or not isinstance(value, Real):
+            return f"{name} must be a finite number."
+        try:
+            finite = isfinite(float(value))
+        except (OverflowError, ValueError):
+            finite = False
+        if not finite:
+            return f"{name} must be a finite number."
+    if not 0 <= max_regression_rate <= 1:
+        return "max_regression_rate must be between 0 and 1 inclusive."
+    if not 0 < significance_threshold < 1:
+        return "significance_threshold must be greater than 0 and less than 1."
+    if min_delta < 0:
+        return "min_delta must be nonnegative and use the scorer's absolute units."
+    if (
+        isinstance(min_overlap, bool)
+        or not isinstance(min_overlap, Integral)
+        or min_overlap < 1
+    ):
+        return "min_overlap must be a positive integer."
+    return None
 
 
 def _mcnemar_exact_pvalue(b: int, c: int) -> float:
@@ -229,24 +282,34 @@ def run_gate(
     max_regression_rate: float = 0.10,
     significance_threshold: float = 0.05,
     min_overlap: int = _MIN_OVERLAP,
+    min_delta: float = 0.05,
 ) -> tuple[bool, str]:
     """Compare baseline and candidate scores aligned by sample key.
 
-    Uses the same three-check policy as the notebook gate in Module 4:
-      1. Regression rate exceeds threshold -> FAIL
-      2. Paired significance test detects candidate loss -> FAIL
-      3. Otherwise -> PASS
+    Invalid inputs or incomplete coverage block before the comparison.
+    Regression rate and a paired test then check for candidate loss.
 
     Binary scorers (all values in {0.0, 1.0}) use McNemar's test, falling
     back to the exact binomial test when the discordant pair count is too
     small for the chi-square approximation. Continuous scorers use a
     sign-flip permutation test on the paired differences.
 
-    Performs an inner join on shared keys. Fails closed when overlap is
-    below min_overlap.
+    Both runs must contain exactly the same keys and at least min_overlap
+    finite scores. Continuous regressions must exceed the explicit absolute
+    min_delta in scorer units. An observed outlier cannot change that threshold.
 
     Returns (passed, reason).
     """
+    error = _configuration_error(
+        max_regression_rate, significance_threshold, min_overlap, min_delta
+    )
+    if error:
+        return False, f"Invalid gate configuration: {error}"
+    if any(
+        not isinstance(key, str) or not key.strip()
+        for key in (*baseline_scores, *candidate_scores)
+    ):
+        return False, "Every sample must have a nonempty string key."
     shared_keys = sorted(set(baseline_scores) & set(candidate_scores))
     bl_only = len(baseline_scores) - len(shared_keys)
     cd_only = len(candidate_scores) - len(shared_keys)
@@ -254,8 +317,8 @@ def run_gate(
 
     print(f"Aligned samples:    {n}")
     if bl_only > 0 or cd_only > 0:
-        print(f"  Baseline-only:    {bl_only} (skipped)")
-        print(f"  Candidate-only:   {cd_only} (skipped)")
+        print(f"  Baseline-only:    {bl_only}")
+        print(f"  Candidate-only:   {cd_only}")
 
     if n < min_overlap:
         return (
@@ -264,15 +327,31 @@ def run_gate(
             f"Check that both runs evaluated the same dataset.",
         )
 
-    bl_values = np.array([baseline_scores[k] for k in shared_keys])
-    cd_values = np.array([candidate_scores[k] for k in shared_keys])
+    if bl_only or cd_only:
+        return (
+            False,
+            f"Case coverage differs: {bl_only} baseline-only and {cd_only} "
+            "candidate-only samples. Both runs must contain exactly the same case keys.",
+        )
+    bl_parsed = [_parse_score(baseline_scores[k]) for k in shared_keys]
+    cd_parsed = [_parse_score(candidate_scores[k]) for k in shared_keys]
+    if any(value is None for value in (*bl_parsed, *cd_parsed)):
+        return False, "Every required score must be parseable and finite. No samples may be skipped."
+    bl_values = np.array(bl_parsed, dtype=float)
+    cd_values = np.array(cd_parsed, dtype=float)
 
-    bl_acc = float(np.mean(bl_values))
-    cd_acc = float(np.mean(cd_values))
-    delta = cd_acc - bl_acc
+    with np.errstate(over="ignore", invalid="ignore"):
+        bl_acc = float(np.mean(bl_values))
+        cd_acc = float(np.mean(cd_values))
+        delta = cd_acc - bl_acc
+        diffs = cd_values - bl_values
+    if not all(isfinite(value) for value in (bl_acc, cd_acc, delta)) or not np.all(
+        np.isfinite(diffs)
+    ):
+        return False, "Score arithmetic is not finite. Verify scorer values and scale."
 
-    # Detect whether scores are binary (0/1) or continuous. Inferred from
-    # the observed sample values; a graded scorer that happens to produce
+    # Detect whether scores are binary (0/1) or continuous from the
+    # observed sample values. A graded scorer that happens to produce
     # only 0.0/1.0 in this run will be treated as binary.
     unique_values = set(np.unique(bl_values)) | set(np.unique(cd_values))
     is_binary = unique_values <= {0.0, 1.0}
@@ -281,20 +360,10 @@ def run_gate(
         regressions = int(np.sum(bl_values > cd_values))
         improvements = int(np.sum(cd_values > bl_values))
     else:
-        # For continuous scores, only count meaningful changes. A decrease
-        # must exceed 5% of the observed score range (combined across both
-        # runs) to qualify as a regression, filtering out noise.
-        combined_range = float(
-            max(np.max(bl_values), np.max(cd_values))
-            - min(np.min(bl_values), np.min(cd_values))
-        )
-        score_range = max(combined_range, 0.01)
-        min_delta = 0.05 * score_range
-        regressions = int(np.sum((bl_values - cd_values) > min_delta))
-        improvements = int(np.sum((cd_values - bl_values) > min_delta))
+        # Fix this absolute threshold before inspecting the candidate.
+        regressions = int(np.sum(diffs < -min_delta))
+        improvements = int(np.sum(diffs > min_delta))
     regression_rate = regressions / n
-
-    diffs = cd_values - bl_values
 
     if is_binary:
         discordant = regressions + improvements
@@ -313,16 +382,26 @@ def run_gate(
         # direction), the sign of each paired difference is equally likely
         # to be positive or negative, so flipping signs generates the null
         # distribution of the mean difference.
-        observed_delta = float(np.mean(diffs))
+        with np.errstate(over="ignore", invalid="ignore"):
+            observed_delta = float(np.mean(diffs))
+        if not isfinite(observed_delta):
+            return False, "Mean paired difference is not finite. Verify scorer values and scale."
         rng = np.random.default_rng(42)
         n_perm = 10_000
         signs = rng.choice([-1, 1], size=(n_perm, n))
-        perm_deltas = np.mean(signs * diffs, axis=1)
-        p_value = float(np.mean(np.abs(perm_deltas) >= abs(observed_delta)))
+        with np.errstate(over="ignore", invalid="ignore"):
+            perm_deltas = np.mean(signs * diffs, axis=1)
+        if not np.all(np.isfinite(perm_deltas)):
+            return False, "Permutation arithmetic is not finite. Verify scorer values and scale."
+        extreme = int(np.sum(np.abs(perm_deltas) >= abs(observed_delta)))
+        p_value = (extreme + 1) / (n_perm + 1)
         test_name = "Permutation"
 
     # Cohen's d_z for paired differences.
-    sd = float(np.std(diffs, ddof=1)) if n > 1 else 0.0
+    with np.errstate(over="ignore", invalid="ignore"):
+        sd = float(np.std(diffs, ddof=1)) if n > 1 else 0.0
+    if not isfinite(sd):
+        return False, "Score dispersion is not finite. Verify scorer values and scale."
     effect_size = float(np.mean(diffs)) / sd if sd > 0 else 0.0
 
     print(f"Score type:         {'binary' if is_binary else 'continuous'}")
@@ -334,6 +413,8 @@ def run_gate(
     print(f"{test_name} p-value: {p_value:.4f}")
     print(f"Cohen's d:          {effect_size:.3f}")
     print(f"Threshold:          {max_regression_rate:.1%}")
+    if not is_binary:
+        print(f"Minimum delta:      {min_delta:g} (absolute scorer units)")
 
     if regression_rate > max_regression_rate:
         return (
@@ -374,15 +455,27 @@ def main():
         help="Significance threshold for McNemar (binary) or permutation test (continuous). Default: 0.05",
     )
     parser.add_argument(
+        "--min-delta",
+        type=float,
+        default=0.05,
+        help="Absolute change required to count a continuous regression (default: 0.05 scorer units)",
+    )
+    parser.add_argument(
         "--min-overlap",
         type=int,
         default=_MIN_OVERLAP,
         help=(
-            f"Minimum overlapping samples required to pass (default: {_MIN_OVERLAP}). "
+            f"Minimum cases in each identically keyed run (default: {_MIN_OVERLAP}). "
             "Production gates should use 30 or higher."
         ),
     )
     args = parser.parse_args()
+
+    error = _configuration_error(
+        args.threshold, args.significance, args.min_overlap, args.min_delta
+    )
+    if error:
+        parser.error(error)
 
     print("Evaluation Gate")
     print(f"Baseline:  {args.baseline_run_id}")
@@ -390,8 +483,12 @@ def main():
     print(f"Scorer:    {args.scorer}")
     print()
 
-    baseline_scores = get_per_sample_scores(args.baseline_run_id, args.scorer)
-    candidate_scores = get_per_sample_scores(args.candidate_run_id, args.scorer)
+    try:
+        baseline_scores = get_per_sample_scores(args.baseline_run_id, args.scorer)
+        candidate_scores = get_per_sample_scores(args.candidate_run_id, args.scorer)
+    except ValueError as exc:
+        print(f"BLOCKED: {exc}")
+        sys.exit(1)
 
     print(f"Baseline samples:  {len(baseline_scores)}")
     print(f"Candidate samples: {len(candidate_scores)}")
@@ -403,6 +500,7 @@ def main():
         args.threshold,
         args.significance,
         args.min_overlap,
+        args.min_delta,
     )
 
     print()

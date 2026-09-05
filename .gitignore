@@ -16,3 +16,21 @@ m3_run_ids.json
 *STRATEGY*.md
 *REPORT*.md
 build/
+
+# Local evaluation data and credentials must not enter the public workshop.
+artifacts/
+.env
+.env.*
+!.env.example
+.venv-*/
+.pytest_cache/
+*.db-shm
+*.db-wal
+
+# Preparation files are kept outside the audience repository.
+WEST_2026_PLAN.md
+docs/PRESENTER_GUIDE.md
+docs/AUDIENCE_PATHS.md
+docs/LIVE_VALIDATION.md
+private/
+prep/

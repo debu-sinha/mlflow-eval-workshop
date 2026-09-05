@@ -1,69 +1,35 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Shared verification helper
+# MAGIC # Shared West environment verification
 # MAGIC
-# MAGIC This notebook is a helper. Each module runs it via `%run` after the
-# MAGIC module's pinned `%pip install` cell and `dbutils.library.restartPython()`.
-# MAGIC It does not install any dependencies.
-# MAGIC
-# MAGIC If you land here directly and the checks fail, that is expected: on
-# MAGIC Databricks Serverless, notebook-scoped libraries are scoped to the
-# MAGIC notebook/session that installed them. Run a module's first two cells
-# MAGIC or configure the Serverless Environment panel with
-# MAGIC `requirements-workshop.txt`, then retry.
+# MAGIC Run after installing `requirements-workshop.txt` in the Serverless
+# MAGIC Environment panel and applying the environment, as described in README.md.
+# MAGIC This helper checks the core MLflow 3.16 stack and real deterministic scoring.
+# MAGIC Set `WORKSHOP_VERIFY_ECOSYSTEM = True` before `%run` to also construct the
+# MAGIC optional Phoenix/TruLens scorers (requires the `ecosystem` extra).
+# MAGIC Constructors never call an LLM judge. Provider access is a separate preflight.
 
 # COMMAND ----------
 
-import importlib.metadata as md
+import runpy
+from pathlib import Path
 
-_REQUIRED_PACKAGES = [
-    "mlflow",
-    "arize-phoenix-evals",
-    "trulens",
-    "trulens-providers-litellm",
-    "litellm",
-    "databricks-agents",
-    "openai",
-    "numpy",
-    "scikit-learn",
-    "nltk",
-]
-
-_missing = []
-
-print("Workshop dependency versions:")
-for _package in _REQUIRED_PACKAGES:
-    try:
-        print(f"  {_package}: {md.version(_package)}")
-    except md.PackageNotFoundError:
-        print(f"  {_package}: NOT INSTALLED")
-        _missing.append(_package)
-
-if _missing:
+_verifier_path = next(
+    (
+        _root / "scripts" / "verify_west_environment.py"
+        for _root in (Path.cwd(), *Path.cwd().parents)
+        if (_root / "scripts" / "verify_west_environment.py").is_file()
+    ),
+    None,
+)
+if _verifier_path is None:
     raise RuntimeError(
-        "Workshop dependencies are missing: "
-        + ", ".join(_missing)
-        + ". Run the module's first %pip install cell, or configure the "
-        "Databricks Serverless Environment panel with requirements-workshop.txt, "
-        "then retry."
+        "Cannot locate scripts/verify_west_environment.py. Open this notebook "
+        "inside the imported workshop Git folder, preserving its directory layout."
     )
 
-# COMMAND ----------
-
-print("Verifying MLflow GenAI scorer imports...")
-
-from mlflow.genai import make_judge  # noqa: F401
-from mlflow.genai.scorers import (  # noqa: F401
-    Correctness,
-    RelevanceToQuery,
-    Safety,
-    scorer,
+_verifier = runpy.run_path(str(_verifier_path))
+_verifier["verify_environment"](
+    ecosystem=bool(globals().get("WORKSHOP_VERIFY_ECOSYSTEM", False)),
+    databricks=True,
 )
-from mlflow.genai.scorers.phoenix import Hallucination  # noqa: F401
-from mlflow.genai.scorers.trulens import Groundedness  # noqa: F401
-
-print("Core scorers: OK")
-print("Phoenix scorer: OK")
-print("TruLens scorer: OK")
-print()
-print("READY. Continue to the next cell.")
