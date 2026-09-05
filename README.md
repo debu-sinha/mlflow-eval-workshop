@@ -1,5 +1,14 @@
 # Evaluating LLM Applications with MLflow
 
+> This branch is being updated for ODSC AI West 2026. The current notebooks still reflect the East 2026 workshop while the West edition is developed and tested.
+
+## Workshop editions
+
+| Edition | Status | Version |
+|---|---|---|
+| ODSC AI East 2026 | Frozen release | [`odsc-east-2026-final`](https://github.com/debu-sinha/mlflow-eval-workshop/tree/odsc-east-2026-final) |
+| ODSC AI West 2026 | In development | [`west-2026`](https://github.com/debu-sinha/mlflow-eval-workshop/tree/west-2026) |
+
 **ODSC AI East 2026 Workshop** | April 28-30, Boston | 60 minutes
 
 ## What you'll build
