@@ -57,9 +57,9 @@ def calibration_dataset() -> list[dict]:
     on a representative human review sample.
     """
     examples = (
-        ("label_correct_credit", "day_45_opening", "Store credit is available because 45 days exceeds the 30-day full-refund window. This is eligibility guidance only.", True),
+        ("label_correct_credit", "day_45_opening", "Store credit is available because 45 days exceeds the 30-day full-refund window. Please reach out to support to initiate the request.", True),
         ("label_stale_policy", "day_45_opening", "You are eligible for a full refund because purchases within 90 days qualify. This is eligibility guidance only.", False),
-        ("label_correct_boundary", "day_30_boundary", "A full refund is available on day 30. No transaction has been approved or processed.", True),
+        ("label_correct_boundary", "day_30_boundary", "A full refund is available on day 30. Please let us know how you would like to proceed.", True),
         ("label_wrong_boundary", "day_31_boundary", "You are eligible for a full refund on day 31. This is eligibility guidance only.", False),
         ("label_correct_defect", "defect_day_10", "Please contact support for review of your defective item. They will review next steps.", True),
         ("label_false_transaction", "day_29", "Your full refund has been approved and processed.", False),
