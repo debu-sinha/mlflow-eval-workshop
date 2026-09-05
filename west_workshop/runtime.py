@@ -562,7 +562,8 @@ def run_integrations(provider=None, output_dir=None) -> dict:
 
             model = judge_model(provider) if provider == "openai" else "databricks:/" + application_model(provider)
             summary["integration_judge_route"] = "OpenAI model" if provider == "openai" else "Databricks Foundation Model API endpoint via the ecosystem provider adapter"
-            scorers = [Hallucination(name="phoenix_hallucination", model=model), Coherence(name="trulens_coherence", model=model)]
+            # These adapters use their metric names for third-party dispatch.
+            scorers = [Hallucination(model=model), Coherence(model=model)]
             rows = opening_case()
             rows[0]["expectations"]["context"] = CURRENT_POLICY
             result = _evaluate(provider, "repaired", rows, scorers, directory)
