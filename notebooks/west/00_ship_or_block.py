@@ -43,6 +43,10 @@ if summary.get("status") != "passed":
 # MAGIC %md
 # MAGIC ## Make the decision
 # MAGIC
+# MAGIC ![Local MLflow example](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/west-2026/notebooks/images/west/00-answer.png)
+# MAGIC
+# MAGIC The recorded 45-day request received a full-refund answer under the stale policy.
+# MAGIC
 # MAGIC Can a polished response still create a refund promise we cannot honor?
 # MAGIC
 # MAGIC Next, open 01_trace_the_failure and find the evidence that reached the application.

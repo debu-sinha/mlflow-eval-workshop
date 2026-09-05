@@ -4,7 +4,7 @@ ODSC AI West 2026 | Debu Sinha
 
 Run a support assistant, inspect its traces, evaluate its answers, and compare a candidate with a baseline before making a release decision. The examples use a fictional refund policy and real model APIs.
 
-The West notebooks are under development. Live validation on OpenAI and Databricks is not yet complete.
+The local OSS MLflow path was verified on September 5, 2026 with real OpenAI application and judge calls. All six notebooks passed in sequence and in independent processes. The separate Phoenix and TruLens integration check also passed. Databricks execution has not been verified.
 
 ## Setup
 
@@ -43,7 +43,7 @@ Optional local settings:
 Open MLflow against the same tracking database to inspect traces and scores. For the default local output directory, run this command from the checkout and open `http://127.0.0.1:5000`:
 
 ```bash
-uv run --locked mlflow server --backend-store-uri sqlite:///artifacts/west-live/mlflow-west.db --host 127.0.0.1 --port 5000
+uv run --locked mlflow server --backend-store-uri sqlite:///artifacts/west-live/mlflow-west.db --host 127.0.0.1 --port 5000 --workers 1
 ```
 
 If you configure a different tracking URI or output directory, use its database instead.
@@ -93,6 +93,26 @@ Set `DATABRICKS_CONFIG_PROFILE` for a named profile. A configuration check does 
 The files use Databricks Python notebook format. They also run as Python scripts from this checkout. Each prepared execution cell calls the configured provider. A failed request or incomplete evaluation stops the checkpoint.
 
 The small dataset demonstrates evaluation mechanics. Passing its gate does not establish broad production safety. A new deployment needs representative cases and a policy suited to its risks.
+
+## What a local run looks like
+
+These are unmodified screenshots from the local MLflow 3.16.0 UI using real OpenAI responses and evaluations. The examples use fictional customer inputs. Calibration labels and the follow-up feedback are explicitly authored teaching material, not observed customer feedback. Your responses, scores, timing, and run IDs can differ.
+
+The stale-policy candidate was blocked and the repaired version passed in both execution modes. Some valid answers still received an incorrect judge score. Inspect the rationale and keep deterministic policy checks alongside the judge.
+
+| View | What to inspect |
+|---|---|
+| [Application answer](notebooks/images/west/00-answer.png) | The 45-day request received an incorrect full-refund answer |
+| [Retrieved policy](notebooks/images/west/01-retrieval.png) | The retrieval span contains the stale 90-day policy |
+| [Scorer stack](notebooks/images/west/02-scorer-stack.png) | Individual checks and the semantic judge remain inspectable |
+| [Judge versions](notebooks/images/west/03-judge-versions.png) | Registered definitions have explicit versions |
+| [Run comparison](notebooks/images/west/04-comparison.png) | The stale candidate and repaired results use the same ten cases |
+| [Follow-up feedback](notebooks/images/west/05-feedback.png) | Authored review feedback is attached to a real trace |
+| [Phoenix and TruLens](notebooks/images/west/06-integrations.png) | Both third-party scorers evaluated a fresh response |
+
+![Real model response in local MLflow](notebooks/images/west/00-answer.png)
+
+![Stale candidate and repaired comparison in local MLflow](notebooks/images/west/04-comparison.png)
 
 ## Optional integrations
 

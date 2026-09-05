@@ -43,6 +43,10 @@ if summary.get("status") != "passed":
 # MAGIC %md
 # MAGIC ## Make the decision
 # MAGIC
+# MAGIC ![Local MLflow example](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/west-2026/notebooks/images/west/01-retrieval.png)
+# MAGIC
+# MAGIC The retrieval span shows the actual stale policy supplied to the application.
+# MAGIC
 # MAGIC Which component should we change first, and what observation supports that choice?
 # MAGIC
 # MAGIC Next, open 02_build_the_scorer_stack and turn one risk into a repeatable check.

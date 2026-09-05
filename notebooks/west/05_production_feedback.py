@@ -43,6 +43,10 @@ if summary.get("status") != "passed":
 # MAGIC %md
 # MAGIC ## Make the decision
 # MAGIC
+# MAGIC ![Local MLflow example](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/west-2026/notebooks/images/west/05-feedback.png)
+# MAGIC
+# MAGIC Authored teaching feedback is attached to a real defective-item trace. It is not an observed customer report.
+# MAGIC
 # MAGIC What evidence would make you reopen the release decision?
 # MAGIC
-# MAGIC Write one application risk, one named example, and one rule you can use in your own release process. Continue with the advanced lab after the session.
+# MAGIC Write one application risk, one named example, and one rule you can use in your own release process. To try Phoenix and TruLens next, follow the [optional integration setup](https://github.com/debu-sinha/mlflow-eval-workshop/tree/west-2026#optional-integrations).

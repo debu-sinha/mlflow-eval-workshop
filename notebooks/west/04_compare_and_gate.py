@@ -43,6 +43,10 @@ if summary.get("status") != "passed":
 # MAGIC %md
 # MAGIC ## Make the decision
 # MAGIC
+# MAGIC ![Local MLflow example](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/west-2026/notebooks/images/west/04-comparison.png)
+# MAGIC
+# MAGIC This view compares the stale-policy candidate and repaired application on the same cases. Judge disagreements remain visible. The checkpoint also evaluates both versions against the baseline.
+# MAGIC
 # MAGIC Does the candidate satisfy our explicit policy, and is every required case accounted for?
 # MAGIC
 # MAGIC A pass applies only to this teaching policy and dataset. Next, open 05_production_feedback to see how a new failure becomes a future test.

@@ -43,6 +43,10 @@ if summary.get("status") != "passed":
 # MAGIC %md
 # MAGIC ## Make the decision
 # MAGIC
+# MAGIC ![Local MLflow example](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/west-2026/notebooks/images/west/03-judge-versions.png)
+# MAGIC
+# MAGIC These judge definitions were registered locally. A newer version is not automatically a better judge.
+# MAGIC
 # MAGIC Would you trust this judge to block a release, or do the disagreements need review first?
 # MAGIC
 # MAGIC Next, open 04_compare_and_gate and make a decision using the same named cases.

@@ -43,6 +43,10 @@ if summary.get("status") != "passed":
 # MAGIC %md
 # MAGIC ## Make the decision
 # MAGIC
+# MAGIC ![Local MLflow example](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/west-2026/notebooks/images/west/02-scorer-stack.png)
+# MAGIC
+# MAGIC Inspect individual scorer results from a real ten-case evaluation.
+# MAGIC
 # MAGIC Which checks are hard requirements, and which help us compare quality?
 # MAGIC
 # MAGIC Next, open 03_trust_the_judge and check whether the judge deserves our trust.
