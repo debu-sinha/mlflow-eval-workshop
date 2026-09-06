@@ -109,6 +109,12 @@ class SupportService:
 
 def create_app(service=None):
     app = Flask(__name__, template_folder="support_ui", static_folder="support_ui", static_url_path="/assets")
+    if os.environ.get("DATABRICKS_APP_NAME"):
+        # Databricks terminates HTTPS and forwards the original hostname.
+        # Trust its single platform boundary only inside the Apps runtime.
+        from werkzeug.middleware.proxy_fix import ProxyFix
+
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=0, x_proto=1, x_host=1)
     app.config["MAX_CONTENT_LENGTH"] = 8192
     service = service or SupportService()
 
