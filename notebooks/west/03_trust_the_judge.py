@@ -4,14 +4,19 @@
 # MAGIC
 # MAGIC ODSC AI West 2026 | Debu Sinha
 # MAGIC
-# MAGIC Calibration means checking a judge against examples that people have already reviewed. These authored examples are teaching material, with explicit expected labels. They are not generated application responses. A tiny agreement check can reveal a mistake. It cannot establish general accuracy. Preserve the judge instructions and version so the next release can be compared fairly.
+# MAGIC A judge also needs evaluation. *Calibration* here means comparing its decisions with reference labels on six authored replies. These replies were written for the workshop; they are not fresh application outputs.
 # MAGIC
-# MAGIC **Watch:** Label each calibration example before revealing the judge result.
+# MAGIC We compare two judge configurations with the same policy rubric and model: one returns the value first, and one generates its rationale first. We do not assume the second will improve agreement.
 # MAGIC
-# MAGIC **Build:** Run the checkpoint and inspect every disagreement with the authored human labels.
+# MAGIC A separate set of eight positive and negative controls checks basic rubric behavior before checkpoint 4 can compare releases. These small teaching sets do not establish accuracy on real customer traffic.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Set up this notebook
+# MAGIC Use the setup for your platform in the [README](https://github.com/debu-sinha/mlflow-eval-workshop#readme). In Databricks Free Edition, select **Standard environment 5**, add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` using your Git folder's actual path, and click **Apply**. Wait for the Python restart before running the cells.
 # MAGIC
-# MAGIC **Extend:** Try another judge configuration on the same examples. Report disagreements without selecting only favorable cases.
-# MAGIC
+# MAGIC The next cell finds the repository and configures this notebook's model and experiment. In Databricks it uses your workspace identity. Locally it keeps your terminal settings. Each notebook runs independently.
 
 # COMMAND ----------
 
@@ -26,32 +31,86 @@ if _root is None:
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
-from west_workshop.notebook_setup import configure_notebook
+from west_workshop.notebook_setup import configure_notebook, show_result
 configure_notebook()
 
 # COMMAND ----------
 
-# Run this cell after completing the setup in README.md.
-# It calls the configured provider. Failures stop the checkpoint.
-import json
-from west_workshop import run_checkpoint
+# MAGIC %md
+# MAGIC ## Read a reply before seeing the judge's score
+# MAGIC
+# MAGIC Decide whether each reply follows the current policy and avoids claiming transaction execution. Give your reason before moving to the evaluation cell.
 
-summary = run_checkpoint(3)
-print(json.dumps(summary, indent=2, sort_keys=True))
-if summary.get("status") != "passed":
-    raise RuntimeError("Checkpoint incomplete. Resolve the readiness or validation issue in the summary.")
+# COMMAND ----------
+
+from west_workshop.data import calibration_dataset
+
+for example in calibration_dataset():
+    print("\nCase:", example["inputs"]["case_id"])
+    print("Customer:", example["inputs"]["question"])
+    print("Reply to review:", example["outputs"])
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Make the decision
+# MAGIC ## Evaluate and preserve both judge definitions
 # MAGIC
-# MAGIC ![Local MLflow example](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/west-2026/notebooks/images/west/03-judge-versions.png)
+# MAGIC The next cell saves each full definition as an MLflow run artifact, loads it back, and checks that it matches. Locally it also demonstrates the scorer registry. Databricks Free Edition uses the saved artifacts, so server-side scorer versioning is not required.
 # MAGIC
-# MAGIC This historical screenshot shows the local scorer registry. Both routes now save complete judge definitions as MLflow run artifacts, reload them, and verify that the definitions match before evaluating. The local route also demonstrates the scorer registry. Free Edition uses the saved definitions without requiring server-side scorer versioning.
+# MAGIC The six-example agreement can be less than 100% even when the exercise completes. Read every disagreement. The separate eight controls must pass.
+
+# COMMAND ----------
+
+from west_workshop import run_checkpoint
+
+summary = run_checkpoint(3)
+show_result(summary)
+if summary.get("status") != "passed":
+    raise RuntimeError("This exercise did not complete. Read the setup or run issue above and the saved summary.")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Compare the decisions with the reference labels
 # MAGIC
-# MAGIC Inspect `agreement_with_authored_labels` and the separate eight-case `judge_validation`. The latter includes valid customer next steps, customer instructions that the assistant must not obey, false transaction claims, and contradictory prose. A newer version is not automatically a better judge.
+# MAGIC The reference label is the expected judgment about the authored reply. It is separate from an application's refund eligibility label. A score of 1 corresponds to an accepted reply; 0 corresponds to a rejected reply.
+
+# COMMAND ----------
+
+for row in summary["evaluations"][0]["rows"]:
+    print("\nCase:", row["case_id"])
+    print("Reference accepts reply:", row["expectations"]["authored_human_label"])
+    print("Judge scores:", row["scores"])
+    for assessment in row["assessments"]:
+        print(assessment["name"], ":", assessment["rationale"])
+
+print("\nAgreement with reference labels:", summary["agreement_with_authored_labels"])
+print("Separate controls passed:", summary["judge_validation"]["passed"])
+print("Control disagreements:", summary["judge_validation"]["disagreements"])
+for version in summary["scorer_versions"]:
+    print("Saved definition:", version["name"], "| run:", version["run_id"],
+          "| artifact:", version["artifact_path"],
+          "| reload verified:", version["round_trip_verified"])
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Read the rubric
 # MAGIC
-# MAGIC Would you trust this judge to block a release, or do the disagreements need review first?
+# MAGIC The judge checks eligibility and execution separately. It must evaluate the assistant's reply, without mistaking the customer's instruction for something the assistant actually said. Read how the rubric handles day 30, defective items, and permitted next steps.
+
+# COMMAND ----------
+
+import inspect
+from west_workshop.runtime import _policy_judge
+
+print(inspect.getsource(_policy_judge))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Review a disagreement
 # MAGIC
-# MAGIC Next, open 04_compare_and_gate and make a decision using the same named cases.
+# MAGIC Read the customer request, assistant reply, reference label, and judge explanation together. If the label is wrong, document and correct the labeling error. If the judge is wrong, improve the rubric and rerun the same examples. Keep earlier results available.
+# MAGIC
+# MAGIC Return to **04_compare_and_gate**. If you already ran the opening report and have changed nothing, reuse it to inspect the release rules. If you changed the judge, rerun the comparison.

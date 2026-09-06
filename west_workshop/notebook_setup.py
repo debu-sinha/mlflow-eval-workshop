@@ -23,3 +23,22 @@ def configure_notebook():
         if not username:
             raise RuntimeError("Set MLFLOW_EXPERIMENT_NAME to your absolute workspace experiment path.")
         os.environ["MLFLOW_EXPERIMENT_NAME"] = f"/Users/{username}/odsc-west-2026"
+
+
+def show_result(summary):
+    """Print the outcome and evidence locations without flooding a notebook with JSON."""
+    print("Exercise status:", summary.get("status", "unknown"))
+    if summary.get("decision"):
+        print("Decision:", summary["decision"])
+    for reason in summary.get("preflight", {}).get("reasons", []):
+        print("Setup issue:", reason)
+    if summary.get("error"):
+        print("Run issue:", summary["error"])
+    if summary.get("experiment_id"):
+        print("MLflow experiment ID:", summary["experiment_id"])
+    for evaluation in summary.get("evaluations", []):
+        print("Evaluation run:", evaluation["run_id"],
+              "| cases:", evaluation.get("row_count", 0),
+              "| complete:", evaluation.get("complete", False))
+    if summary.get("summary_path"):
+        print("Full saved results:", summary["summary_path"])

@@ -4,22 +4,31 @@
 # MAGIC
 # MAGIC ODSC AI West 2026 | Debu Sinha
 # MAGIC
-# MAGIC ## The result we're working toward
+# MAGIC ![A recorded release report](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/main/notebooks/images/west/release-report.png)
 # MAGIC
-# MAGIC ![Recorded release report](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/main/notebooks/images/west/release-report.png)
+# MAGIC Start with the finished report in **04_compare_and_gate**. It compares the customer's answers, the scores, and the release decisions. This image is one saved local run; your own run may differ.
 # MAGIC
-# MAGIC This saved local run shows the stale assistant blocked and the repaired version passing the release gate. Open **04_compare_and_gate** for your own interactive report. Start with the two decisions and the customer's answers, then come back here to understand how we reached them.
+# MAGIC ## The customer's request
 # MAGIC
-# MAGIC ## Now look at the customer's request
+# MAGIC A customer asks for a full refund 45 days after buying an item. Our fictional Northstar Shop policy says:
 # MAGIC
-# MAGIC A customer bought an item 45 days ago. The new support assistant retrieves an old policy that offers cash refunds within 90 days. Our current policy allows a full refund within 30 days and store credit after 30 days. A defective item goes to support. The assistant cannot approve or process a transaction.
+# MAGIC | Situation | Correct guidance |
+# MAGIC |---|---|
+# MAGIC | Non-defective item, day 0 through day 30 | Full refund eligibility |
+# MAGIC | Non-defective item, after day 30 | Store credit eligibility |
+# MAGIC | Defective item, any purchase age | Support review |
 # MAGIC
-# MAGIC **Watch:** Vote on the answer before inspecting its scores. Fluency and speed are not evidence of a correct refund.
+# MAGIC The assistant explains eligibility. It cannot approve or process a transaction.
 # MAGIC
-# MAGIC **Build:** Run the prepared checkpoint below and inspect the first response.
+# MAGIC The candidate has an outdated 90-day refund policy. Before reading its score, decide whether its answer follows the current policy.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Set up this notebook
+# MAGIC Use the setup for your platform in the [README](https://github.com/debu-sinha/mlflow-eval-workshop#readme). In Databricks Free Edition, select **Standard environment 5**, add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` using your Git folder's actual path, and click **Apply**. Wait for the Python restart before running the cells.
 # MAGIC
-# MAGIC **Extend:** Change the purchase age to 30 days. Predict whether the decision should change.
-# MAGIC
+# MAGIC The next cell finds the repository and configures this notebook's model and experiment. In Databricks it uses your workspace identity. Locally it keeps your terminal settings. Each notebook runs independently.
 
 # COMMAND ----------
 
@@ -34,30 +43,50 @@ if _root is None:
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
-from west_workshop.notebook_setup import configure_notebook
+from west_workshop.notebook_setup import configure_notebook, show_result
 configure_notebook()
 
 # COMMAND ----------
 
-# Run this cell after completing the setup in README.md.
-# It calls the configured provider. Failures stop the checkpoint.
-import json
+# MAGIC %md
+# MAGIC ## Run the opening case
+# MAGIC
+# MAGIC This cell makes one application request and checks the declared eligibility against the reference label. It does not call an LLM judge.
+# MAGIC
+# MAGIC **Exercise status: passed** means the exercise completed and caught the intended policy failure. **Decision: block** means the candidate answer should be stopped. These are different outcomes.
+
+# COMMAND ----------
+
 from west_workshop import run_checkpoint
 
 summary = run_checkpoint(0)
-print(json.dumps(summary, indent=2, sort_keys=True))
+show_result(summary)
 if summary.get("status") != "passed":
-    raise RuntimeError("Checkpoint incomplete. Resolve the readiness or validation issue in the summary.")
+    raise RuntimeError("This exercise did not complete. Read the setup or run issue above and the saved summary.")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Make the decision
+# MAGIC ## Read the answer and the check
 # MAGIC
-# MAGIC ![Local MLflow example](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/west-2026/notebooks/images/west/00-answer.png)
+# MAGIC A *reference label* is the expected decision written into the test case. `policy_decision` checks the answer's declared eligibility against that label: 1 means it matches; 0 means it does not.
 # MAGIC
-# MAGIC The recorded 45-day request received a full-refund answer under the stale policy.
+# MAGIC Read the actual response below. Which sentence creates a promise the current policy cannot support?
+
+# COMMAND ----------
+
+row = summary["evaluations"][0]["rows"][0]
+print("Customer:", row["inputs"]["question"])
+print("Assistant:", row["output"])
+print("Expected eligibility:", row["expectations"]["expected_decision"])
+print("Policy decision score:", row["scores"]["policy_decision"])
+print("Trace ID:", row["trace_id"])
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Take it further
 # MAGIC
-# MAGIC Can a polished response still create a refund promise we cannot honor?
+# MAGIC On day 30, a non-defective purchase is still eligible for a full refund. On day 31, it is eligible for store credit. Find those named cases in `west_workshop/data.py` and explain why both belong in a test set.
 # MAGIC
-# MAGIC Next, open 01_trace_the_failure and find the evidence that reached the application.
+# MAGIC Next, open **01_trace_the_failure**. We'll inspect the policy the assistant actually received.
