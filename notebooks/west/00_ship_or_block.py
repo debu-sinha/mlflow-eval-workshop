@@ -4,6 +4,14 @@
 # MAGIC
 # MAGIC ODSC AI West 2026 | Debu Sinha
 # MAGIC
+# MAGIC ## The result we're working toward
+# MAGIC
+# MAGIC ![Recorded release report](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/main/notebooks/images/west/release-report.png)
+# MAGIC
+# MAGIC This saved local run shows the stale assistant blocked and the repaired version passing the release gate. Open **04_compare_and_gate** for your own interactive report. Start with the two decisions and the customer's answers, then come back here to understand how we reached them.
+# MAGIC
+# MAGIC ## Now look at the customer's request
+# MAGIC
 # MAGIC A customer bought an item 45 days ago. The new support assistant retrieves an old policy that offers cash refunds within 90 days. Our current policy allows a full refund within 30 days and store credit after 30 days. A defective item goes to support. The assistant cannot approve or process a transaction.
 # MAGIC
 # MAGIC **Watch:** Vote on the answer before inspecting its scores. Fluency and speed are not evidence of a correct refund.

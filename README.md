@@ -2,11 +2,23 @@
 
 ODSC AI West 2026 | Debu Sinha
 
-A customer asks for a refund 45 days after buying an item. The support assistant gives a friendly answer, but it has retrieved an outdated policy: refunds are allowed for 90 days instead of 30. How would you catch that mistake before shipping?
+![Release report showing the stale assistant blocked and the repaired assistant passing](notebooks/images/west/release-report.png)
 
-In this workshop, you'll trace the answer back to its source, build checks for the refund policy, evaluate an LLM judge, and compare the assistant before and after fixing retrieval. The final step turns those results into a release decision.
+Start with the finished result: two versions of a support assistant, the customer's answer from each, and a release decision backed by evaluation evidence. The image above comes from a saved local run. The report lets you expand the retrieved policies, every scored case, and the release rules.
+
+A customer asks for a refund 45 days after buying an item. The assistant has retrieved an outdated policy that allows refunds for 90 days instead of 30. Fixing retrieval changes the answer. Does it improve the other cases too, and is the improvement enough to ship?
+
+We'll open the report first, then trace the answer back to its source, build the policy checks, and evaluate the judge. By the time we return to the release decision, you'll be able to explain the evidence behind it.
 
 You can follow along with [local OSS MLflow](#run-locally-with-oss-mlflow) or [Databricks Free Edition](#run-on-databricks-free-edition). The customer cases, reference labels, and follow-up feedback were written for the workshop. Application responses and evaluation scores come from model calls made when you run the code.
+
+## Start with the release report
+
+After setup, run **checkpoint 4** to create the finished report. Locally, open the `release-report.html` file at the printed `report_path`. In Databricks, notebook **04_compare_and_gate** displays it inline. The first run takes several minutes; opening a saved report is immediate and makes no model calls.
+
+Read the two release decisions, compare the customer's answers, then expand **What changed in the answer's source?** From there, work through notebooks **00 → 01 → 02 → 03**, return to **04** for the release rules, and finish with **05** for feedback. You can reuse the completed comparison when you return to 04.
+
+The screenshot is one recorded outcome. Each new run shows its own results, including regressions, judge disagreements, and incomplete evaluations.
 
 ## Local setup
 
@@ -54,23 +66,34 @@ uv run --locked python -m west_workshop --provider openai --check
 
 Look for `"ready": true`. If it is false, follow the printed `reasons`. This checks package versions and local settings; the first checkpoint will test the API connection.
 
-Run the first checkpoint:
+Create the opening release report:
+
+```bash
+uv run --locked python -m west_workshop --provider openai --checkpoint 4
+```
+
+Open the HTML file at the printed `report_path` in your browser. Keep it open while you work through the details. To recreate a report from an existing checkpoint 4 summary without calling the models:
+
+```bash
+uv run --locked python -m west_workshop --report "<path-to-checkpoint-4-summary.json>"
+```
+
+Then start the technical walkthrough:
 
 ```bash
 uv run --locked python -m west_workshop --provider openai --checkpoint 0
 ```
 
-Then run the remaining checkpoints in order for the full workshop:
+Continue through the remaining exercises:
 
 ```bash
 uv run --locked python -m west_workshop --provider openai --checkpoint 1
 uv run --locked python -m west_workshop --provider openai --checkpoint 2
 uv run --locked python -m west_workshop --provider openai --checkpoint 3
-uv run --locked python -m west_workshop --provider openai --checkpoint 4
 uv run --locked python -m west_workshop --provider openai --checkpoint 5
 ```
 
-You can also run any checkpoint on its own. Each run generates new responses. Wait for one command to finish before starting the next.
+After checkpoint 3, return to the opening report and inspect its release rules before running checkpoint 5. Rerun checkpoint 4 if you change the application, judge, or dataset. You can also run any checkpoint on its own. Each checkpoint run generates new responses. Wait for one command to finish before starting the next.
 
 A completed exercise prints `"status": "passed"` and `"live_validation": "completed"`. It may also print `"decision": "block"`: the exercise worked, and it caught a bad candidate. Checkpoint 4 compares the stale candidate and repaired assistant against a baseline. The repair must improve the score and pass the release gate. A failed CLI command exits with code 2 and prints a summary to help you investigate.
 
@@ -114,7 +137,7 @@ The workshop writes directly to SQLite. Leave `MLFLOW_TRACKING_URI` unset for th
 This setup uses Databricks for the application, judge, and MLflow tracking. You can complete the workshop without an OpenAI API key or a paid workspace. [Free Edition](https://docs.databricks.com/aws/en/getting-started/free-edition) uses serverless compute and has [usage limits](https://docs.databricks.com/aws/en/getting-started/free-edition-limitations).
 
 1. In **Workspace**, choose **Create > Git folder**, clone this repository, and select `main`. See the [Git folder setup guide](https://docs.databricks.com/aws/en/repos/repos-setup) if you're new to Databricks.
-2. Open `notebooks/west/00_ship_or_block`. In the **Environment** side panel, select **Standard environment 5** under Base environment (use More if needed).
+2. Open `notebooks/west/04_compare_and_gate`. In the **Environment** side panel, select **Standard environment 5** under Base environment (use More if needed).
 3. Add the following dependency, replacing the path with your Git folder's absolute path:
 
    ```text
@@ -122,7 +145,7 @@ This setup uses Databricks for the application, judge, and MLflow tracking. You 
    ```
 
 4. Click **Apply** and wait for installation and the Python restart, then click **Run all**.
-5. Repeat this setup for notebooks 01–05, running them one at a time. Each notebook sets up its own model and experiment, so you can run it without first running notebook 00.
+5. Start with the rendered release report. Then repeat the environment setup for notebooks 00–03, running them one at a time. Return to the completed report in 04 to inspect the release rules, then continue with 05. Each notebook sets up its own model and experiment.
 
 Dependencies apply to each notebook separately. Standard environment 5 provides Python 3.12, but you still need the requirements file for MLflow 3.16.0. The Git Folder Serverless Beta has a separate setup; these steps follow the [standard notebook environment instructions](https://docs.databricks.com/aws/en/compute/serverless/dependencies).
 
@@ -184,11 +207,11 @@ Set `DATABRICKS_CONFIG_PROFILE` if you use a named profile. Inside Databricks, t
 | [01 Trace the failure](notebooks/west/01_trace_the_failure.py) | Inspect the retrieved policy and response |
 | [02 Build the scorer stack](notebooks/west/02_build_the_scorer_stack.py) | Combine deterministic checks and an LLM judge |
 | [03 Trust the judge](notebooks/west/03_trust_the_judge.py) | Compare the judge's scores with reference labels |
-| [04 Compare and gate](notebooks/west/04_compare_and_gate.py) | Compare application variants using the same cases |
+| [04 Compare and gate](notebooks/west/04_compare_and_gate.py) | Open the visual release report, then inspect its evidence and rules |
 | [05 Production feedback](notebooks/west/05_production_feedback.py) | Attach review feedback to a trace and plan the next test case |
 | [06 Optional integrations](notebooks/west/06_optional_integrations.py) | Evaluate a fresh reply with Phoenix and TruLens |
 
-The files open as Databricks notebooks and also run as local Python scripts. Work through notebooks 00–05 in order, or start at any checkpoint. Each runs independently.
+The files open as Databricks notebooks and also run as local Python scripts. Start with the report in 04, then work through 00–03, revisit 04, and finish with 05. Each notebook also runs independently.
 
 These ten cases are a starting point for learning the workflow. A production application needs a larger test set based on its users and failure modes.
 

@@ -1,16 +1,16 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Which release earns a pass on this policy?
+# MAGIC # Start here: would you ship this assistant?
 # MAGIC
 # MAGIC ODSC AI West 2026 | Debu Sinha
 # MAGIC
-# MAGIC A dataset is the set of named examples the team refuses to forget. A gate turns evidence into a ship or block decision. Compare the same questions across releases. Check complete coverage and hard requirements before the regression comparison. The deliberate fault is stale policy retrieval. Repairing that retrieval is the targeted change. Real model behavior decides whether the expected block and pass actually occur.
+# MAGIC Start with the finished release report below. Compare the two decisions and the customer's two answers, then open the evidence to see what changed. The report uses this run's responses and scores.
 # MAGIC
-# MAGIC **Watch:** Set the rule before revealing baseline, candidate, and repaired candidate results.
+# MAGIC ![Recorded release report](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/main/notebooks/images/west/release-report.png)
 # MAGIC
-# MAGIC **Build:** Run the checkpoint and read both the block reason and the repaired candidate decision.
+# MAGIC This image is a saved local example. Run the cells below to generate your own report. The application model, questions, scorers, and thresholds stay fixed during each comparison; only the retrieved policy changes. Your result may differ.
 # MAGIC
-# MAGIC **Extend:** Increase the dataset with boundary and adversarial cases. Decide the minimum evidence before looking at results.
+# MAGIC After seeing the result, open **00_ship_or_block** to work through the customer's answer, then **01–03** to explore retrieval, scoring, and judge calibration. Return here to inspect the release rules before continuing to **05_production_feedback**.
 # MAGIC
 
 # COMMAND ----------
@@ -32,27 +32,36 @@ configure_notebook()
 # COMMAND ----------
 
 # Run this cell after completing the setup in README.md.
-# It calls the configured provider. Failures stop the checkpoint.
-import json
+# It calls the configured provider and can take several minutes.
 from west_workshop import run_checkpoint
+from west_workshop.report import render_release_report, write_release_report
 
 summary = run_checkpoint(4)
-print(json.dumps(summary, indent=2, sort_keys=True))
-print("Repair comparison:", json.dumps(summary.get("repair_comparison"), indent=2))
+if summary.get("summary_path"):
+    report_path = write_release_report(summary)
+    print("Saved report:", report_path)
+    print("Full results:", summary["summary_path"])
+
+# Databricks renders the report inline. Local scripts save an HTML file to open.
+if callable(globals().get("displayHTML")):
+    displayHTML(render_release_report(summary))
+else:
+    print("Checkpoint status:", summary.get("status"))
+
 if summary.get("status") != "passed":
     raise RuntimeError("Checkpoint incomplete. Resolve the readiness or validation issue in the summary.")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Make the decision
+# MAGIC ## Follow the evidence
 # MAGIC
-# MAGIC ![Local MLflow example](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/west-2026/notebooks/images/west/04-comparison.png)
+# MAGIC Open the report's three expandable sections: the retrieved policies, every scored case, and the release rules. The MLflow run IDs and trace IDs let you follow the same evidence in the experiment UI.
 # MAGIC
-# MAGIC This view compares the stale-policy candidate and repaired application on the same cases. Judge disagreements remain visible. The checkpoint also evaluates both versions against the baseline.
+# MAGIC The judge first has to pass eight separate rubric controls. Then the baseline, stale candidate, and repaired assistant each answer the same ten questions. A missing response or score blocks a complete comparison.
 # MAGIC
-# MAGIC Before the comparison, the selected judge must pass eight separate authored rubric controls. The application model, questions, scorers, and gate thresholds then stay fixed. The only application change is the retrieved policy. Read `repair_comparison` for the actual means, recovered cases, and regressions; read the retrieval spans to verify the cause. No score is replaced to produce the intended outcome.
+# MAGIC **Try next:** Add boundary and adversarial cases. Decide the release rules before seeing the new results.
 # MAGIC
-# MAGIC Does the candidate satisfy our explicit policy, and is every required case accounted for?
+# MAGIC Which piece of evidence would change your release decision?
 # MAGIC
 # MAGIC A pass applies only to this teaching policy and dataset. Next, open 05_production_feedback to see how a new failure becomes a future test.
