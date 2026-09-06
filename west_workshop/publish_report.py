@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .config import selected_provider
 from .report import render_release_report
-from .runtime import _setup_tracking
+from .runtime import _quiet_dependencies, _setup_tracking
 
 
 def publish(path, provider=None, experiment_id=None):
@@ -17,11 +17,12 @@ def publish(path, provider=None, experiment_id=None):
     report = render_release_report(summary)
     output = Path(os.environ.get("WORKSHOP_OUTPUT_DIR", "artifacts/west-live")).resolve()
     output.mkdir(parents=True, exist_ok=True)
-    default_experiment = _setup_tracking(selected_provider(provider), output)
-    experiment_id = str(experiment_id or default_experiment)
-    with mlflow.start_run(experiment_id=experiment_id, run_name="northstar-recorded-release-report", tags={"workshop.report": "checkpoint_4", "workshop.source_gate_run": str(summary.get("gate_run_id", "unavailable"))}) as run:
-        mlflow.log_dict(summary, "release-summary.json")
-        mlflow.log_text(report, "release-report.html")
+    with _quiet_dependencies():
+        default_experiment = _setup_tracking(selected_provider(provider), output)
+        experiment_id = str(experiment_id or default_experiment)
+        with mlflow.start_run(experiment_id=experiment_id, run_name="northstar-recorded-release-report", tags={"workshop.report": "checkpoint_4", "workshop.source_gate_run": str(summary.get("gate_run_id", "unavailable"))}) as run:
+            mlflow.log_dict(summary, "release-summary.json")
+            mlflow.log_text(report, "release-report.html")
     return {"experiment_id": experiment_id, "report_run_id": run.info.run_id, "source_gate_run_id": summary.get("gate_run_id"), "model_calls": 0}
 
 
