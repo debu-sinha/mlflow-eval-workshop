@@ -1,0 +1,22 @@
+command:
+  - gunicorn
+  - app:app
+  - --bind
+  - 0.0.0.0:$DATABRICKS_APP_PORT
+  - --workers
+  - "1"
+  - --threads
+  - "4"
+  - --timeout
+  - "180"
+env:
+  - name: WORKSHOP_PROVIDER
+    value: databricks
+  - name: WORKSHOP_DATABRICKS_MODEL
+    valueFrom: serving-endpoint
+  - name: MLFLOW_EXPERIMENT_ID
+    valueFrom: experiment
+  - name: MLFLOW_DISABLE_AGENT_HINT
+    value: "1"
+  - name: MLFLOW_DISABLE_TELEMETRY
+    value: "true"

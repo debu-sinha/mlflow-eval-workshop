@@ -1,0 +1,2 @@
+# Databricks Apps uses the same pinned environment as the core notebooks.
+-r requirements-workshop.txt

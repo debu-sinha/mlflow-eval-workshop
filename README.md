@@ -4,15 +4,88 @@ ODSC AI West 2026 | Debu Sinha
 
 ![Release report showing the stale assistant blocked and the repaired assistant passing](notebooks/images/west/release-report.png)
 
-Start with the finished result: two versions of a support assistant, the customer's answer from each, and a release decision backed by evaluation evidence. The image above comes from a saved local run. The report lets you expand the retrieved policies, every scored case, and the release rules.
+Start with a working support assistant. Choose a customer's order, ask about a refund, and follow the answer into its MLflow trace. Then compare the current and stale policies and open the release report to see whether the repair holds across the test cases. The report image above comes from a saved local run.
 
 A customer asks for a refund 45 days after buying an item. The assistant has retrieved an outdated policy that allows refunds for 90 days instead of 30. Fixing retrieval changes the answer. Does it improve the other cases too, and is the improvement enough to ship?
 
-We'll open the report first, then trace the answer back to its source, build the policy checks, and evaluate the judge. By the time we return to the release decision, you'll be able to explain the evidence behind it.
+We'll use the app first, then trace an answer back to its source, build the policy checks, and evaluate the judge. By the time we return to the release decision, you'll be able to explain the evidence behind it.
 
 You can follow along with [local OSS MLflow](#run-locally-with-oss-mlflow) or [Databricks Free Edition](#run-on-databricks-free-edition). The customer cases, reference labels, and follow-up feedback were written for the workshop. Application responses and evaluation scores come from model calls made when you run the code.
 
-## Start with the release report
+## Start with the support app
+
+The app calls `make_predictor` in `west_workshop/runtime.py`, the same function evaluated in the notebooks. It shows fictional orders and makes a real model call for every question. The source selector chooses one policy document; it is a small retrieval example, not a vector database. Each question is independent and includes the selected order's age and condition.
+
+After completing either setup below:
+
+1. Open the app and keep **Current policy** selected. Choose the **45 days** order, click **Can I get a refund?**, then send the question.
+2. Read the actual answer. Click **Follow this answer** to see its saved retrieval span and open the trace in MLflow.
+3. Select **Stale policy** and send the same question again. Compare the eligibility and explanation. Switching policies clears the previous answer so it cannot be mistaken for a new response.
+4. Open **Release report** to inspect the recorded comparison across ten cases. A new chat reply has not been scored by that report.
+
+The app explains refund eligibility and next steps. It cannot approve a payment, issue credit, or create a support ticket. A defective-item request should lead to guidance for human review.
+
+### Run the app locally
+
+Complete [local OSS setup](#run-locally-with-oss-mlflow), then run this from the same terminal where you loaded your API key:
+
+```bash
+uv run --locked python app.py
+```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The app uses the same local MLflow database and model configuration as the checkpoints. In the evidence panel, copy the trace ID and find it in the local MLflow UI. Stop the app with Ctrl+C.
+
+### Deploy the app on Databricks Free Edition
+
+Complete [Databricks notebook setup](#run-on-databricks-free-edition) and run checkpoint 4 first. Then create a custom app from **App switcher > Databricks Apps > Create app**. Choose a name such as `northstar-support` and configure this public Git repository on branch `main`:
+
+```text
+https://github.com/debu-sinha/mlflow-eval-workshop.git
+```
+
+Deploy from the repository root, where `app.py`, `app.yaml`, and `requirements.txt` live. Add these app resources with the exact keys shown; `app.yaml` reads their values:
+
+| Resource key | Resource | Permission |
+|---|---|---|
+| `serving-endpoint` | The same chat endpoint selected in your notebooks | Can query |
+| `experiment` | Your `/Users/<your-user>/odsc-west-2026` MLflow experiment | Can edit |
+
+The app uses its own Databricks identity. A successful notebook call does not give the app permission to use the endpoint or experiment; both resources are required. No personal API key belongs in the app configuration. See [model resources](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/model-serving), [experiment resources](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/mlflow), and [Git deployment](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/deploy).
+
+After deployment, open the app URL and send a question. Each successful answer includes a saved trace, and **Follow this answer** links to that exact trace. The app handles one model request at a time to keep the demonstration within the shared endpoint's limits.
+
+Free Edition supports up to three apps and stops an app after 24 hours; restart it before using it again. App users must belong to the same Databricks account. Workshop participants can deploy their own copy in their own Free Edition account. See [Free Edition limits](https://docs.databricks.com/aws/en/getting-started/free-edition-limitations) and [app access](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/key-concepts).
+
+### Publish the recorded release report to the app
+
+This copies a saved checkpoint 4 summary into the app's MLflow experiment. It makes no new model calls and does not change scores or gate decisions.
+
+Locally:
+
+```bash
+uv run --locked python -m west_workshop.publish_report "<path-to-checkpoint-4-summary.json>" --provider openai
+```
+
+In Databricks, add a cell after checkpoint 4 has completed:
+
+```python
+from west_workshop.publish_report import publish
+publish(summary["summary_path"], provider="databricks")
+```
+
+Publish to the experiment you attached to the app. **Release report** opens the most recently published comparison, including an incomplete or blocked result. It does not search for a winning run. Publish again after rerunning checkpoint 4 if you want the app to show the new evidence.
+
+### App troubleshooting
+
+| Symptom | What to check |
+|---|---|
+| Deployment cannot find a resource | Use the exact resource keys `serving-endpoint` and `experiment`. |
+| The page loads but a question fails | Check model Can query and experiment Can edit for the app identity, endpoint availability, and remaining quota. A notebook identity and app identity have different permissions. |
+| Another question is being answered | Wait for that request to finish, then retry. No answer is queued or substituted. |
+| Release report is unavailable | Publish a checkpoint 4 summary into the experiment attached to this app. |
+| The app has stopped | Restart it from Databricks Apps. Free Edition automatically stops apps after 24 hours. |
+
+## Create the release report
 
 After setup, run **checkpoint 4** to create the finished report. Locally, open the `release-report.html` file at the printed `report_path`. In Databricks, notebook **04_compare_and_gate** displays it inline. The first run takes several minutes; opening a saved report is immediate and makes no model calls.
 
