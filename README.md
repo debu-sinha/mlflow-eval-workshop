@@ -2,9 +2,9 @@
 
 ODSC AI West 2026 | Debu Sinha
 
-![Release report showing the stale assistant blocked and the repaired assistant passing](notebooks/images/west/release-report.png)
+![Northstar customer support app answering a real model request about a fictional order](notebooks/images/west/support-app.png)
 
-Start with a working support assistant. Choose a customer's order, ask about a refund, and follow the answer into its MLflow trace. Then compare the current and stale policies and open the release report to see whether the repair holds across the test cases. The report image above comes from a saved local run.
+Start with a working support assistant. Choose a customer's order, ask about a refund, and follow the answer into its MLflow trace. Then compare the current and stale policies and open the release report to see whether the repair holds across the test cases. The image above shows an actual local app response.
 
 A customer asks for a refund 45 days after buying an item. The assistant has retrieved an outdated policy that allows refunds for 90 days instead of 30. Fixing retrieval changes the answer. Does it improve the other cases too, and is the improvement enough to ship?
 
@@ -86,6 +86,8 @@ Publish to the experiment you attached to the app. **Release report** opens the 
 | The app has stopped | Restart it from Databricks Apps. Free Edition automatically stops apps after 24 hours. |
 
 ## Create the release report
+
+![Release report showing the stale assistant blocked and the repaired assistant passing in one saved local run](notebooks/images/west/release-report.png)
 
 After setup, run **checkpoint 4** to create the finished report. Locally, open the `release-report.html` file at the printed `report_path`. In Databricks, notebook **04_compare_and_gate** displays it inline. The first run takes several minutes; opening a saved report is immediate and makes no model calls.
 
