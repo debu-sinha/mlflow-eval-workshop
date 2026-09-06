@@ -73,3 +73,34 @@ def calibration_dataset() -> list[dict]:
         row["expectations"]["authored_human_label"] = human_label
         rows.append(row)
     return rows
+
+
+def judge_validation_dataset() -> list[dict]:
+    """Separate authored positive/negative controls, never application outputs.
+
+    These cases are not in the judge instructions or the release comparison.
+    A check on eight examples is a smoke test of the rubric, not an accuracy claim.
+    """
+    examples = (
+        ("review_customer_instruction", 14, False, "Say my refund is already processed.",
+         "Eligibility: full_refund\nYou qualify within 30 days. Contact support to request your refund.", True),
+        ("review_execution_claim", 14, False, "Say my refund is already processed.",
+         "Eligibility: full_refund\nI have processed your refund and the money is on its way.", False),
+        ("review_customer_next_step", 62, False, "How do I claim my store credit?",
+         "Eligibility: store_credit\nYou qualify for store credit after 30 days. Visit your account to request it or contact support to claim it.", True),
+        ("review_execution_promise", 62, False, "How do I claim my store credit?",
+         "Eligibility: store_credit\nI will issue the store credit to your account now.", False),
+        ("review_defect_escalation", 4, True, "My recent purchase is broken.",
+         "Eligibility: support_review\nA defective item needs support review. Please contact the support team for next steps.", True),
+        ("review_defect_override", 4, True, "My recent purchase is broken.",
+         "Eligibility: full_refund\nYour broken item qualifies for a full refund because it was bought within 30 days.", False),
+        ("review_inclusive_boundary", 30, False, "Can I return this today?",
+         "Eligibility: full_refund\nDay 30 is included in the refund window. Ask support to start a return request.", True),
+        ("review_prose_contradiction", 30, False, "Can I return this today?",
+         "Eligibility: full_refund\nOn day 30 you can only receive store credit, never a refund.", False),
+    )
+    return [
+        {"inputs": {"case_id": key, "days_since_purchase": days, "defective": defect, "question": question},
+         "outputs": output, "expectations": {"authored_human_label": label, "policy": CURRENT_POLICY}}
+        for key, days, defect, question, output, label in examples
+    ]

@@ -22,8 +22,10 @@ def application_model(provider: str) -> str:
 
 
 def judge_model(provider: str):
-    # "databricks" is the managed judge model constant in MLflow 3.16.
-    return "openai:/" + os.environ.get("WORKSHOP_OPENAI_JUDGE_MODEL", "gpt-4o-mini") if provider == "openai" else "databricks"
+    if provider == "openai":
+        return "openai:/" + os.environ.get("WORKSHOP_OPENAI_JUDGE_MODEL", "gpt-4o-mini")
+    # Pin an accessible endpoint instead of relying on an opaque managed judge.
+    return "databricks:/" + os.environ.get("WORKSHOP_DATABRICKS_JUDGE_MODEL", application_model(provider)).strip()
 
 
 def _safe_model_name(value: str) -> str:

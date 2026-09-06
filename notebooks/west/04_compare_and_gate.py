@@ -26,6 +26,9 @@ if _root is None:
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
+from west_workshop.notebook_setup import configure_notebook
+configure_notebook()
+
 # COMMAND ----------
 
 # Run this cell after completing the setup in README.md.
@@ -35,6 +38,7 @@ from west_workshop import run_checkpoint
 
 summary = run_checkpoint(4)
 print(json.dumps(summary, indent=2, sort_keys=True))
+print("Repair comparison:", json.dumps(summary.get("repair_comparison"), indent=2))
 if summary.get("status") != "passed":
     raise RuntimeError("Checkpoint incomplete. Resolve the readiness or validation issue in the summary.")
 
@@ -46,6 +50,8 @@ if summary.get("status") != "passed":
 # MAGIC ![Local MLflow example](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/west-2026/notebooks/images/west/04-comparison.png)
 # MAGIC
 # MAGIC This view compares the stale-policy candidate and repaired application on the same cases. Judge disagreements remain visible. The checkpoint also evaluates both versions against the baseline.
+# MAGIC
+# MAGIC Before the comparison, the selected judge must pass eight separate authored rubric controls. The application model, questions, scorers, and gate thresholds then stay fixed. The only application change is the retrieved policy. Read `repair_comparison` for the actual means, recovered cases, and regressions; read the retrieval spans to verify the cause. No score is replaced to produce the intended outcome.
 # MAGIC
 # MAGIC Does the candidate satisfy our explicit policy, and is every required case accounted for?
 # MAGIC

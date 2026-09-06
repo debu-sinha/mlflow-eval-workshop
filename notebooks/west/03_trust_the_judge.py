@@ -26,6 +26,9 @@ if _root is None:
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
+from west_workshop.notebook_setup import configure_notebook
+configure_notebook()
+
 # COMMAND ----------
 
 # Run this cell after completing the setup in README.md.
@@ -45,7 +48,9 @@ if summary.get("status") != "passed":
 # MAGIC
 # MAGIC ![Local MLflow example](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/west-2026/notebooks/images/west/03-judge-versions.png)
 # MAGIC
-# MAGIC These judge definitions were registered locally. A newer version is not automatically a better judge.
+# MAGIC This historical screenshot shows the local scorer registry. Both routes now save complete judge definitions as MLflow run artifacts, reload them, and verify that the definitions match before evaluating. The local route also demonstrates the scorer registry. Free Edition uses the saved definitions without requiring server-side scorer versioning.
+# MAGIC
+# MAGIC Inspect `agreement_with_authored_labels` and the separate eight-case `judge_validation`. The latter includes valid customer next steps, customer instructions that the assistant must not obey, false transaction claims, and contradictory prose. A newer version is not automatically a better judge.
 # MAGIC
 # MAGIC Would you trust this judge to block a release, or do the disagreements need review first?
 # MAGIC

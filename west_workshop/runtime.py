@@ -15,7 +15,7 @@ import uuid
 from urllib.parse import urlsplit
 
 from .config import APP_MAX_RETRIES, APP_TIMEOUT_SECONDS, application_model, judge_model, preflight, selected_provider
-from .data import CURRENT_POLICY, STALE_POLICY, calibration_dataset, dataset, dataset_digest, opening_case
+from .data import CURRENT_POLICY, STALE_POLICY, calibration_dataset, dataset, dataset_digest, judge_validation_dataset, opening_case
 
 CHECKPOINT_NAMES = (
     "ship_or_block", "trace_the_failure", "build_the_scorer_stack",
@@ -30,14 +30,19 @@ class WorkshopExecutionError(RuntimeError):
     """A safe error with no provider response, header, or host."""
 
 
-def _configure_timeouts():
+def _configure_timeouts(provider=None):
     # These names exist in MLflow 3.16 environment_variables.
     settings = {
         "MLFLOW_DISABLE_AGENT_HINT": "1",
         "MLFLOW_DISABLE_TELEMETRY": "true",
         "LITELLM_LOCAL_MODEL_COST_MAP": "True",
-        "MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS": "2",
-        "MLFLOW_GENAI_EVAL_MAX_WORKERS": "2",
+        # App and judge share the Free Edition endpoint's request limits.
+        "MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS": "1" if selected_provider(provider) == "databricks" else "2",
+        "MLFLOW_GENAI_EVAL_MAX_WORKERS": "1" if selected_provider(provider) == "databricks" else "2",
+        # Worker counts do not cap requests per second: prediction and scoring
+        # are separate pipelines. Pace both, including deterministic scorers.
+        "MLFLOW_GENAI_EVAL_PREDICT_RATE_LIMIT": "0.5" if selected_provider(provider) == "databricks" else "auto",
+        "MLFLOW_GENAI_EVAL_SCORER_RATE_LIMIT": "1" if selected_provider(provider) == "databricks" else "0",
         "MLFLOW_GENAI_EVAL_MAX_RETRIES": "1",
         "MLFLOW_GENAI_EVAL_LLM_TIMEOUT": "45",
         "MLFLOW_GATEWAY_ROUTE_TIMEOUT_SECONDS": "45",
@@ -94,6 +99,13 @@ def _commit():
         return result.stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return "unavailable"
+
+
+def _source_manifest():
+    root = Path(__file__).resolve().parents[1]
+    paths = sorted((root / "west_workshop").glob("*.py")) + [root / "eval_gate.py"]
+    return {path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in paths if path.is_file()}
 
 
 def _score(value):
@@ -159,7 +171,7 @@ def make_predictor(provider, variant="repaired"):
     """Construct a real traced application for an explicit live invocation."""
     if variant not in {"baseline", "candidate", "repaired"}:
         raise ValueError("Unknown application variant")
-    _configure_timeouts()
+    _configure_timeouts(provider)
     import mlflow
 
     client = _client(provider)
@@ -233,7 +245,7 @@ def _policy_judge(provider, *, rationale_first=True, name="policy_judge"):
 
 def build_scorers(provider, include_judge=True):
     """Fast checks plus one real judge. Every component remains inspectable."""
-    _configure_timeouts()
+    _configure_timeouts(provider)
     from mlflow.entities import Feedback
     from mlflow.genai.scorers import PIIDetection, RegexMatch, ResponseLength, make_scorer_ensemble, scorer
 
@@ -304,8 +316,17 @@ def _trace_rows(run_id: str, expected_rows: list[dict]):
             except (TypeError, ValueError):
                 inputs = None
         metadata = getattr(trace.info, "trace_metadata", None) or {}
-        case_id = trace.info.client_request_id or metadata.get("client_request_id") or (inputs or {}).get("case_id")
-        if case_id not in expected:
+        # Databricks assigns a generated client_request_id to authored examples.
+        # Resolve named dataset identity from the stored inputs as well. Reject
+        # conflicting known identities instead of silently choosing one.
+        identities = {key for key in (
+            inputs.get("case_id") if isinstance(inputs, dict) else None,
+            metadata.get("client_request_id"), trace.info.client_request_id,
+        ) if isinstance(key, str) and key in expected}
+        if len(identities) != 1:
+            continue
+        case_id = identities.pop()
+        if not isinstance(inputs, dict) or inputs != expected[case_id]["inputs"]:
             continue
         assessment_rows = []
         scores = {}
@@ -326,7 +347,8 @@ def _trace_rows(run_id: str, expected_rows: list[dict]):
             scores[name] = None
         spans = [{"name": span.name, "type": str(span.span_type), "inputs": span.inputs, "outputs": span.outputs} for span in trace.data.spans if span.name in {"refund_assistant", "retrieve_refund_policy", "generate_support_answer"}]
         output = trace.data.spans[0].outputs if trace.data.spans else trace.data.response
-        rows.append({"case_id": case_id, "inputs": expected[case_id]["inputs"], "expectations": expected[case_id]["expectations"], "output": output, "scores": scores, "assessments": assessment_rows, "trace_id": trace.info.trace_id, "spans": spans})
+        state = str(getattr(trace.info.state, "value", trace.info.state))
+        rows.append({"case_id": case_id, "inputs": expected[case_id]["inputs"], "expectations": expected[case_id]["expectations"], "output": output, "trace_state": state, "scores": scores, "assessments": assessment_rows, "trace_id": trace.info.trace_id, "spans": spans})
     return rows
 
 
@@ -335,7 +357,10 @@ def _complete(rows, expected_rows, scorer_names):
     keys = [row["case_id"] for row in rows]
     if len(keys) != len(set(keys)) or set(keys) != expected_keys:
         return False
-    return all(all(_score(row["scores"].get(name)) is not None for name in scorer_names) for row in rows)
+    return all(row.get("trace_state") == "OK" and isinstance(row.get("output"), str)
+               and bool(row["output"].strip())
+               and all(_score(row["scores"].get(name)) is not None for name in scorer_names)
+               for row in rows)
 
 
 def _validate_trace_replay(result, trace_id: str, scorer_name: str) -> dict:
@@ -398,10 +423,13 @@ def _evaluate(provider, variant, rows, scorers, directory, *, authored=False):
 
     manifest = _scorer_manifest(scorers)
     with mlflow.start_run(run_name="west-" + variant, nested=mlflow.active_run() is not None) as run:
-        mlflow.log_params({"workshop_variant": variant, "dataset_sha256": dataset_digest(rows), "policy_sha256": hashlib.sha256(CURRENT_POLICY.encode()).hexdigest(), "provider": provider, "authored_calibration_outputs": authored})
+        retrieval_policy = STALE_POLICY if variant == "candidate" else CURRENT_POLICY
+        mlflow.log_params({"workshop_variant": variant, "dataset_sha256": dataset_digest(rows), "evaluation_policy_sha256": hashlib.sha256(CURRENT_POLICY.encode()).hexdigest(), "retrieval_policy_sha256": hashlib.sha256(retrieval_policy.encode()).hexdigest(), "provider": provider, "application_model": application_model(provider), "judge_model": judge_model(provider), "authored_calibration_outputs": authored})
         mlflow.set_tags({"workshop": "odsc-west-2026", "author": "Debu Sinha", "git_commit": _commit()})
+        mlflow.log_dict(_source_manifest(), "source_sha256.json")
         mlflow.log_dict(rows, "evaluation_input.json")
         mlflow.log_dict(manifest, "scorer_definitions.json")
+        mlflow.log_dict({s.name: s.model_dump() for s in scorers}, "scorer_definitions_full.json")
         mlflow.log_input(mlflow.data.from_pandas(pd.DataFrame(rows), name="west-refund-policy-" + dataset_digest(rows)[:12]), context="evaluation")
         result = mlflow.genai.evaluate(data=rows, predict_fn=None if authored else make_predictor(provider, variant), scorers=scorers)
         run_id = result.run_id or run.info.run_id
@@ -420,7 +448,7 @@ def _gate(baseline, candidate, expected_rows):
     required = ["deterministic_stack", "policy_judge"]
     complete = _complete(baseline["rows"], expected_rows, required) and _complete(candidate["rows"], expected_rows, required)
     if not complete:
-        return {"passed": False, "decision": "block", "reason": "Missing, duplicated, or unscored named cases. The gate fails closed.", "complete": False}
+        return {"passed": False, "decision": "block", "reason": "Missing, duplicated, unscored, or failed named cases. The gate fails closed.", "complete": False}
     baseline_scores = {row["case_id"]: min(row["scores"][name] for name in required) for row in baseline["rows"]}
     candidate_scores = {row["case_id"]: min(row["scores"][name] for name in required) for row in candidate["rows"]}
     mandatory_failures = {
@@ -437,17 +465,67 @@ def _gate(baseline, candidate, expected_rows):
     return {"passed": passed, "decision": "ship" if passed else "block", "complete": True, "reason": aggregate_reason if floor_passed else "Candidate or baseline is below the absolute quality floor.", "candidate_mean": mean, "baseline_mean": baseline_mean, "quality_floor": QUALITY_FLOOR, "max_regression_rate": REGRESSION_LIMIT, "paired_rows": [{"case_id": key, "baseline": baseline_scores[key], "candidate": candidate_scores[key]} for key in sorted(candidate_scores)], "limitation": "Ten teaching cases demonstrate mechanics. They do not certify production readiness."}
 
 
-def _register_judge_versions(provider, experiment_id):
+def _judge_versions(provider, experiment_id, judges):
+    """Round-trip the actual calibration judges through the selected store.
+
+    Free Edition does not need experiment-level scorer versioning: immutable run
+    artifacts retain complete definitions and are downloaded before evaluation.
+    OSS also demonstrates the native scorer registry.
+    """
+    import mlflow
+    from mlflow.genai.scorers import Scorer
     from mlflow.genai.scorers import get_scorer
 
     name = "west_refund_judge_" + uuid.uuid4().hex[:10]
     versions = []
-    for number, rationale_first in enumerate((False, True), start=1):
-        judge = _policy_judge(provider, rationale_first=rationale_first)
-        judge.register(name=name, experiment_id=experiment_id)
-        restored = get_scorer(name=name, experiment_id=experiment_id, version=number)
-        versions.append({"registered_name": name, "version": number, "generate_rationale_first": rationale_first, "definition_sha256": _scorer_manifest([restored])[0]["definition_sha256"]})
-    return versions
+    restored_judges = []
+    with mlflow.start_run(run_name="west-judge-definitions") as run:
+        for number, judge in enumerate(judges, start=1):
+            definition = judge.model_dump()
+            digest = _scorer_manifest([judge])[0]["definition_sha256"]
+            path = f"judge_versions/v{number}.json"
+            mlflow.log_dict(definition, path)
+            # Read the persisted definition, rather than reusing the in-memory one.
+            restored = Scorer.model_validate(mlflow.artifacts.load_dict(f"runs:/{run.info.run_id}/{path}"))
+            if restored.model_dump() != definition:
+                raise WorkshopExecutionError("The stored judge definition did not round-trip exactly.")
+            record = {"version": number, "name": judge.name, "storage": "run_artifact", "run_id": run.info.run_id, "artifact_path": path, "generate_rationale_first": number == 2, "definition_sha256": digest, "round_trip_verified": True}
+            if provider == "openai":
+                judge.register(name=name, experiment_id=experiment_id)
+                registered = get_scorer(name=name, experiment_id=experiment_id, version=number)
+                # Registry loading uses the registered name. Compare the rubric and
+                # model separately; the artifact retains the evaluation scorer name.
+                if registered.instructions != judge.instructions or registered.model != judge.model:
+                    raise WorkshopExecutionError("The registered judge does not match its saved definition.")
+                record.update(registered_name=name, registry_version=number)
+            versions.append(record)
+            restored_judges.append(restored)
+        mlflow.log_dict(versions, "judge_versions/manifest.json")
+    return versions, restored_judges
+
+
+def _validate_judge(provider, judge, directory):
+    """Require the chosen judge to recognize both valid and invalid controls."""
+    rows = judge_validation_dataset()
+    result = _evaluate(provider, "authored_judge_validation", rows, [judge], directory, authored=True)
+    disagreements = [row["case_id"] for row in result["rows"]
+                     if row["scores"].get(judge.name) != float(row["expectations"]["authored_human_label"])]
+    return {"passed": result["complete"] and not disagreements, "evaluation": result,
+            "disagreements": disagreements, "required_agreement": 1.0,
+            "provenance": "separate_authored_rubric_controls", "representative_accuracy_claim": False}
+
+
+def _repair_comparison(candidate, repaired):
+    required = ("deterministic_stack", "policy_judge")
+    before = {r["case_id"]: min(r["scores"][s] for s in required) for r in candidate["rows"]}
+    after = {r["case_id"]: min(r["scores"][s] for s in required) for r in repaired["rows"]}
+    return {"candidate_mean": sum(before.values()) / len(before),
+            "repaired_mean": sum(after.values()) / len(after),
+            "improved_cases": sorted(k for k in before if after[k] > before[k]),
+            "regressed_cases": sorted(k for k in before if after[k] < before[k]),
+            "changed_component": "retrieved policy: stale 90-day window to current 30-day window",
+            "same_dataset": candidate["dataset_digest"] == repaired["dataset_digest"],
+            "same_scorers": candidate["scorers"] == repaired["scorers"]}
 
 
 def _execute(index, provider, directory, experiment_id):
@@ -480,23 +558,31 @@ def _execute(index, provider, directory, experiment_id):
     if index == 3:
         authored_rows = calibration_dataset()
         judges = [_policy_judge(provider, rationale_first=False, name="value_first"), _policy_judge(provider, rationale_first=True, name="rationale_first")]
-        versions = _register_judge_versions(provider, experiment_id)
+        versions, judges = _judge_versions(provider, experiment_id, judges)
         result = _evaluate(provider, "authored_calibration", authored_rows, judges, directory, authored=True)
         agreement = {}
         for judge in judges:
             agreement[judge.name] = sum(row["scores"].get(judge.name) == float(row["expectations"]["authored_human_label"]) for row in result["rows"]) / len(authored_rows)
-        return {"status": "passed" if result["complete"] else "error", "evaluations": [result], "scorer_versions": versions, "agreement_with_authored_labels": agreement, "decision": "Review disagreements before trusting the judge.", "limitation": "Authored calibration exercise only. Rationale-first is not assumed to improve agreement, and six labels are not representative validation."}
+        validation = _validate_judge(provider, judges[1], directory)
+        return {"status": "passed" if result["complete"] and validation["passed"] else "error", "evaluations": [result], "scorer_versions": versions, "agreement_with_authored_labels": agreement, "judge_validation": validation, "decision": "Review disagreements before trusting the judge.", "limitation": "Authored calibration exercise only. Rationale-first is not assumed to improve agreement, and these small sets are not representative validation."}
     if index == 4:
         rows = dataset()
         scorers = build_scorers(provider)
+        validation = _validate_judge(provider, next(s for s in scorers if s.name == "policy_judge"), directory)
+        if not validation["passed"]:
+            return {"status": "error", "judge_validation": validation, "decision": "block", "error": "The judge failed the separate rubric controls. Review the assessments before comparing releases."}
         results = [_evaluate(provider, variant, rows, scorers, directory) for variant in ("baseline", "candidate", "repaired")]
         candidate_gate = _gate(results[0], results[1], rows)
         repaired_gate = _gate(results[0], results[2], rows)
-        success = all(item["complete"] for item in results) and not candidate_gate["passed"] and repaired_gate["passed"]
+        comparison = _repair_comparison(results[1], results[2]) if all(item["complete"] for item in results) else None
+        success = (comparison is not None and not candidate_gate["passed"] and repaired_gate["passed"]
+                   and comparison["same_dataset"] and comparison["same_scorers"]
+                   and comparison["repaired_mean"] > comparison["candidate_mean"])
         with mlflow.start_run(run_name="west-release-gates") as gate_run:
             mlflow.log_dict(_sanitize({"candidate": candidate_gate, "repaired": repaired_gate}), "gate_decisions.json")
+            mlflow.log_dict(_sanitize(comparison), "repair_comparison.json")
             mlflow.log_metrics({"candidate_passed": int(candidate_gate["passed"]), "repaired_passed": int(repaired_gate["passed"])})
-        return {"status": "passed" if success else "error", "evaluations": results, "gates": {"candidate": candidate_gate, "repaired": repaired_gate}, "gate_run_id": gate_run.info.run_id, "decision": repaired_gate["decision"], "expected_outcome_observed": success}
+        return {"status": "passed" if success else "error", "evaluations": results, "judge_validation": validation, "repair_comparison": comparison, "gates": {"candidate": candidate_gate, "repaired": repaired_gate}, "gate_run_id": gate_run.info.run_id, "decision": repaired_gate["decision"], "expected_outcome_observed": success}
     rows = [row for row in dataset() if row["inputs"]["case_id"] == "defect_day_45"]
     result = _evaluate(provider, "repaired", rows, build_scorers(provider), directory)
     if not result["complete"]:
@@ -519,9 +605,10 @@ def run_checkpoint(index: int, provider=None, output_dir=None) -> dict:
     output = Path(output_dir or os.environ.get("WORKSHOP_OUTPUT_DIR", "artifacts/west-live")).resolve()
     directory = output / (f"{index:02d}-" + CHECKPOINT_NAMES[index] + "-" + uuid.uuid4().hex[:8])
     directory.mkdir(parents=True, exist_ok=False)
-    _configure_timeouts()
+    _configure_timeouts(provider)
     summary = {"checkpoint": index, "name": CHECKPOINT_NAMES[index], "provider": provider, "utc_timestamp": datetime.now(timezone.utc).isoformat(), "git_commit": _commit(), "dataset_digest": dataset_digest(), "versions": readiness["versions"], "application_model": readiness["application_model"], "judge_model": readiness["judge_model"], "timeout_seconds": APP_TIMEOUT_SECONDS, "application_max_retries": APP_MAX_RETRIES, "output_dir": str(directory), "live_validation": "attempted"}
     summary["judge_request_timeout_seconds"] = 45
+    summary["source_sha256"] = _source_manifest()
     summary["judge_retries"] = "Managed by the installed MLflow judge adapter. The one-retry limit applies to the application client."
     print(f"Checkpoint {index}: making real {provider} calls. Application timeout is 45 seconds with one retry.", flush=True)
     with _quiet_dependencies():
@@ -552,7 +639,8 @@ def run_integrations(provider=None, output_dir=None) -> dict:
     directory = output / ("ecosystem-" + uuid.uuid4().hex[:8])
     directory.mkdir(parents=True, exist_ok=False)
     summary = {"provider": provider, "status": "error", "git_commit": _commit(), "utc_timestamp": datetime.now(timezone.utc).isoformat()}
-    _configure_timeouts()
+    summary["source_sha256"] = _source_manifest()
+    _configure_timeouts(provider)
     print(f"Optional integration check: calling real {provider} services for Phoenix and TruLens.", flush=True)
     with _quiet_dependencies():
         try:

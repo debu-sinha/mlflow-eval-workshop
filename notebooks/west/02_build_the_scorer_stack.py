@@ -26,6 +26,9 @@ if _root is None:
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
+from west_workshop.notebook_setup import configure_notebook
+configure_notebook()
+
 # COMMAND ----------
 
 # Run this cell after completing the setup in README.md.

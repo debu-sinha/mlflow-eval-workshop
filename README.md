@@ -2,30 +2,32 @@
 
 ODSC AI West 2026 | Debu Sinha
 
-Run a support assistant, inspect its traces, evaluate its answers, and compare a candidate with a baseline before making a release decision. The examples use a fictional refund policy and real model APIs.
+A customer asks for a refund 45 days after buying an item. The support assistant gives a friendly answer, but it has retrieved an outdated policy: refunds are allowed for 90 days instead of 30. How would you catch that mistake before shipping?
 
-The local OSS MLflow path was verified on September 5, 2026 with real OpenAI application and judge calls. All six notebooks passed in sequence and in independent processes. The separate Phoenix and TruLens integration check also passed. Databricks execution has not been verified.
+In this workshop, you'll trace the answer back to its source, build checks for the refund policy, evaluate an LLM judge, and compare the assistant before and after fixing retrieval. The final step turns those results into a release decision.
 
-## Setup
+You can follow along with [local OSS MLflow](#run-locally-with-oss-mlflow) or [Databricks Free Edition](#run-on-databricks-free-edition). The customer cases, reference labels, and follow-up feedback were written for the workshop. Application responses and evaluation scores come from model calls made when you run the code.
 
-Use Python 3.10, 3.11, or 3.12. Python 3.12 is recommended for the local environment. Install Git and [uv](https://docs.astral.sh/uv/getting-started/installation/) before running these commands. uv can install Python 3.12 during setup if it is not already available.
+## Local setup
 
-The local route does not require a Databricks account or a notebook server. Open a terminal and confirm that `git --version` and `uv --version` work. If you just installed uv and the command is not found, reopen the terminal. The commands below work in PowerShell or Bash unless a shell is named explicitly.
+You'll need Git and [uv](https://docs.astral.sh/uv/getting-started/installation/). The workshop supports Python 3.10–3.12; the commands below use Python 3.12, which uv can install for you.
+
+Open a terminal and check that `git --version` and `uv --version` work. If you just installed either tool, you may need to reopen the terminal. The commands below work in PowerShell or Bash unless a shell is named.
 
 ```bash
-git clone --branch west-2026 https://github.com/debu-sinha/mlflow-eval-workshop.git
+git clone --branch main https://github.com/debu-sinha/mlflow-eval-workshop.git
 cd mlflow-eval-workshop
 uv sync --locked --python 3.12
 uv run --locked python scripts/verify_west_environment.py
 ```
 
-The committed lock pins MLflow 3.16.0 and its dependencies. `uv run` uses the checkout's `.venv`, so manual environment activation is not needed. Run every command below from this same checkout. Initial dependency downloads and imports can take several minutes.
+The lock file pins MLflow 3.16.0 and its dependencies. `uv run` uses the project's `.venv`, so you don't need to activate it. Keep running the commands from this directory. The first installation can take several minutes.
 
 ## Run locally with OSS MLflow
 
-MLflow and its tracking database run locally. Application and judge calls use the OpenAI API with `gpt-4o-mini` by default, so this is not an offline model demo. You need internet access and an OpenAI API account with access and quota for that model. Calls may incur charges.
+MLflow runs on your computer. The application and judge use the OpenAI API with `gpt-4o-mini` by default, so you'll need internet access, an API key, and available OpenAI quota. Model calls may incur charges.
 
-If `OPENAI_API_KEY` is already configured in your terminal, skip the next step. Otherwise create a key using the [official OpenAI quickstart](https://developers.openai.com/api/docs/quickstart) and load it with your credential manager, or use the hidden-input example for your shell. Never paste the key into a notebook, source file, screenshot, or chat.
+Skip this step if `OPENAI_API_KEY` is already set in your terminal. Otherwise, create a key using the [OpenAI quickstart](https://developers.openai.com/api/docs/quickstart), then load it with your credential manager or one of these hidden-input prompts. Keep keys out of notebooks and source files.
 
 PowerShell:
 
@@ -42,7 +44,7 @@ read -r -s OPENAI_API_KEY
 export OPENAI_API_KEY
 ```
 
-These examples set the key only for the current terminal and its child processes. Keep using that terminal for model calls. The workshop does not automatically load a `.env` file.
+These commands set the key for the current terminal. Use that terminal for the rest of the workshop. A `.env` file isn't loaded automatically.
 
 Check configuration first:
 
@@ -50,7 +52,7 @@ Check configuration first:
 uv run --locked python -m west_workshop --provider openai --check
 ```
 
-Look for `"ready": true`. If it is false, follow the printed `reasons`. This check makes no model calls and does not verify authentication, model access, or quota.
+Look for `"ready": true`. If it is false, follow the printed `reasons`. This checks package versions and local settings; the first checkpoint will test the API connection.
 
 Run the first checkpoint:
 
@@ -68,11 +70,11 @@ uv run --locked python -m west_workshop --provider openai --checkpoint 4
 uv run --locked python -m west_workshop --provider openai --checkpoint 5
 ```
 
-You can also select a single checkpoint independently. Each execution creates fresh results and makes model calls. Do not start the next command until the current one finishes.
+You can also run any checkpoint on its own. Each run generates new responses. Wait for one command to finish before starting the next.
 
-A successful exercise prints `"status": "passed"` and `"live_validation": "completed"`. It can also print `"decision": "block"`, which means it successfully detected the intentionally incorrect candidate. Checkpoint 4 is expected to block the stale candidate and pass the repaired version. A failed command exits with code 2. Inspect the printed summary before retrying, and do not lower the gate thresholds to force a pass.
+A completed exercise prints `"status": "passed"` and `"live_validation": "completed"`. It may also print `"decision": "block"`: the exercise worked, and it caught a bad candidate. Checkpoint 4 compares the stale candidate and repaired assistant against a baseline. The repair must improve the score and pass the release gate. A failed CLI command exits with code 2 and prints a summary to help you investigate.
 
-The printed `summary_path` identifies the saved results under `artifacts/west-live/`. The default tracking database is `artifacts/west-live/mlflow-west.db`, and the default experiment is `odsc-west-2026`. Keep generated results out of Git.
+Results are saved under `artifacts/west-live/`; `summary_path` points to the summary for your run. The default database is `artifacts/west-live/mlflow-west.db`, and the experiment is `odsc-west-2026`. Generated results are excluded from Git.
 
 Optional local settings:
 
@@ -86,15 +88,15 @@ Optional local settings:
 
 ### Open the local MLflow UI
 
-After running a checkpoint, open a second terminal in the same checkout. Start MLflow against the same tracking database and leave this terminal running:
+After running a checkpoint, open a second terminal in the same directory and leave this command running:
 
 ```bash
 uv run --locked mlflow server --backend-store-uri sqlite:///artifacts/west-live/mlflow-west.db --host 127.0.0.1 --port 5000 --workers 1
 ```
 
-Open [http://127.0.0.1:5000](http://127.0.0.1:5000), select the `odsc-west-2026` experiment, then choose Traces or Evaluation runs. Stop the server with Ctrl+C when finished. The API key is not required just to view existing results.
+Open [http://127.0.0.1:5000](http://127.0.0.1:5000), select the `odsc-west-2026` experiment, and choose **Traces** or **Evaluation runs**. Press Ctrl+C in the server terminal when you're done. You don't need an API key to view saved results.
 
-This workshop writes directly to SQLite. Do not set `MLFLOW_TRACKING_URI` to the HTTP UI address. If you configure a different tracking URI or output directory, start the UI against that database instead. See the [official MLflow server documentation](https://mlflow.org/docs/latest/self-hosting/architecture/tracking-server/) for backend-store options.
+The workshop writes directly to SQLite. Leave `MLFLOW_TRACKING_URI` unset for this setup; pointing it at the UI's HTTP address won't work. If you choose a different database, use the same path when starting the UI. See the [MLflow server documentation](https://mlflow.org/docs/latest/self-hosting/architecture/tracking-server/) for more options.
 
 ### Local troubleshooting
 
@@ -107,33 +109,64 @@ This workshop writes directly to SQLite. Do not set `MLFLOW_TRACKING_URI` to the
 | Port 5000 is already in use | Change only `--port 5000` to `--port 5001` in the server command, then open `http://127.0.0.1:5001`. Keep the SQLite URI unchanged. |
 | Old or unexpected experiment appears | Check inherited `MLFLOW_EXPERIMENT_ID`, `MLFLOW_EXPERIMENT_NAME`, `MLFLOW_TRACKING_URI`, and `WORKSHOP_OUTPUT_DIR` settings. |
 
-## Run on Databricks
+## Run on Databricks Free Edition
 
-These instructions have been checked against official documentation, but live Databricks execution is not yet verified. Use [Databricks Free Edition](https://docs.databricks.com/aws/en/getting-started/free-edition), which replaced Community Edition in 2025, or an existing supported workspace. Free Edition is serverless-only and quota-limited. Model and managed-judge availability must be checked in your workspace.
+This setup uses Databricks for the application, judge, and MLflow tracking. You can complete the workshop without an OpenAI API key or a paid workspace. [Free Edition](https://docs.databricks.com/aws/en/getting-started/free-edition) uses serverless compute and has [usage limits](https://docs.databricks.com/aws/en/getting-started/free-edition-limitations).
 
-In Workspace, choose Create, then Git folder, clone this public repository, and select the `west-2026` branch. See the [Git folder setup guide](https://docs.databricks.com/aws/en/repos/repos-setup). Open `notebooks/west/00_ship_or_block` on standard serverless compute. In the Environment side panel, open Base environment, use More if needed, and select Standard environment version 5. Then add this dependency using the absolute path to your Git folder:
+1. In **Workspace**, choose **Create > Git folder**, clone this repository, and select `main`. See the [Git folder setup guide](https://docs.databricks.com/aws/en/repos/repos-setup) if you're new to Databricks.
+2. Open `notebooks/west/00_ship_or_block`. In the **Environment** side panel, select **Standard environment 5** under Base environment (use More if needed).
+3. Add the following dependency, replacing the path with your Git folder's absolute path:
 
-```text
--r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt
+   ```text
+   -r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt
+   ```
+
+4. Click **Apply** and wait for installation and the Python restart, then click **Run all**.
+5. Repeat this setup for notebooks 01–05, running them one at a time. Each notebook sets up its own model and experiment, so you can run it without first running notebook 00.
+
+Dependencies apply to each notebook separately. Standard environment 5 provides Python 3.12, but you still need the requirements file for MLflow 3.16.0. The Git Folder Serverless Beta has a separate setup; these steps follow the [standard notebook environment instructions](https://docs.databricks.com/aws/en/compute/serverless/dependencies).
+
+By default, both the application and judge use `databricks-qwen3-next-80b-a3b-instruct`. Results go to `/Users/<your-user>/odsc-west-2026`. Authentication uses your notebook's Databricks identity.
+
+If the default model isn't available in your workspace, run this in a notebook cell to list accessible chat endpoints:
+
+```python
+from databricks.sdk import WorkspaceClient
+
+for endpoint in WorkspaceClient().serving_endpoints.list():
+    if endpoint.task == "llm/v1/chat":
+        print(endpoint.name, endpoint.state.ready if endpoint.state else None)
 ```
 
-Click Apply and wait for dependency installation and the Python restart. Repeat this environment configuration for every notebook. Version 5 alone does not supply the workshop's required MLflow 3.16.0, so do not skip the dependency file. Standard serverless dependencies are notebook-scoped. The separate Git Folder Serverless Beta uses a shared `pyproject.toml` environment and has a different setup. See the official [serverless environment instructions](https://docs.databricks.com/aws/en/compute/serverless/dependencies) and [environment version 5](https://docs.databricks.com/aws/en/release-notes/serverless/environment-version/five).
-
-After Apply finishes, set the following non-secret configuration in a new code cell before the checkpoint execution cell in each notebook. Replace the placeholders with an available chat-completion endpoint and your workspace experiment path. Notebook-native SDK authentication must not use a laptop configuration profile:
+To choose models or a different experiment, add these settings **before** the notebook's setup cell:
 
 ```python
 import os
-os.environ.pop("DATABRICKS_CONFIG_PROFILE", None)
-os.environ["WORKSHOP_PROVIDER"] = "databricks"
-os.environ["WORKSHOP_DATABRICKS_MODEL"] = "<available-foundation-model-endpoint>"
+os.environ["WORKSHOP_DATABRICKS_MODEL"] = "<available-chat-endpoint>"
+os.environ["WORKSHOP_DATABRICKS_JUDGE_MODEL"] = "<available-chat-endpoint>"
 os.environ["MLFLOW_EXPERIMENT_NAME"] = "/Users/<your-user>/odsc-west-2026"
 ```
 
-Alternatively, use an existing `MLFLOW_EXPERIMENT_ID` from this workspace, not a local SQLite experiment ID. The application endpoint and managed Databricks judge are separate dependencies. Changing `WORKSHOP_DATABRICKS_MODEL` changes only the application model. Your identity needs model serving, judge, and tracking access. See the [official evaluation guide](https://docs.databricks.com/aws/en/mlflow3/genai/eval-monitor), [judge restrictions](https://docs.databricks.com/aws/en/mlflow3/genai/eval-monitor/concepts/scorers), and [notebook SDK authentication](https://docs.databricks.com/aws/en/dev-tools/sdk-python).
+If you leave out the judge setting, it uses the application endpoint. An app and judge that share a model can make similar mistakes, so review the reference examples and rule-based checks too. Run the calibration and comparison again after changing either model. See [custom MLflow judges](https://docs.databricks.com/aws/en/mlflow3/genai/eval-monitor/custom-judge/create-custom-judge) and [notebook authentication](https://docs.databricks.com/aws/en/dev-tools/sdk-python) for details.
 
-Run checkpoint 0 before proceeding to the remaining notebooks. Free Edition excludes some models and enforces fair-use quotas. Repeated full runs can exhaust the available quota and suspend compute until it resets. See [Free Edition limitations](https://docs.databricks.com/aws/en/getting-started/free-edition-limitations). Do not treat an unavailable endpoint or judge as a passing evaluation.
+Checkpoint 3 saves the judge definitions as MLflow run artifacts, loads them back, and checks that they match before using them. The local version also demonstrates MLflow's scorer registry. Saving the definitions as artifacts lets the Free Edition notebook run without server-side scorer versioning.
 
-To run from your laptop against a workspace, configure an authenticated Databricks SDK profile and install the Databricks extra:
+Checkpoint 4 checks the judge against eight additional examples with known correct and incorrect answers. It then evaluates the baseline, stale-policy candidate, and repaired assistant on the same ten cases. The application model, scorers, and thresholds stay fixed; only the retrieved policy changes. Look at `repair_comparison` for the scores and cases that improved or regressed, then open the retrieval spans to inspect the policy each version used.
+
+Checkpoint 4 takes several minutes. The code limits prediction and scoring requests to reduce rate-limit errors, so keep one notebook running at a time. A missing response or score leaves the comparison incomplete and blocks the gate. Inspect the failure before rerunning, and keep the thresholds fixed so the comparison stays meaningful.
+
+### Databricks troubleshooting
+
+| Symptom | What to check |
+|---|---|
+| Package/version error | Apply the correct requirements file under Standard environment 5 in this notebook. |
+| Endpoint absent in Playground | Try the SDK listing above to check which endpoints you can access. |
+| Rate limit or missing application reply | Stop overlapping notebook runs. Let the request limit reset, inspect the saved failure, then rerun. A daily fair-use quota may require waiting until the quota resets. |
+| Judge disagrees with a reference label | Read the response and the judge's explanation before changing the judge. Keep the reference label unless you find an error in it. |
+| Scorer-versioning error from older code | Update to the current workshop code, which uses run artifacts on Databricks. |
+| Unexpected experiment | Check inherited `MLFLOW_EXPERIMENT_ID` and `MLFLOW_EXPERIMENT_NAME`. IDs from local SQLite do not identify workspace experiments. |
+
+You can also run the Python commands on your laptop while using Databricks models and tracking. Configure a Databricks SDK profile, set the model and absolute experiment path shown above, then run:
 
 ```bash
 uv sync --locked --python 3.12 --extra databricks
@@ -141,7 +174,7 @@ uv run --locked --extra databricks python -m west_workshop --provider databricks
 uv run --locked --extra databricks python -m west_workshop --provider databricks --checkpoint 0
 ```
 
-Set `DATABRICKS_CONFIG_PROFILE` for a named profile. A configuration check does not establish authentication or endpoint availability.
+Set `DATABRICKS_CONFIG_PROFILE` if you use a named profile. Inside Databricks, the notebooks use their own identity instead.
 
 ## Notebooks
 
@@ -150,28 +183,29 @@ Set `DATABRICKS_CONFIG_PROFILE` for a named profile. A configuration check does 
 | [00 Ship or block](notebooks/west/00_ship_or_block.py) | Evaluate an answer against the current refund policy |
 | [01 Trace the failure](notebooks/west/01_trace_the_failure.py) | Inspect the retrieved policy and response |
 | [02 Build the scorer stack](notebooks/west/02_build_the_scorer_stack.py) | Combine deterministic checks and an LLM judge |
-| [03 Trust the judge](notebooks/west/03_trust_the_judge.py) | Compare judge output with authored reference labels |
+| [03 Trust the judge](notebooks/west/03_trust_the_judge.py) | Compare the judge's scores with reference labels |
 | [04 Compare and gate](notebooks/west/04_compare_and_gate.py) | Compare application variants using the same cases |
-| [05 Production feedback](notebooks/west/05_production_feedback.py) | Trace and evaluate a new request |
+| [05 Production feedback](notebooks/west/05_production_feedback.py) | Attach review feedback to a trace and plan the next test case |
+| [06 Optional integrations](notebooks/west/06_optional_integrations.py) | Evaluate a fresh reply with Phoenix and TruLens |
 
-The files use Databricks Python notebook format. They also run as Python scripts from this checkout. Each prepared execution cell calls the configured provider. A failed request or incomplete evaluation stops the checkpoint.
+The files open as Databricks notebooks and also run as local Python scripts. Work through notebooks 00–05 in order, or start at any checkpoint. Each runs independently.
 
-The small dataset demonstrates evaluation mechanics. Passing its gate does not establish broad production safety. A new deployment needs representative cases and a policy suited to its risks.
+These ten cases are a starting point for learning the workflow. A production application needs a larger test set based on its users and failure modes.
 
 ## What a local run looks like
 
-These are unmodified screenshots from the local MLflow 3.16.0 UI using real OpenAI responses and evaluations. The examples use fictional customer inputs. Calibration labels and the follow-up feedback are explicitly authored teaching material, not observed customer feedback. Your responses, scores, timing, and run IDs can differ.
+These screenshots show the local MLflow 3.16.0 UI after running the workshop with OpenAI. Your responses and scores may differ.
 
-The stale-policy candidate was blocked and the repaired version passed in both execution modes. Some valid answers still received an incorrect judge score. Inspect the rationale and keep deterministic policy checks alongside the judge.
+The stale candidate was blocked and the repaired version passed. Some correct answers still received a failing judge score; inspect the explanations alongside the policy checks.
 
 | View | What to inspect |
 |---|---|
 | [Application answer](notebooks/images/west/00-answer.png) | The 45-day request received an incorrect full-refund answer |
 | [Retrieved policy](notebooks/images/west/01-retrieval.png) | The retrieval span contains the stale 90-day policy |
-| [Scorer stack](notebooks/images/west/02-scorer-stack.png) | Individual checks and the semantic judge remain inspectable |
-| [Judge versions](notebooks/images/west/03-judge-versions.png) | Registered definitions have explicit versions |
+| [Scorer stack](notebooks/images/west/02-scorer-stack.png) | Scores from each check and the LLM judge |
+| [Judge versions](notebooks/images/west/03-judge-versions.png) | The saved definitions in the local scorer registry |
 | [Run comparison](notebooks/images/west/04-comparison.png) | The stale candidate and repaired results use the same ten cases |
-| [Follow-up feedback](notebooks/images/west/05-feedback.png) | Authored review feedback is attached to a real trace |
+| [Follow-up feedback](notebooks/images/west/05-feedback.png) | The workshop's example review feedback attached to a trace |
 | [Phoenix and TruLens](notebooks/images/west/06-integrations.png) | Both third-party scorers evaluated a fresh response |
 
 ![Real model response in local MLflow](notebooks/images/west/00-answer.png)
@@ -180,7 +214,9 @@ The stale-policy candidate was blocked and the repaired version passed in both e
 
 ## Optional integrations
 
-Phoenix and TruLens require the ecosystem extra:
+Notebook 06 uses MLflow's Phoenix and TruLens integrations. They measure different aspects of a response, so inspect each score and explanation before deciding whether it belongs in your release gate.
+
+Locally, install the `ecosystem` extra:
 
 ```bash
 uv sync --locked --python 3.12 --extra ecosystem
@@ -188,9 +224,17 @@ uv run --locked --extra ecosystem python scripts/verify_west_environment.py --ec
 uv run --locked --extra ecosystem python -m west_workshop --provider openai --integrations
 ```
 
-The environment verifier checks local package and constructor compatibility without model calls. The integration command makes real provider calls. This extra is not required for checkpoints 0 through 5.
+The verifier checks package compatibility. The integration command calls the models. These extra packages aren't needed for notebooks 00–05.
 
-Phoenix remains below version 3 because the MLflow 3.16 integration uses its earlier evaluator API. See the [official Phoenix migration notes](https://arize.com/docs/phoenix/release-notes/04-2026/04-07-2026-phoenix-v14-breaking-changes) and [TruLens provider reference](https://www.trulens.org/reference/trulens/providers/litellm/provider/).
+In Databricks Free Edition, open `notebooks/west/06_optional_integrations`. Select **Standard environment 5** and apply the combined requirements file instead of the core file:
+
+```text
+-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-ecosystem.txt
+```
+
+Wait for installation, then click **Run all**. The file includes both the Databricks and evaluator dependencies, and the notebook uses your Databricks identity for model access.
+
+Phoenix is pinned below version 3 because MLflow 3.16 uses its earlier evaluator API. See the [Phoenix migration notes](https://arize.com/docs/phoenix/release-notes/04-2026/04-07-2026-phoenix-v14-breaking-changes) and [TruLens provider reference](https://www.trulens.org/reference/trulens/providers/litellm/provider/) for more detail.
 
 For the APIs used in these exercises, see [MLflow scorers](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/), [trace evaluation](https://mlflow.org/docs/latest/genai/eval-monitor/running-evaluation/traces/), [scorer versioning](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/versioning/), and the [OpenAI SDK documentation](https://developers.openai.com/api/docs/libraries).
 
@@ -202,4 +246,4 @@ The [ODSC AI East 2026 release](https://github.com/debu-sinha/mlflow-eval-worksh
 
 Workshop by Debu Sinha. [LinkedIn](https://linkedin.com/in/debusinha) | [GitHub](https://github.com/debu-sinha)
 
-[Apache 2.0](LICENSE). Libraries retain their respective licenses and project attribution.
+[Apache 2.0](LICENSE). Libraries retain their own licenses and attribution.
