@@ -27,6 +27,22 @@ ORDERS = {
 }
 
 
+def _workspace_url(host):
+    host = host.strip().rstrip("/")
+    if "://" not in host:
+        host = "https://" + host
+    try:
+        parsed = urlsplit(host)
+        if (parsed.scheme == "https" and parsed.hostname
+                and re.fullmatch(r"[A-Za-z0-9.-]+", parsed.hostname)
+                and parsed.port in (None, 443) and not parsed.username
+                and not parsed.password and not parsed.path and not parsed.query and not parsed.fragment):
+            return "https://" + parsed.hostname
+    except ValueError:
+        pass
+    return None
+
+
 class SupportService:
     def __init__(self):
         self.provider = selected_provider()
@@ -73,9 +89,9 @@ class SupportService:
         if evidence is None or not isinstance(evidence.get("page_content"), str):
             raise WorkshopExecutionError("The answer's saved retrieval trace could not be verified.")
         eligibility = re.search(_ELIGIBILITY_PATTERN, answer)
-        workspace_host = os.environ.get("DATABRICKS_HOST", "").rstrip("/")
+        workspace_host = _workspace_url(os.environ.get("DATABRICKS_HOST", ""))
         trace_url = None
-        if self.provider == "databricks" and re.fullmatch(r"https://[A-Za-z0-9.-]+", workspace_host):
+        if self.provider == "databricks" and workspace_host:
             trace_url = f"{workspace_host}/ml/experiments/{self.experiment_id}/traces?selectedEvaluationId={trace_id}"
         return {
             "answer": answer,
