@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+from queue import Empty, Queue
 import threading
 import time
 from urllib.parse import urlsplit
@@ -15,7 +16,7 @@ from flask import Flask, jsonify, render_template, request
 
 from .config import application_model, preflight, selected_provider
 from .data import CURRENT_POLICY, STALE_POLICY
-from .runtime import WorkshopExecutionError, _ELIGIBILITY_PATTERN, _setup_tracking, make_predictor
+from .runtime import WorkshopExecutionError, _ELIGIBILITY_PATTERN, _configure_timeouts, _setup_tracking, make_predictor
 
 ROOT = Path(__file__).resolve().parent
 ORDERS = {
@@ -42,8 +43,12 @@ class SupportService:
             raise WorkshopExecutionError("Complete the app's model and MLflow resource setup.")
         output = Path(os.environ.get("WORKSHOP_OUTPUT_DIR", "artifacts/west-live")).resolve()
         output.mkdir(parents=True, exist_ok=True)
-        self.experiment_id = _setup_tracking(self.provider, output)
-        self.predictors = {variant: make_predictor(self.provider, variant) for variant in ("candidate", "repaired")}
+        _configure_timeouts(self.provider)
+        os.environ.setdefault("MLFLOW_ARTIFACT_UPLOAD_DOWNLOAD_TIMEOUT", "20")
+        os.environ.setdefault("MLFLOW_ASYNC_TRACE_LOGGING_RETRY_TIMEOUT", "30")
+        experiment_id = _setup_tracking(self.provider, output)
+        predictors = {variant: make_predictor(self.provider, variant) for variant in ("candidate", "repaired")}
+        self.experiment_id, self.predictors = experiment_id, predictors
 
     def answer(self, order_key, question, variant):
         import mlflow
@@ -116,7 +121,30 @@ def create_app(service=None):
 
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=0, x_proto=1, x_host=1)
     app.config["MAX_CONTENT_LENGTH"] = 8192
+    app.config["REQUEST_TIMEOUT_SECONDS"] = 180
     service = service or SupportService()
+
+    def call_with_deadline(function):
+        result = Queue(maxsize=1)
+
+        def work():
+            try:
+                outcome = (True, function())
+            except Exception:
+                outcome = (False, None)
+            finally:
+                service.lock.release()
+            result.put(outcome)
+
+        # The worker retains the lock after a timeout so a retry cannot overlap it.
+        threading.Thread(target=work, daemon=True).start()
+        try:
+            success, value = result.get(timeout=app.config["REQUEST_TIMEOUT_SECONDS"])
+        except Empty:
+            raise TimeoutError from None
+        if not success:
+            raise WorkshopExecutionError("The request could not be completed.")
+        return value
 
     @app.after_request
     def response_headers(response):
@@ -160,25 +188,23 @@ def create_app(service=None):
         if not service.lock.acquire(blocking=False):
             return jsonify(error="Another question is being answered. Please try again in a moment."), 429
         try:
-            return jsonify(service.answer(order, question.strip(), variant))
+            return jsonify(call_with_deadline(lambda: service.answer(order, question.strip(), variant)))
+        except TimeoutError:
+            return jsonify(error="This request took too long. It may still be finishing. Wait a moment before trying again; if the app stays busy, restart it from Databricks Apps."), 504
         except Exception:
             # Raw provider errors and credentials never reach the browser or logs.
             return jsonify(error="We couldn't complete this request with a verified trace. Please retry. If it continues, check model access, MLflow permissions, and available quota."), 503
-        finally:
-            service.lock.release()
 
     @app.get("/report")
     def report():
         if not service.lock.acquire(blocking=False):
             return render_template("report_pending.html", message="An answer is being generated. Open the report again in a moment."), 429
         try:
-            result = service.report()
+            result = call_with_deadline(service.report)
             if result is None:
                 return render_template("report_pending.html", message="No release report has been published to this experiment yet. Run checkpoint 4, then publish its saved summary using the instructions in the README."), 404
             return result
         except Exception:
             return render_template("report_pending.html", message="The saved release evidence is unavailable. Check the app's MLflow experiment permission and the published report artifact."), 503
-        finally:
-            service.lock.release()
 
     return app

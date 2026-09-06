@@ -66,8 +66,11 @@ byId("chat-form").addEventListener("submit", async event => {
   byId("answer-block").hidden = true;
   byId("request-error").hidden = true;
   setBusy(true);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 190000);
   try {
     const response = await fetch("/api/chat", {
+      signal: controller.signal,
       method: "POST", headers: {"Content-Type": "application/json", "X-Northstar-Request": "chat"},
       body: JSON.stringify({question, order: byId("order-select").value, variant}),
     });
@@ -82,9 +85,12 @@ byId("chat-form").addEventListener("submit", async event => {
     byId("answer-block").hidden = false;
     byId("question").value = "";
   } catch (error) {
-    byId("request-error").textContent = error.message;
+    byId("request-error").textContent = error.name === "AbortError"
+      ? "The connection took too long. Your request may still be finishing. Wait a moment, then refresh the page."
+      : error.message;
     byId("request-error").hidden = false;
   } finally {
+    clearTimeout(timeout);
     byId("thinking").hidden = true;
     setBusy(false);
   }

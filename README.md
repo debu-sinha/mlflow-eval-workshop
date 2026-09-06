@@ -37,7 +37,17 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The app uses the same local
 
 ### Deploy the app on Databricks Free Edition
 
-Complete [Databricks notebook setup](#run-on-databricks-free-edition) and run checkpoint 4 first. Then create a custom app from **App switcher > Databricks Apps > Create app**. Choose a name such as `northstar-support` and configure this public Git repository on branch `main`:
+Complete [Databricks notebook setup](#run-on-databricks-free-edition) and run checkpoint 4 first. Add a cell to prepare the app's storage:
+
+```python
+from west_workshop.prepare_databricks_app import prepare
+app_storage = prepare()
+print(app_storage)
+```
+
+This creates a `northstar_support` schema and `reports` volume in your `workspace` catalog, plus a separate `/Users/<your-user>/northstar-support` experiment. It reuses them on later calls. Traces and report artifacts use this volume; the notebook's experiment stays the same. If your writable catalog has another name, pass `prepare(catalog="your_catalog")`.
+
+Then create a custom app from **App switcher > Databricks Apps > Create app**. Choose a name such as `northstar-support` and configure this public Git repository on branch `main`:
 
 ```text
 https://github.com/debu-sinha/mlflow-eval-workshop.git
@@ -48,9 +58,12 @@ Deploy from the repository root, where `app.py`, `app.yaml`, and `requirements.t
 | Resource key | Resource | Permission |
 |---|---|---|
 | `serving-endpoint` | The same chat endpoint selected in your notebooks | Can query |
-| `experiment` | Your `/Users/<your-user>/odsc-west-2026` MLflow experiment | Can edit |
+| `experiment` | The `experiment_name` printed by `prepare()` | Can edit |
+| `report-storage` | The Unity Catalog volume printed as `volume` | Read and write (WRITE_VOLUME) |
 
-The app uses its own Databricks identity. A successful notebook call does not give the app permission to use the endpoint or experiment; both resources are required. No personal API key belongs in the app configuration. See [model resources](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/model-serving), [experiment resources](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/mlflow), and [Git deployment](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/deploy).
+The app uses its own Databricks identity. Add all three resources: notebook permissions do not transfer to the app. The volume resource grants storage access; its path is already recorded in the experiment, so it needs no environment variable. No personal API key belongs in the app configuration. See [model resources](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/model-serving), [experiment resources](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/mlflow), and [Git deployment](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/deploy).
+
+Use the volume-backed experiment for this Free Edition app. During testing, its default MLflow-managed storage endpoint was unreachable from Apps. Unity Catalog trace tables also rejected Free Edition's default storage. Ordinary MLflow trace artifacts in a [Unity Catalog volume](https://docs.databricks.com/aws/en/mlflow/experiments) use the supported Files API and keep the usual MLflow trace view.
 
 After deployment, open the app URL and send a question. Each successful answer includes a saved trace, and **Follow this answer** links to that exact trace. The app handles one model request at a time to keep the demonstration within the shared endpoint's limits.
 
@@ -70,7 +83,8 @@ In Databricks, add a cell after checkpoint 4 has completed:
 
 ```python
 from west_workshop.publish_report import publish
-publish(summary["summary_path"], provider="databricks")
+publish(summary["summary_path"], provider="databricks",
+        experiment_id=app_storage["experiment_id"])
 ```
 
 Publish to the experiment you attached to the app. **Release report** opens the most recently published comparison, including an incomplete or blocked result. It does not search for a winning run. Publish again after rerunning checkpoint 4 if you want the app to show the new evidence.
@@ -79,9 +93,10 @@ Publish to the experiment you attached to the app. **Release report** opens the 
 
 | Symptom | What to check |
 |---|---|
-| Deployment cannot find a resource | Use the exact resource keys `serving-endpoint` and `experiment`. |
-| The page loads but a question fails | Check model Can query and experiment Can edit for the app identity, endpoint availability, and remaining quota. A notebook identity and app identity have different permissions. |
+| Deployment cannot find a resource | Use the exact resource keys `serving-endpoint` and `experiment`, and attach the `report-storage` volume. |
+| The page loads but a question fails | Check model Can query, experiment Can edit, and volume read/write for the app identity, then endpoint availability and remaining quota. Use the experiment created by `prepare()`. |
 | Another question is being answered | Wait for that request to finish, then retry. No answer is queued or substituted. |
+| A request times out | The page stops waiting after three minutes. The original call may still be finishing; if the app stays busy, restart it and check its resources. |
 | Release report is unavailable | Publish a checkpoint 4 summary into the experiment attached to this app. |
 | The app has stopped | Restart it from Databricks Apps. Free Edition automatically stops apps after 24 hours. |
 
