@@ -183,6 +183,8 @@ Checkpoint 4 takes several minutes. The code limits prediction and scoring reque
 | Symptom | What to check |
 |---|---|
 | Package/version error | Apply the correct requirements file under Standard environment 5 in this notebook. |
+| Package missing after pulling a Git update | Run the notebook's setup cell again. It refreshes Python's import cache before loading the workshop package. |
+| Free serverless compute capacity reached | In a notebook you are no longer using, open the **Serverless** menu, open its **Serverless** submenu, and choose **Terminate**. Then retry **Apply** in the notebook you want to use. |
 | Endpoint absent in Playground | Try the SDK listing above to check which endpoints you can access. |
 | Rate limit or missing application reply | Stop overlapping notebook runs. Let the request limit reset, inspect the saved failure, then rerun. A daily fair-use quota may require waiting until the quota resets. |
 | Judge disagrees with a reference label | Read the response and the judge's explanation before changing the judge. Keep the reference label unless you find an error in it. |

@@ -22,6 +22,7 @@
 
 # Locate the cloned repository from a local script or a Databricks Git folder.
 from pathlib import Path
+import importlib
 import sys
 
 _start = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
@@ -31,6 +32,8 @@ if _root is None:
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
+# Refresh cached paths after a Git folder update.
+importlib.invalidate_caches()
 from west_workshop.notebook_setup import configure_notebook, show_result
 configure_notebook()
 
