@@ -8,7 +8,7 @@
 # MAGIC
 # MAGIC | Scorer | What a passing result means |
 # MAGIC |---|---|
-# MAGIC | `eligibility_format` | The answer starts with a recognized eligibility identifier |
+# MAGIC | `eligibility_format` | The answer contains a line beginning with a recognized eligibility identifier |
 # MAGIC | `response_length` | The answer has between 20 and 1,400 characters |
 # MAGIC | `pii_detection` | The built-in check did not detect personal information |
 # MAGIC | `policy_decision` | Declared eligibility matches the reference label |
@@ -137,7 +137,7 @@ if not all(format_agreement):
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC <details><summary>One possible solution (open after trying)</summary>
+# MAGIC ### One possible solution (read after trying)
 # MAGIC
 # MAGIC Replace the function body with:
 # MAGIC
@@ -150,7 +150,6 @@ if not all(format_agreement):
 # MAGIC ```
 # MAGIC
 # MAGIC This checks the response contract. It does not verify eligibility or the explanation. Those need separate checks.
-# MAGIC </details>
 
 # COMMAND ----------
 
