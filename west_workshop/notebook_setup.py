@@ -1,6 +1,7 @@
 """Notebook-native Free Edition defaults; local scripts keep terminal settings."""
 
 import os
+import logging
 
 FREE_EDITION_MODEL = "databricks-qwen3-next-80b-a3b-instruct"
 
@@ -25,6 +26,14 @@ def configure_notebook():
         os.environ["MLFLOW_EXPERIMENT_NAME"] = f"/Users/{username}/odsc-west-2026"
 
 
+def _keep_context_warning(record):
+    """Skip only the known optional-tag lookup warning on Free Edition."""
+    message = record.getMessage()
+    return not (record.levelno == logging.WARNING
+                and message.startswith("Encountered unexpected error during resolving tags:")
+                and "extraContext" in message and "is not whitelisted" in message)
+
+
 def configure_lab():
     """Prepare tracking for the short lab without running a checkpoint or model."""
     from pathlib import Path
@@ -36,6 +45,10 @@ def configure_lab():
     readiness = preflight(provider)
     if not readiness["ready"]:
         raise RuntimeError("Lab setup is incomplete: " + "; ".join(readiness["reasons"]))
+    if provider == "databricks":
+        # MLflow catches this unsupported optional metadata lookup itself.
+        # Keep other warnings, errors, trace readback, and actual scores visible.
+        logging.getLogger("mlflow.tracking.context.registry").addFilter(_keep_context_warning)
     output = Path(os.environ.get("WORKSHOP_OUTPUT_DIR", "artifacts/west-live")).resolve()
     output.mkdir(parents=True, exist_ok=True)
     _configure_timeouts(provider)

@@ -301,6 +301,7 @@ Checkpoint 4 takes several minutes. The code limits prediction and scoring reque
 | Endpoint absent in Playground | Try the SDK listing above to check which endpoints you can access. |
 | Rate limit or missing application reply | Stop overlapping notebook runs. Let the request limit reset, inspect the saved failure, then rerun. A daily fair-use quota may require waiting until the quota resets. |
 | Judge disagrees with a reference label | Read the response and the judge's explanation before changing the judge. Keep the reference label unless you find an error in it. |
+| MLflow warns that `extraContext` is not whitelisted | This concerns optional notebook metadata. The lab filters this specific warning; other warnings and evaluation errors remain visible. Inspect the actual scores and saved traces to assess completion. |
 | Scorer-versioning error from older code | Update to the current workshop code, which uses run artifacts on Databricks. |
 | Unexpected experiment | Check inherited `MLFLOW_EXPERIMENT_ID` and `MLFLOW_EXPERIMENT_NAME`. IDs from local SQLite do not identify workspace experiments. |
 
