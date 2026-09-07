@@ -8,9 +8,26 @@ Start with a working support assistant. Choose a customer's order, ask about a r
 
 A customer asks for a refund 45 days after buying an item. The assistant has retrieved an outdated policy that allows refunds for 90 days instead of 30. Fixing retrieval changes the answer. Does it improve the other cases too, and is the improvement enough to ship?
 
-We'll use the app first, then trace an answer back to its source, build the policy checks, and evaluate the judge. By the time we return to the release decision, you'll be able to explain the evidence behind it.
+We'll use the app first, then trace an answer back to its source, write a scorer, evaluate a new case, and review the judge. By the time we return to the release decision, you'll be able to explain the evidence behind it and adapt the evaluation call to your own application.
 
 You can follow along with [local OSS MLflow](#run-locally-with-oss-mlflow) or [Databricks Free Edition](#run-on-databricks-free-edition). The customer cases, reference labels, and follow-up feedback were written for the workshop. Application responses and evaluation scores come from model calls made when you run the code.
+
+## Your path through the session
+
+Bring enough Python familiarity to edit a function and a dictionary. Choose one execution route; you do not need both.
+
+| When | What you do |
+|---|---|
+| Before the session | Complete [local setup](#local-setup) or [Free Edition setup](#run-on-databricks-free-edition). Run checkpoint 4 once and retain its report. On Databricks, also apply the core environment to notebook 02 for the hands-on exercise. |
+| Opening demonstration | Watch the live support app, follow its trace, then inspect the recorded release report. You can deploy your own app afterward; deployment is not required for the notebook exercises. |
+| Technical walkthrough | Follow 00 and 01, then use notebook 02 to repair a scorer and evaluate a new case. Review the judge in 03 and return to the completed 04 report to explain the release decision. |
+| After the session | Complete 05, try the optional integrations in 06, and use the [adaptation guide](#adapt-this-evaluation-to-your-app) with your own app. |
+
+Long evaluations can run during preparation. During the session, the presenter uses their saved outputs and makes short live calls; you run the notebook 02 exercise. Keep one model-calling notebook active at a time. If setup is incomplete, follow the displayed evidence and complete the runnable exercise afterward.
+
+For the short exercise in Databricks, run notebook 02's setup cell and jump to **Your turn**. The lab sets up its own tracking, so it does not require the earlier ten-case evaluation to run first.
+
+The CLI checkpoint commands run the prepared evaluations. To do the editable lab locally, open `notebooks/west/02_build_the_scorer_stack.py` in your editor and run it with `uv run --locked python notebooks/west/02_build_the_scorer_stack.py`. On Databricks, edit and run its cells directly. The starter scorer intentionally disagrees with two authored format examples; fixing it is the exercise. **Run all** still completes with the starter.
 
 ## Start with the support app
 
@@ -25,6 +42,8 @@ After completing either setup below:
 
 The app explains refund eligibility and next steps. It cannot approve a payment, issue credit, or create a support ticket. A defective-item request should lead to guidance for human review.
 
+Refund eligibility could be ordinary business logic. This small app teaches how to evaluate generated advice: whether it follows the current policy, explains the decision correctly, and avoids unsupported action claims. A production system can calculate eligibility deterministically and ask the assistant to explain it. The [adaptation guide](#why-use-an-llm-for-a-refund-rule) describes that boundary.
+
 ### Run the app locally
 
 Complete [local OSS setup](#run-locally-with-oss-mlflow), then run this from the same terminal where you loaded your API key:
@@ -36,6 +55,8 @@ uv run --locked python app.py
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The app uses the same local MLflow database and model configuration as the checkpoints. In the evidence panel, copy the trace ID and find it in the local MLflow UI. Stop the app with Ctrl+C.
 
 ### Deploy the app on Databricks Free Edition
+
+This is an optional deployment exercise. The presenter shows a hosted app during the opening; participants can complete all notebook exercises without deploying one.
 
 Complete [Databricks notebook setup](#run-on-databricks-free-edition) and run checkpoint 4 first. Add a cell to prepare the app's storage:
 
@@ -156,7 +177,7 @@ uv run --locked python -m west_workshop --provider openai --check
 
 Look for `"ready": true`. If it is false, follow the printed `reasons`. This checks package versions and local settings; the first checkpoint will test the API connection.
 
-Create the opening release report:
+During preparation, create the release report that follows the live app demonstration:
 
 ```bash
 uv run --locked python -m west_workshop --provider openai --checkpoint 4
@@ -178,7 +199,7 @@ Continue through the remaining exercises:
 
 ```bash
 uv run --locked python -m west_workshop --provider openai --checkpoint 1
-uv run --locked python -m west_workshop --provider openai --checkpoint 2
+uv run --locked python notebooks/west/02_build_the_scorer_stack.py
 uv run --locked python -m west_workshop --provider openai --checkpoint 3
 uv run --locked python -m west_workshop --provider openai --checkpoint 5
 ```
@@ -266,6 +287,8 @@ Checkpoint 3 saves the judge definitions as MLflow run artifacts, loads them bac
 
 Checkpoint 4 checks the judge against eight additional examples with known correct and incorrect answers. It then evaluates the baseline, stale-policy candidate, and repaired assistant on the same ten cases. The application model, scorers, and thresholds stay fixed; only the retrieved policy changes. Look at `repair_comparison` for the scores and cases that improved or regressed, then open the retrieval spans to inspect the policy each version used.
 
+Read the report's eligibility counts separately from its combined score. In one recorded Free Edition run, eligibility improved from 7/10 to 10/10 while combined checks improved from 2/10 to 10/10. The report also surfaces correct labels whose replies the judge rejected. [Two recorded cases](#read-the-answer-behind-the-score) show a wrong policy explanation and an apparent judge mistake; neither is hidden by the final average.
+
 Checkpoint 4 takes several minutes. The code limits prediction and scoring requests to reduce rate-limit errors, so keep one notebook running at a time. A missing response or score leaves the comparison incomplete and blocks the gate. Inspect the failure before rerunning, and keep the thresholds fixed so the comparison stays meaningful.
 
 ### Databricks troubleshooting
@@ -297,15 +320,105 @@ Set `DATABRICKS_CONFIG_PROFILE` if you use a named profile. Inside Databricks, t
 |---|---|
 | [00 Ship or block](notebooks/west/00_ship_or_block.py) | Evaluate an answer against the current refund policy |
 | [01 Trace the failure](notebooks/west/01_trace_the_failure.py) | Inspect the retrieved policy and response |
-| [02 Build the scorer stack](notebooks/west/02_build_the_scorer_stack.py) | Combine deterministic checks and an LLM judge |
+| [02 Build the scorer stack](notebooks/west/02_build_the_scorer_stack.py) | Write a scorer, test it, and run a new case with the MLflow evaluation API |
 | [03 Trust the judge](notebooks/west/03_trust_the_judge.py) | Compare the judge's scores with reference labels |
 | [04 Compare and gate](notebooks/west/04_compare_and_gate.py) | Open the visual release report, then inspect its evidence and rules |
 | [05 Production feedback](notebooks/west/05_production_feedback.py) | Attach review feedback to a trace and plan the next test case |
 | [06 Optional integrations](notebooks/west/06_optional_integrations.py) | Evaluate a fresh reply with Phoenix and TruLens |
 
-The files open as Databricks notebooks and also run as local Python scripts. Start with the report in 04, then work through 00–03, revisit 04, and finish with 05. Each notebook also runs independently.
+The files open as Databricks notebooks and also run as local Python scripts. Prepare the report in 04 ahead of time. The presentation starts with the live app and report preview, then follows 00–03, revisits 04, and finishes with 05. Each notebook also runs independently.
 
 These ten cases are a starting point for learning the workflow. A production application needs a larger test set based on its users and failure modes.
+
+## Adapt this evaluation to your app
+
+Start with the small evaluation you ran in [notebook 02](notebooks/west/02_build_the_scorer_stack.py). It has the three pieces you need: cases, a prediction function, and scorers. The prepared checkpoints add trace verification, version records, judge controls, and the release gate.
+
+### Make one useful change in the lab
+
+1. Repair `one_eligibility_line` and run its four authored examples. Explain the two invalid answers the starter accepted. These examples test your scorer, without calling a model.
+2. Replace `new_case` with a request not already in the dataset. Give it a stable ID, write its expected decision from the policy, and state the behavior it tests. Keep one existing case for comparison.
+3. Run the `mlflow.genai.evaluate(...)` cell once. Open `west-attendee-lab` in MLflow and inspect the response, both scores, and trace. Preserve a failure or missing score and investigate it.
+4. Write two sentences: “This test checks ___. It does not establish ___.” For example, one valid eligibility line does not establish that the explanation cites the current policy.
+
+The lab uses fresh responses from the current-policy assistant and Python scorers. It has no semantic judge and makes no release decision. Your edits do not enter checkpoint 4 automatically.
+
+### Replace these pieces for your own app
+
+| Piece | Workshop example | Your replacement |
+|---|---|---|
+| Prediction function | `make_predictor(provider, variant)` returns a traced function | A small function that calls your actual application and returns its answer. Match its named arguments to the keys in each row's `inputs`. |
+| Cases | `lab_cases`, then the ten cases in `west_workshop/data.py` | Reviewed requests, stable IDs, and expected behavior from your domain. Put reference labels under `expectations`. Include known failures and cases you have not used to tune the application. |
+| Python checks | `one_eligibility_line` and `policy_decision` | Properties you can check reliably, such as schema validity, allowed actions, or agreement with reviewed labels. Test each check on valid and invalid outputs. |
+| Semantic judge | `_policy_judge` in `west_workshop/runtime.py` | A rubric for the meaning you need to assess, with valid and invalid controls and reviewed examples. Keep its model and definition with the run. |
+| Release requirements | `_gate` in `west_workshop/runtime.py` | Your mandatory checks, quality floor, tolerated regressions, and completeness requirements, chosen before evaluating the change. |
+
+`mlflow.genai.evaluate(data=cases, predict_fn=predict, scorers=checks)` is the evaluation call in both environments. `predict` is your real application adapter. A scorer can request `inputs`, `outputs`, `expectations`, or the `trace` as named arguments. See the [MLflow quickstart](https://mlflow.org/docs/latest/genai/eval-monitor/quickstart/) and [custom scorer documentation](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/custom/).
+
+For a multi-turn assistant, an isolated question is not enough: construct the conversation state your app actually receives and score the resulting behavior. If your app calls tools, inspect the requested action and actual tool result as well as its prose. The workshop assistant handles independent questions and performs no transactions.
+
+### Why use an LLM for a refund rule?
+
+The refund decision itself can be deterministic. A production design can calculate eligibility in business logic and give that result to the assistant to explain. The teaching app deliberately lets us see what happens when generated advice relies on a stale source. We evaluate whether the answer follows the current policy, explains it correctly, and avoids claiming an action it cannot perform.
+
+If you move eligibility into a deterministic service, evaluate both parts: test the service's boundary conditions directly, then check that the assistant faithfully explains the returned decision. Keep authorization and transaction execution in the services that own them.
+
+### Turn a lab finding into a release requirement
+
+Save the original run. Review the new case and label, version the dataset or scorer change, and evaluate baseline, candidate, and repaired versions with the same updated measurement. Do not compare a new score with an old score produced by different cases or scorers.
+
+For this repository, promote reviewed cases into `dataset()` and checks into `build_scorers()`, then run checkpoint 4. Review `_gate` explicitly when adding a mandatory check: a score being logged does not automatically make it a release requirement. Recalibrate after changing the judge. Keep the fixed thresholds while comparing versions, and retain incomplete runs.
+
+Before a production release, collect a representative held-out set, review judge agreement with people, cover high-impact failure modes, and measure latency and cost. Run your fixed comparison in CI and save its evidence. The workshop CLI already returns a nonzero exit code when checkpoint 4 fails; adapting that command to your application still requires the domain-specific work above.
+
+You have completed the exercise when you can point to your new case, scorer, actual result, and a limitation of that result. Matching the presenter's percentage is not a completion requirement.
+
+## Read the answer behind the score
+
+These observations come from one completed Databricks Free Edition checkpoint 4 run on September 6, 2026, using `databricks-qwen3-next-80b-a3b-instruct`. They are recorded examples. A new run must be read using its own responses, scores, and judge explanations.
+
+| Version | Correct eligibility | Combined checks passed |
+|---|---:|---:|
+| Baseline, current policy | 10/10 | 9/10 |
+| Candidate, stale policy | 7/10 | 2/10 |
+| Repaired, current policy | 10/10 | 10/10 |
+
+The combined score is the mean of each case's lower score from `deterministic_stack` and `policy_judge`. In this run, those scores were binary. The eight improved combined scores included three corrected eligibility decisions and five cases whose eligibility was already correct. This is why a change from 20% to 100% should not be described as eight corrected refund decisions.
+
+### Correct decision, incorrect explanation
+
+For the non-defective item at exactly 30 days, the stale candidate answered:
+
+> Eligibility: full_refund
+> You’re within the 90-day window for a full refund since your item isn’t defective. Next step: visit your order page to start the return request.
+
+The eligibility label is correct at day 30. The explanation cites an incorrect 90-day window. The policy-label scorer and deterministic stack passed; the semantic judge rejected the answer because the policy window contradicted the current source.
+
+The repaired assistant answered:
+
+> Eligibility: full_refund
+> You’re within the 30-day window, so you qualify for a full refund. Next step: start your return request in your account dashboard.
+
+Its label stayed the same, its explanation used the current policy, and all required checks passed. This case shows the additional evidence a semantic check can provide.
+
+### A judge rejection that deserves correction
+
+The baseline answer for a non-defective item at 45 days was:
+
+> Eligibility: store_credit
+> Since it’s been 45 days since your purchase and the item isn’t defective, you’re eligible for store credit. Next step: visit your account to claim it.
+
+All deterministic checks passed. The judge rejected “visit your account to claim it,” interpreting that customer instruction as an implied transaction by the assistant.
+
+Read the [actual rubric](west_workshop/runtime.py) in `_policy_judge`: customer next steps are permitted; an explicit claim or promise that the assistant executes a transaction is rejected. The answer directs the customer to their own account. It does not say the assistant issued credit. This is an apparent false rejection by the judge. The separate positive control `review_customer_next_step` also permits the customer to request or claim credit.
+
+The original score remains 0 in the report. Recognizing a judge mistake does not rewrite the recorded gate. Document the disagreement, clarify or change the judge if needed, rerun its controls and reviewed examples, and then compare every application version with that same judge. Eight passing controls did not establish reliability on every generated answer.
+
+### Use your own run
+
+Read **What actually improved?** in the report, then open **Review the judge**. The latter lists recorded cases with a correct eligibility label and a rejected reply, including baseline cases. It does not automatically classify them as judge errors: the two examples above show why a person must read the answer and rubric together.
+
+For one case, state the expected behavior, the assistant's exact claim, the scorer that detected a problem, and whether you agree with its rationale. If no case matches that pattern in your run, keep that observation and use this explicitly recorded example for discussion.
 
 ## What a local run looks like
 

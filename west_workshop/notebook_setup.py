@@ -25,6 +25,24 @@ def configure_notebook():
         os.environ["MLFLOW_EXPERIMENT_NAME"] = f"/Users/{username}/odsc-west-2026"
 
 
+def configure_lab():
+    """Prepare tracking for the short lab without running a checkpoint or model."""
+    from pathlib import Path
+    from .config import preflight, selected_provider
+    from .runtime import _configure_timeouts, _setup_tracking
+
+    configure_notebook()
+    provider = selected_provider()
+    readiness = preflight(provider)
+    if not readiness["ready"]:
+        raise RuntimeError("Lab setup is incomplete: " + "; ".join(readiness["reasons"]))
+    output = Path(os.environ.get("WORKSHOP_OUTPUT_DIR", "artifacts/west-live")).resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    _configure_timeouts(provider)
+    _setup_tracking(provider, output)
+    return provider
+
+
 def show_result(summary):
     """Print the outcome and evidence locations without flooding a notebook with JSON."""
     print("Exercise status:", summary.get("status", "unknown"))

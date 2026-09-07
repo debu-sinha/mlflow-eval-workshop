@@ -4,6 +4,8 @@
 # MAGIC
 # MAGIC ODSC AI West 2026 | Debu Sinha
 # MAGIC
+# MAGIC After this notebook, use [Adapt this evaluation to your app](https://github.com/debu-sinha/mlflow-eval-workshop/blob/main/README.md#adapt-this-evaluation-to-your-app) to connect the case you investigated to the scorer and evaluation call you wrote in notebook 02.
+# MAGIC
 # MAGIC A release decision covers the examples we tested. This notebook makes a fresh model request for a defective item bought 45 days ago, records its trace, and attaches an authored follow-up note.
 # MAGIC
 # MAGIC The correct eligibility is **support_review**. Defective items follow that route regardless of purchase age. The note demonstrates a review workflow; it does not claim that a real customer reported a failure or that this new model answer necessarily failed.

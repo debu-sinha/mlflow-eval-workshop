@@ -1,12 +1,12 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Start here with the release decision
+# MAGIC # Explain the release decision
 # MAGIC
 # MAGIC ODSC AI West 2026 | Debu Sinha
 # MAGIC
 # MAGIC ![A saved local release report](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/main/notebooks/images/west/release-report.png)
 # MAGIC
-# MAGIC Start with the two decisions and the customer's two answers. This image is a saved local example. The cells below generate your own interactive report with actual responses and scores.
+# MAGIC The session opens with the live support app, then previews this report. This image is a saved local example. The cells below generate your own interactive report with actual responses and scores. Run this longer comparison during preparation when possible, so you can inspect its saved evidence during the session.
 # MAGIC
 # MAGIC After seeing the result, work through **00**, **01**, **02**, and **03** to understand the customer case, traces, scorers, and judge. Then return here to inspect the release rules before continuing to **05**.
 # MAGIC
@@ -97,6 +97,8 @@ if summary.get("status") != "passed":
 # MAGIC Open the report's expandable sections to inspect the retrieved policies, every case, and the release rules. Locally, open the printed HTML path in a browser. In Databricks, the report appears above.
 # MAGIC
 # MAGIC The score change compares candidate with repaired. The regression limit compares each version with the baseline. Keep those comparisons distinct.
+# MAGIC
+# MAGIC The report now separates **correct eligibility** from **combined checks passed**. A correct eligibility label can accompany an incorrect policy explanation. In a recorded Free Edition run on September 6, eligibility improved from 7/10 to 10/10, while combined checks improved from 2/10 to 10/10. Those are that run's observations, not expected values for your run. [Read its two case studies](https://github.com/debu-sinha/mlflow-eval-workshop/blob/main/README.md#read-the-answer-behind-the-score).
 
 # COMMAND ----------
 
@@ -111,10 +113,28 @@ for name, gate in summary["gates"].items():
 
 # COMMAND ----------
 
+from west_workshop.report import score_breakdown, judge_review_cases
+
+for version in score_breakdown(summary):
+    print(version)
+
+# Correct labels with rejected replies need a person to inspect the explanation.
+for row in judge_review_cases(summary):
+    print("\nReview:", row["version"], row["case_id"])
+    print("Actual answer:", row["output"])
+    for assessment in row["assessments"]:
+        if assessment["name"] == "policy_judge":
+            print("Judge's reason:", assessment["rationale"])
+    print("Trace:", row["trace_id"])
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Explain your release decision
 # MAGIC
 # MAGIC Find one improved case and read both answers. Then inspect any failing judge score, even if the overall gate passes. What evidence would make you change the decision?
+# MAGIC
+# MAGIC In the recorded example, the baseline judge rejects “visit your account to claim it,” although the rubric permits customer next steps. The stale day-30 reply has a different problem: its refund label is correct, but its explanation cites 90 days. Decide which is an application error and which is an apparent judge error. Keep both recorded scores; a human review does not retroactively change the gate.
 # MAGIC
 # MAGIC To inspect the implementation, open `west_workshop/runtime.py` and read `_gate` and `_repair_comparison`. The general paired comparison is in `eval_gate.py`; checkpoint 4 adds the mandatory policy checks and quality floor.
 # MAGIC

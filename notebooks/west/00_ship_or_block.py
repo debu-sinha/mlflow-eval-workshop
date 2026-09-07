@@ -4,6 +4,8 @@
 # MAGIC
 # MAGIC ODSC AI West 2026 | Debu Sinha
 # MAGIC
+# MAGIC The session opens with the live support app and a preview of the recorded release report. This notebook begins the technical walkthrough. The refund rule is deliberately simple: eligibility could be computed in ordinary business logic. We are studying whether the assistant's generated advice uses the current policy, explains it correctly, and avoids claiming transactions it cannot perform.
+# MAGIC
 # MAGIC ![A recorded release report](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/main/notebooks/images/west/release-report.png)
 # MAGIC
 # MAGIC Start with the finished report in **04_compare_and_gate**. It compares the customer's answers, the scores, and the release decisions. This image is one saved local run; your own run may differ.

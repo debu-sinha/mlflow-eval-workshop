@@ -116,4 +116,8 @@ print(inspect.getsource(_policy_judge))
 # MAGIC
 # MAGIC Read the customer request, assistant reply, reference label, and judge explanation together. If the label is wrong, document and correct the labeling error. If the judge is wrong, improve the rubric and rerun the same examples. Keep earlier results available.
 # MAGIC
+# MAGIC There is a real example to practice on in [Read the answer behind the score](https://github.com/debu-sinha/mlflow-eval-workshop/blob/main/README.md#read-the-answer-behind-the-score). A recorded baseline answer told the customer to visit their account to claim credit. The judge rejected it as assistant execution, although its rubric permits customer next steps. Read the reply before revealing the discussion. Passing a small control set did not prevent this mistake on a generated answer.
+# MAGIC
+# MAGIC In 04, the report's **Review the judge** section finds this kind of disagreement in your own run. A rejected reply with a correct label can also have a genuinely incorrect explanation, so the label alone cannot settle the review.
+# MAGIC
 # MAGIC Return to **04_compare_and_gate**. If you already ran the opening report and have changed nothing, reuse it to inspect the release rules. If you changed the judge, rerun the comparison.

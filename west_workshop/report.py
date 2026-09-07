@@ -70,6 +70,34 @@ def _decision(gate, complete):
     return "REVIEW", "pending"
 
 
+def score_breakdown(summary: dict) -> list[dict]:
+    """Count recorded passes without treating missing evidence as a success."""
+    variants, _, complete = _evidence(summary)
+    result = []
+    for name in ("baseline", "candidate", "repaired"):
+        rows = variants.get(name, {}).get("rows", [])
+        policy_complete = complete and all(_number(row.get("scores", {}).get("policy_decision")) for row in rows)
+        result.append({
+            "version": name,
+            "cases": len(rows),
+            "correct_eligibility": sum(row["scores"]["policy_decision"] == 1 for row in rows) if policy_complete else None,
+            "combined_passes": sum(_score(row) == 1 for row in rows) if complete else None,
+        })
+    return result
+
+
+def judge_review_cases(summary: dict) -> list[dict]:
+    """Find cases needing semantic review; a disagreement alone is not a judge error."""
+    variants, _, complete = _evidence(summary)
+    if not complete:
+        return []
+    return [dict(row, version=name)
+            for name in ("baseline", "candidate", "repaired")
+            for row in variants.get(name, {}).get("rows", [])
+            if row.get("scores", {}).get("policy_decision") == 1
+            and row.get("scores", {}).get("policy_judge") == 0]
+
+
 def render_release_report(summary: dict) -> str:
     """Render recorded evidence. Missing or failed traces cannot produce a ship card."""
     if summary.get("checkpoint") != 4:
@@ -104,17 +132,45 @@ def render_release_report(summary: dict) -> str:
         width = min(100, max(0, mean * 100)) if _number(mean) else 0
         cards.append(f'''<article class="release {tone}">
           <div class="eyebrow">{label}</div><div class="verdict">{decision}</div>
-          <div class="score"><strong>{_percent(mean)}</strong><span>mean evaluation score</span></div>
+          <div class="score"><strong>{_percent(mean)}</strong><span>combined evaluation score</span></div>
           <div class="track" role="img" aria-label="Mean evaluation score: {_percent(mean)}"><div style="width:{width}%"></div></div>
           <p>{_text(reason)}</p>
         </article>''')
     delta = f"{(after - before) * 100:+.0f} pts" if complete else "Unavailable"
     stats = f'''<div class="stats">
       <div><strong>{delta}</strong><span>score change</span></div>
-      <div><strong>{improved if complete else 'Unavailable'}</strong><span>cases improved</span></div>
-      <div><strong>{regressed if complete else 'Unavailable'}</strong><span>cases regressed</span></div>
+      <div><strong>{improved if complete else 'Unavailable'}</strong><span>combined scores improved</span></div>
+      <div><strong>{regressed if complete else 'Unavailable'}</strong><span>combined scores regressed</span></div>
       <div><strong>{count if complete else 'Incomplete'}</strong><span>cases per version</span></div>
     </div>'''
+    breakdown_rows = []
+    for item in score_breakdown(summary):
+        counts = [f'{item[key]}/{item["cases"]}' if item[key] is not None else "Unavailable"
+                  for key in ("correct_eligibility", "combined_passes")]
+        breakdown_rows.append(f'<tr><th scope="row">{_text(item["version"].title())}</th><td>{counts[0]}</td><td>{counts[1]}</td></tr>')
+    breakdown = f'''<section class="breakdown" aria-label="What the scores measure">
+      <h2>What actually improved?</h2><p>Correct eligibility counts answers with the right refund, credit, or review label.
+      The combined score also requires all deterministic checks and the policy judge to pass.
+      A correct label can still come with an incorrect explanation.</p>
+      <div class="table-wrap"><table><thead><tr><th>Version</th><th>Correct eligibility</th><th>Combined checks passed</th></tr></thead>
+      <tbody>{''.join(breakdown_rows)}</tbody></table></div>
+      <p>Each case contributes the lower of its deterministic-stack and judge scores to the mean above. Review the answers before interpreting a score change.</p></section>'''
+    review_rows = judge_review_cases(summary)
+    review_items = []
+    for row in review_rows:
+        rationale = next((item.get("rationale") for item in row.get("assessments", []) if item.get("name") == "policy_judge"), "No rationale recorded.")
+        review_items.append(f'''<details class="case"><summary>{_text(row['version'].title())} · {_text(row['case_id'].replace('_', ' '))}</summary>
+          <p>Correct eligibility: 1 · Policy judge: 0 · Deterministic stack: {_text(row['scores'].get('deterministic_stack', 'Unavailable'))}</p>
+          <h4>Actual answer</h4><p>{_response(row)}</p><h4>Judge's explanation</h4><p>{_text(rationale)}</p>
+          <p class="mono">Trace: {_text(row.get('trace_id', 'Unavailable'))}</p></details>''')
+    review_count = str(len(review_rows)) if complete else "unavailable"
+    review = f'''<details class="evidence"><summary>Review the judge: {review_count} correct labels with rejected replies</summary>
+      <p>A correct label with a judge rejection can reveal a wrong policy explanation or a judge mistake.
+      Read the exact claim and the rubric together. The rubric permits customer next steps; it rejects claims or promises that the assistant executes a transaction.
+      Passing the eight rubric controls does not settle these individual cases.</p>
+      {''.join(review_items) if complete else '<p>The comparison is incomplete; finish checking its evidence first.</p>'}
+      {'<p>No cases match this pattern in this complete run. That does not establish general judge accuracy.</p>' if complete and not review_rows else ''}
+      </details>'''
     opening_before = by_id.get("candidate", {}).get("day_45_opening", {})
     opening_after = by_id.get("repaired", {}).get("day_45_opening", {})
     question = opening_before.get("inputs", {}).get("question", "The opening case was not recorded.")
@@ -163,8 +219,8 @@ def render_release_report(summary: dict) -> str:
     <header><div class="brand"><span class="mark">N</span> NORTHSTAR SHOP <span class="divider">/</span> RELEASE REVIEW</div><span class="recorded">{status}</span></header>
     <section class="hero"><div class="eyebrow">Support assistant · refund policy</div><h1>Would you ship<br>this assistant?</h1>
     <p>One policy change. The same customer questions. The evidence for a release decision.</p></section>
-    {warning}<section class="releases" aria-label="Release decisions">{''.join(cards)}</section>{stats}{answers}
-    <section class="drilldown"><h2>Follow the evidence</h2><p>Start with the result. Open the source, then the scores and release rules.</p>{evidence}{provenance}</section>
+    {warning}<section class="releases" aria-label="Release decisions">{''.join(cards)}</section>{stats}{answers}{breakdown}
+    <section class="drilldown"><h2>Follow the evidence</h2><p>Start with the result. Open the source, then the scores and release rules.</p>{review}{evidence}{provenance}</section>
     <footer>ODSC AI West 2026 · Debu Sinha · {_text(summary.get('provider', 'Unknown provider'))}<br>
     Recorded {_text(summary.get('utc_timestamp', 'time unavailable'))}. Reopening this report makes no model calls.<br>
     Fictional customer cases; responses and scores are from the recorded run. Results apply to this teaching dataset.</footer>
