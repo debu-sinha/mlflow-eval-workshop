@@ -1,27 +1,30 @@
 [project]
 name = "mlflow-eval-workshop"
-version = "0.1.0"
+version = "0.2.0"
 description = "ODSC AI West 2026: Evaluating LLM Applications with MLflow"
-# NumPy 1.26 supports Python 3.10-3.12. Use 3.12 for the local workshop.
+# The lock keeps NumPy below 2, and NumPy 1.26 has no Python 3.13 wheels.
+# The workshop commands install Python 3.12 through uv.
 requires-python = ">=3.10,<3.13"
 license = "Apache-2.0"
 authors = [{ name = "Debu Sinha", email = "debusinha2009@gmail.com" }]
 readme = "README.md"
 
-# Core dependencies for the West evaluation exercises.
-# Third-party evaluator frameworks are optional advanced material.
+# Core dependencies for notebooks 00 to 05, the CLI, and the support app.
+# Third-party evaluator frameworks are optional and live in the ecosystem extra.
 dependencies = [
-    "mlflow[genai]==3.16.0",
+    "mlflow[genai]==3.16.1",
     "scikit-learn>=1.4",
-    "numpy>=1.26,<2",       # databricks-connect in the runtime requires <2
-    "protobuf>=5.26.1,<6",  # retain the tested Databricks runtime constraint
-    "openai>=2.54",  # refreshable bearer-token callable for Databricks unified auth
+    # NumPy and protobuf stay on the versions validated in Databricks Free Edition.
+    "numpy>=1.26,<2",
+    "protobuf>=5.26.1,<6",
+    # api_key accepts a callable since 1.106, which lets Databricks OAuth tokens refresh.
+    "openai>=1.106",
 ]
 
 [project.optional-dependencies]
 ecosystem = [
-    # MLflow 3.16 still constructs the legacy *Evaluator Phoenix classes.
-    # Phoenix 3.x removed them. Importing the MLflow wrapper alone misses this.
+    # MLflow 3.16 builds Phoenix's legacy evaluator classes, which
+    # arize-phoenix-evals 3.0 removed. Keep the 2.x series.
     "arize-phoenix-evals>=2.11,<3.0",
     "trulens==2.14.0",
     "trulens-providers-litellm==2.14.0",
@@ -34,6 +37,15 @@ all = [
     "mlflow-eval-workshop[ecosystem,databricks,local]",
 ]
 
+[dependency-groups]
+dev = ["pytest>=8.3"]
+
 [tool.uv]
-# Preserve the explicit exclusions even when Databricks pulls LiteLLM transitively.
+# LiteLLM 1.82.7 and 1.82.8 are no longer on PyPI. Never resolve them from a
+# cache or mirror, including when Databricks packages pull LiteLLM in.
 constraint-dependencies = ["litellm!=1.82.7,!=1.82.8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-p no:cacheprovider"

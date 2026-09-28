@@ -228,13 +228,13 @@ matplotlib==3.10.8
     # via mlflow
 mdurl==0.1.2
     # via markdown-it-py
-mlflow==3.16.0
+mlflow==3.16.1
     # via mlflow-eval-workshop
-mlflow-skinny==3.16.0
+mlflow-skinny==3.16.1
     # via
     #   databricks-agents
     #   mlflow
-mlflow-tracing==3.16.0
+mlflow-tracing==3.16.1
     # via mlflow
 multidict==6.7.1
     # via

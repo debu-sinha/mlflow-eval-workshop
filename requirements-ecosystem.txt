@@ -394,13 +394,13 @@ mdurl==0.1.2
     # via markdown-it-py
 mistune==3.2.0
     # via nbconvert
-mlflow==3.16.0
+mlflow==3.16.1
     # via mlflow-eval-workshop
-mlflow-skinny==3.16.0
+mlflow-skinny==3.16.1
     # via
     #   databricks-agents
     #   mlflow
-mlflow-tracing==3.16.0
+mlflow-tracing==3.16.1
     # via mlflow
 multidict==6.7.1
     # via

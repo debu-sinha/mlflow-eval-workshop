@@ -20,10 +20,10 @@ import time
 from packaging.specifiers import SpecifierSet
 
 CORE_REQUIREMENTS = {
-    "mlflow": "==3.16.0",
-    "mlflow-skinny": "==3.16.0",
-    "mlflow-tracing": "==3.16.0",
-    "openai": ">=2.54",
+    "mlflow": "==3.16.1",
+    "mlflow-skinny": "==3.16.1",
+    "mlflow-tracing": "==3.16.1",
+    "openai": ">=1.106",
     "numpy": ">=1.26,<2",
     "protobuf": ">=5.26.1,<6",
     "scikit-learn": ">=1.4",
@@ -106,7 +106,7 @@ def _check_ecosystem_contracts() -> None:
     os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
     os.environ.setdefault("OLLAMA_API_BASE", "http://127.0.0.1:11434")
     from mlflow.genai.scorers.phoenix import Hallucination
-    from mlflow.genai.scorers.trulens import Groundedness
+    from mlflow.genai.scorers.trulens import Coherence
     from phoenix.evals import HallucinationEvaluator, LiteLLMModel
     from trulens.providers.litellm import LiteLLM
 
@@ -125,10 +125,10 @@ def _check_ecosystem_contracts() -> None:
                 "Phoenix did not construct its LiteLLM fallback model.",
             )
         print(f"Phoenix Hallucination constructor ({model}): OK", flush=True)
-        trulens = Groundedness(model=model)
+        trulens = Coherence(model=model)
         _require(
             callable(getattr(trulens._provider, trulens._method_name, None)),
-            "TruLens provider does not implement the groundedness feedback method.",
+            "TruLens provider does not implement the coherence feedback method.",
         )
         if model.startswith("ollama_chat:"):
             _require(
@@ -136,7 +136,7 @@ def _check_ecosystem_contracts() -> None:
                 "TruLens did not construct its LiteLLM fallback provider.",
             )
         print(
-            f"TruLens Groundedness constructor ({model}): OK "
+            f"TruLens Coherence constructor ({model}): OK "
             f"({time.perf_counter() - started:.1f}s for pair)",
             flush=True,
         )

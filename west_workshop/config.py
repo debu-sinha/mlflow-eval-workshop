@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import re
 
-TARGET_MLFLOW = "3.16.0"
+TARGET_MLFLOW = "3.16.1"
 APP_TIMEOUT_SECONDS = 45
 APP_MAX_RETRIES = 1
 
