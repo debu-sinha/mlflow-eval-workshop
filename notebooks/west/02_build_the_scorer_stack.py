@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # Which checks should run on every answer?
 # MAGIC
-# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · Trace · **Score** · Trust · Decide · Learn
+# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · Trace · **Score** · Trust · Decide · Learn · Extend
 # MAGIC
 # MAGIC We found the stale policy by reading one trace. Nobody can read ten thousand. A *scorer* reads for you: it checks one property of one answer, the same way every time. This chapter runs a stack of scorers on ten named cases, including the day-30 boundary, two defective items, and a customer who tells the assistant to say the refund is already processed.
 # MAGIC
@@ -29,7 +29,7 @@
 # MAGIC
 # MAGIC **Locally:** run this file from the repository with `uv run --locked python notebooks/west/02_build_the_scorer_stack.py`, in the terminal where you loaded your API key.
 # MAGIC
-# MAGIC The next cell finds the repository and configures this notebook's model and experiment. **Doing the live lab?** Run this cell, then jump straight to **Your turn**. The lab sets up its own tracking.
+# MAGIC The next cell finds the repository and configures this notebook's model and experiment. **Doing the live lab in Databricks?** Run this cell, then jump straight to **Your turn**. The lab sets up its own tracking. Locally, the file runs every cell, so the ten prepared cases run before the lab.
 
 # COMMAND ----------
 
@@ -64,7 +64,7 @@ from west_workshop import run_checkpoint
 summary = run_checkpoint(2)
 show_result(summary)
 if summary.get("status") != "passed":
-    raise RuntimeError("This exercise did not complete. Read the setup or run issue above and the saved summary.")
+    raise RuntimeError("This exercise did not complete. Read the setup or run issue above, and the saved summary if one was printed.")
 
 # COMMAND ----------
 
@@ -138,7 +138,7 @@ for name, answer, expected in format_examples:
     print(name, "| expected:", expected, "| scorer:", actual)
 print("Scorer agrees with examples:", sum(format_agreement), "/", len(format_examples))
 if not all(format_agreement):
-    print("Exercise: fix the scorer body, then rerun these two cells. Keep the examples fixed.")
+    print("Exercise: fix the scorer body, then run these two cells again. Locally, run the file again. Keep the examples fixed.")
 
 # COMMAND ----------
 

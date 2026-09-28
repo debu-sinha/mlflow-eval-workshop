@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # Better, regressed, or noise?
 # MAGIC
-# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · Trace · Score · Trust · **Decide** · Learn
+# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · Trace · Score · Trust · **Decide** · Learn · Extend
 # MAGIC
 # MAGIC ![A saved release report](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/main/notebooks/images/west/release-report.png)
 # MAGIC
@@ -10,7 +10,7 @@
 # MAGIC
 # MAGIC 1. **Did it get better?**
 # MAGIC 2. **Which cases regressed?**
-# MAGIC 3. **Is the change real, or noise?**
+# MAGIC 3. **Is it real, or noise?**
 # MAGIC
 # MAGIC The image above is one saved run. The cells below build your own report from real answers and scores. The comparison takes several minutes, so run it before the session when you can and reopen its saved result during the session.
 # MAGIC
@@ -155,6 +155,6 @@ for row in judge_review_cases(summary):
 # MAGIC
 # MAGIC In the recorded run, the baseline judge rejected "visit your account to claim it," although the rubric permits customer next steps. The stale day-30 reply had a different problem: a correct label with an explanation that cites 90 days. One is an application error and one looks like a judge error. Which is which? Keep both recorded scores either way, because a human review does not rewrite the gate after the fact.
 # MAGIC
-# MAGIC The gate's implementation is in `west_workshop/runtime.py`, in `_gate` and `_repair_comparison`. The paired statistics live in `eval_gate.py`, which also runs as a CI step that exits with code 1 on a regression. MLflow 3.14 added `@mlflow.test` for the same job inside pytest.
+# MAGIC The gate's implementation is in `west_workshop/runtime.py`, in `_gate` and `_repair_comparison`. The paired statistics live in `eval_gate.py`, which you can run as a CI step. It exits with code 1 when regressions pass the limit, when a paired test finds a significant loss, or when evidence is missing. MLflow 3.14 added `@mlflow.test` for the same job inside pytest.
 # MAGIC
 # MAGIC A pass here applies to this teaching dataset. Next, open **05_production_feedback**: what happens after release?

@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # Where did the refund promise begin?
 # MAGIC
-# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · **Trace** · Score · Trust · Decide · Learn
+# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · **Trace** · Score · Trust · Decide · Learn · Extend
 # MAGIC
 # MAGIC In the prologue, the candidate told a day-45 customer they qualify for a full refund. There are three suspects: the policy it retrieved, the prompt, or the model's handling of that evidence. A *trace* lets us check instead of guess. It records one request, and each *span* inside it records one step:
 # MAGIC
@@ -51,7 +51,7 @@ configure_notebook()
 # MAGIC %md
 # MAGIC ## Generate a trace, then score it again
 # MAGIC
-# MAGIC This cell asks the candidate the 45-day question once and checks its eligibility. Then it loads the stored trace and scores the saved answer's format a second time. That replay reuses the recorded answer and makes no new application request.
+# MAGIC This cell asks the candidate the 45-day question once and checks its eligibility. Then it loads the stored trace and scores the saved answer again, this time with a format check. That replay reuses the recorded answer and makes no new application request.
 # MAGIC
 # MAGIC Scoring a stored trace is how you evaluate production traffic after the fact. Notice that a format check can pass while the refund decision is wrong, because the two checks answer different questions.
 
@@ -62,14 +62,14 @@ from west_workshop import run_checkpoint
 summary = run_checkpoint(1)
 show_result(summary)
 if summary.get("status") != "passed":
-    raise RuntimeError("This exercise did not complete. Read the setup or run issue above and the saved summary.")
+    raise RuntimeError("This exercise did not complete. Read the setup or run issue above, and the saved summary if one was printed.")
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Find the source of the answer
 # MAGIC
-# MAGIC Read the retrieved text below. Then open the experiment in **MLflow > Traces**, select the printed trace ID, and expand the retrieval and generation spans. In Databricks the experiment is `/Users/<your-user>/odsc-west-2026`. Locally it is `odsc-west-2026`.
+# MAGIC Read the retrieved text below. Then open the experiment in MLflow, select **Traces**, open the printed trace ID, and expand the retrieval and generation spans. In Databricks the experiment is `/Users/<your-user>/odsc-west-2026`, under **Experiments** in the sidebar. Locally it is `odsc-west-2026`.
 
 # COMMAND ----------
 

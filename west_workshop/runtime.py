@@ -648,7 +648,7 @@ def run_checkpoint(index: int, provider=None, output_dir=None) -> dict:
     summary["source_sha256"] = _source_manifest()
     summary["judge_retries"] = "Managed by the installed MLflow judge adapter. The one-retry limit applies to the application client."
     global _PROGRESS_STREAM
-    print(f"Checkpoint {index}: making real {provider} calls. Each request times out after 45 seconds and retries once.", flush=True)
+    print(f"Checkpoint {index}: making real {provider} calls. Each request times out after 45 seconds.", flush=True)
     _PROGRESS_STREAM = sys.stdout
     with _quiet_dependencies():
         try:

@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # What if the judge is wrong?
 # MAGIC
-# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · Trace · Score · **Trust** · Decide · Learn
+# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · Trace · Score · **Trust** · Decide · Learn · Extend
 # MAGIC
 # MAGIC The policy judge caught what no rule could: a correct label with a stale explanation. It is also a model, and models make mistakes. Before its score decides a release, we evaluate the judge itself.
 # MAGIC
@@ -65,6 +65,8 @@ for example in calibration_dataset():
 # MAGIC
 # MAGIC The next cell saves each judge's full definition as an MLflow run artifact, loads it back, and checks that nothing changed. Locally it also registers both versions in MLflow's scorer registry. On Databricks Free Edition the saved artifacts are the record, so server-side scorer versioning is not required.
 # MAGIC
+# MAGIC The cell makes 20 judge requests and no application requests. Each judge grades the six replies, then the rationale-first judge grades the eight controls.
+# MAGIC
 # MAGIC Agreement on the six replies can land below 100% even when the exercise passes. Read every disagreement. The eight controls must all pass.
 
 # COMMAND ----------
@@ -74,7 +76,7 @@ from west_workshop import run_checkpoint
 summary = run_checkpoint(3)
 show_result(summary)
 if summary.get("status") != "passed":
-    raise RuntimeError("This exercise did not complete. Read the setup or run issue above and the saved summary.")
+    raise RuntimeError("This exercise did not complete. Read the setup or run issue above, and the saved summary if one was printed.")
 
 # COMMAND ----------
 
@@ -125,4 +127,4 @@ print(inspect.getsource(_policy_judge))
 # MAGIC
 # MAGIC **Take it further.** Once reviewers have labeled enough real traces, MLflow can align a judge to their feedback with `judge.align()`, which uses the MemAlign optimizer by default since MLflow 3.13. Calibration comes first, because alignment learns from labels you trust. See [judge alignment](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/llm-judge/alignment/).
 # MAGIC
-# MAGIC We can now trust the judge as far as its evidence goes. Return to **04_compare_and_gate** for the release decision. If you ran its report earlier and have changed nothing, reuse it. If you changed the judge, run the comparison again.
+# MAGIC We can now trust the judge as far as its evidence goes. Next, return to **04_compare_and_gate**: better, regressed, or noise? If you ran its report earlier and have changed nothing, reuse it. If you changed the judge, run the comparison again.

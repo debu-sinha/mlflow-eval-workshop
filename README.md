@@ -10,9 +10,9 @@ This workshop follows that one answer from a live support app to a release decis
 
 1. **Did it get better?**
 2. **Which cases regressed?**
-3. **Is the change real, or noise?**
+3. **Is it real, or noise?**
 
-By the end of the hour you can answer all three for this assistant, and you leave with the code to answer them for yours.
+By the end of the session you can answer all three for this assistant, and you leave with the code to answer them for yours.
 
 ## The story in seven notebooks
 
@@ -94,7 +94,7 @@ Open [http://127.0.0.1:5000](http://127.0.0.1:5000) and select the `odsc-west-20
 
 The application, the judge, and MLflow tracking all run in your workspace, and no OpenAI key is needed.
 
-1. In **Workspace**, choose **Create > Git folder** and clone `https://github.com/debu-sinha/mlflow-eval-workshop.git` on branch `main`. The [Git folder guide](https://docs.databricks.com/aws/en/repos/git-operations-with-repos) shows each step.
+1. In **Workspace**, choose **Create > Git folder** and enter `https://github.com/debu-sinha/mlflow-eval-workshop.git` as the Git repository URL. The new Git folder opens on the default branch, `main`. Databricks can take a few minutes to create it. The [Git folder guide](https://docs.databricks.com/aws/en/repos/git-operations-with-repos) shows each step.
 2. Open `notebooks/west/04_compare_and_gate`. In the **Environment** side panel, open **Base environment**, choose **More**, and select **Standard v5**.
 3. Under **Dependencies**, add this line with your own Git folder path, then click **Apply** and wait for Python to restart:
 
@@ -104,7 +104,7 @@ The application, the judge, and MLflow tracking all run in your workspace, and n
 
 4. Click **Run all**. The report appears in the notebook when the comparison finishes.
 
-Dependencies belong to each notebook, so repeat steps 2 and 3 in each notebook you run. Standard v5 provides Python 3.12, and the requirements file adds MLflow 3.16.1. Results go to the `/Users/<your-user>/odsc-west-2026` experiment, and the notebook uses your own Databricks identity.
+Dependencies belong to each notebook, so repeat steps 2 and 3 in each notebook you run. Standard v5 provides Python 3.12, and the requirements file adds MLflow 3.16.1. Results go to the `/Users/<your-user>/odsc-west-2026` experiment, and the notebook uses your own Databricks identity. These steps use the notebook's standard **Serverless** compute, not the **Git Folder Serverless** beta, which reads dependencies from a `pyproject.toml` instead.
 
 If the default model is unavailable in your workspace, list the chat endpoints you can use:
 
@@ -130,18 +130,17 @@ Without a judge setting, the judge uses the application's endpoint. A judge that
 ## During the session
 
 1. **Opening.** A live support app answers the 45-day question twice, once with the current policy and once with a stale one. Then the recorded release report shows what happened across all ten cases.
-2. **Chapters 00 to 03.** Each one answers the question the last one raised. The lab in chapter 2 is yours: about ten minutes to repair a scorer and evaluate a case you design.
-3. **Chapter 04.** Back to the report, now that you can read every number on it.
-4. **Chapter 05.** What happens when a reviewer flags an answer after release.
+2. **Chapters 0 to 3.** Each one answers the question the last one raised. The lab in chapter 2 is yours: about ten minutes to repair a scorer and evaluate a case you design.
+3. **Chapter 4.** Back to the report, now that you can read every number on it.
+4. **Chapter 5.** What happens when a reviewer flags an answer after release.
 
-Keep one model-calling notebook running at a time, and reopen saved results instead of rerunning long comparisons. To do the lab locally, open `notebooks/west/02_build_the_scorer_stack.py` in your editor and run it with `uv run --locked python notebooks/west/02_build_the_scorer_stack.py`. The other chapters run from the terminal:
+Keep one model-calling notebook running at a time, and reopen saved results instead of rerunning long comparisons. Locally, run each chapter's file from the repository, in the terminal where you loaded your API key:
 
 ```bash
-uv run --locked python -m west_workshop --provider openai --checkpoint 0
-uv run --locked python -m west_workshop --provider openai --checkpoint 1
-uv run --locked python -m west_workshop --provider openai --checkpoint 3
-uv run --locked python -m west_workshop --provider openai --checkpoint 5
+uv run --locked python notebooks/west/01_trace_the_failure.py
 ```
+
+The file runs every cell in order, including the reading cells. For the lab, edit `notebooks/west/02_build_the_scorer_stack.py` and run the file again after each change. Each run scores the ten prepared cases first, with 10 application and 10 judge requests, and then runs your lab. Chapter 4 uses the command from the local route above, because that command also writes the report.
 
 Every run makes fresh model calls, so your answers and scores can differ from the presenter's. A finished exercise prints `"status": "passed"`. It can also print `"decision": "block"`, which means the exercise worked and caught a bad candidate. A failed command exits with code 2 and prints what to check. Results are saved under `artifacts/west-live/`, and Git ignores them.
 
@@ -165,7 +164,7 @@ The call is the same everywhere: `mlflow.genai.evaluate(data=cases, predict_fn=p
 
 **Turn a finding into a release rule.** Keep the original run. Review the new case and its label, version the change, and evaluate every compared version again under the same measurement. Promote reviewed cases into `dataset()` and checks into `build_scorers()`, then run chapter 4. A logged score is not a release rule until you add it to `_gate`. Recalibrate the judge whenever you change it.
 
-**Gate releases in CI.** `eval_gate.py` compares two recorded MLflow runs case by case and exits with code 1 on a regression or on missing evidence. The chapter 4 command exits with code 2 when the comparison fails. MLflow 3.14 added `@mlflow.test` for the same job inside pytest. See [regression testing](https://mlflow.org/docs/latest/genai/eval-monitor/regression-testing/).
+**Gate releases in CI.** `eval_gate.py` compares two recorded MLflow runs case by case. By default it exits with code 1 when more than 10% of cases regress, when a paired test finds a significant loss, or when evidence is missing. The chapter 4 command exits with code 2 when the comparison fails. MLflow 3.14 added `@mlflow.test` for the same job inside pytest. See [regression testing](https://mlflow.org/docs/latest/genai/eval-monitor/regression-testing/).
 
 Before a production release, collect a representative held-out set, check the judge against human reviewers, cover your high-impact failures, and measure latency and cost. You have finished the workshop when you can point to your new case, your scorer, the actual result, and one thing that result does not prove. Matching the presenter's numbers is not the goal.
 
@@ -208,18 +207,20 @@ The recorded score stays 0. Spotting a judge mistake does not rewrite the gate. 
 
 In your own run, open **Review the judge** in the report. It lists every case with a correct label and a rejected reply. For one of them, write down the expected behavior, the assistant's exact claim, the check that objected, and whether you agree.
 
-## What is new in MLflow that this workshop uses
+## What is new in MLflow
+
+Chapters 2 and 3 run the first three rows. The rest are where the workshop points next.
 
 | Capability | Released | Where you meet it |
 |---|---|---|
 | Rule-based scorers `RegexMatch`, `PIIDetection`, and `ResponseLength` | MLflow 3.14.0, June 17, 2026 | Chapter 2 |
-| `make_scorer_ensemble`, one pass or fail across several scorers | MLflow 3.15.2, August 25, 2026 | Chapter 2 |
+| `make_scorer_ensemble`, which combines several scorers into one result, such as a single pass or fail with `agg_all` | MLflow 3.15.2, August 25, 2026 | Chapter 2 |
 | `make_judge(generate_rationale_first=...)` | MLflow 3.16.0, September 3, 2026 | Chapter 3 |
-| `@mlflow.test` regression tests in pytest | MLflow 3.14.0 | Chapter 4, for your CI |
-| Review queues and label schemas | MLflow 3.14.0 | Chapter 5, for your reviewers |
-| Judge alignment, with MemAlign as the default optimizer for `align()` | MLflow 3.13.0, May 29, 2026 | Chapter 3, after calibration |
-| Online monitoring with LLM judges on incoming traces | MLflow 3.9.0, January 28, 2026 | Chapter 5, after release |
-| Multi-turn evaluation and conversation simulation | MLflow 3.10.0, February 20, 2026 | Adapting to agents |
+| `@mlflow.test` regression tests in pytest | MLflow 3.14.0, June 17, 2026 | Chapter 4, for your CI |
+| Review queues, with label schemas in open source MLflow | MLflow 3.14.0, June 17, 2026 | Chapter 5, for your reviewers |
+| MemAlign as the default optimizer for `judge.align()` | MLflow 3.13.0, May 29, 2026 | Chapter 3, after calibration |
+| Automatic evaluation, which runs LLM judges on incoming traces in open source MLflow | MLflow 3.9.0, January 28, 2026 | Chapter 5, after release |
+| Multi-turn evaluation with session views and a public `ConversationSimulator` | MLflow 3.10.0, February 20, 2026 | Adapting to agents |
 
 Release dates come from the [MLflow changelog](https://github.com/mlflow/mlflow/blob/master/CHANGELOG.md).
 

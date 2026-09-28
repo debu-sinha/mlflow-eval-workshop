@@ -2,14 +2,14 @@
 # MAGIC %md
 # MAGIC # Can another evaluator add evidence?
 # MAGIC
-# MAGIC ODSC AI West 2026 · Debu Sinha · Optional chapter
+# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · Trace · Score · Trust · Decide · Learn · **Extend**
 # MAGIC
 # MAGIC This notebook sends a fresh 45-day question to the repaired assistant and scores the answer with two third-party evaluators that run inside MLflow:
 # MAGIC
 # MAGIC | Evaluator | The question it investigates |
 # MAGIC |---|---|
 # MAGIC | Phoenix Hallucination | Is the answer supported by the supplied policy? |
-# MAGIC | TruLens Coherence | Does the answer read clearly and hang together? |
+# MAGIC | TruLens Coherence | Is the answer coherent, well structured, and logically organized? |
 # MAGIC
 # MAGIC These measure different things. A coherent answer can still contradict the policy, as the stale candidate showed. Read each evaluator's value and explanation before deciding how to use it.
 # MAGIC

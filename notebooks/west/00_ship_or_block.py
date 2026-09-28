@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # Would you ship this answer?
 # MAGIC
-# MAGIC ODSC AI West 2026 · Debu Sinha · **Prologue** · Trace · Score · Trust · Decide · Learn
+# MAGIC ODSC AI West 2026 · Debu Sinha · **Prologue** · Trace · Score · Trust · Decide · Learn · Extend
 # MAGIC
 # MAGIC A customer bought a tote 45 days ago and asks for a full refund. Our fictional Northstar Shop has a short policy:
 # MAGIC
@@ -68,7 +68,7 @@ from west_workshop import run_checkpoint
 summary = run_checkpoint(0)
 show_result(summary)
 if summary.get("status") != "passed":
-    raise RuntimeError("This exercise did not complete. Read the setup or run issue above and the saved summary.")
+    raise RuntimeError("This exercise did not complete. Read the setup or run issue above, and the saved summary if one was printed.")
 
 # COMMAND ----------
 

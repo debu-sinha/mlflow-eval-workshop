@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # What happens after release?
 # MAGIC
-# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · Trace · Score · Trust · Decide · **Learn**
+# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · Trace · Score · Trust · Decide · **Learn** · Extend
 # MAGIC
 # MAGIC A release decision covers the cases we tested. Production brings the ones we did not. The evaluation keeps improving only if reviewed problems become the next tests.
 # MAGIC
@@ -54,7 +54,7 @@ from west_workshop import run_checkpoint
 summary = run_checkpoint(5)
 show_result(summary)
 if summary.get("status") != "passed":
-    raise RuntimeError("This exercise did not complete. Read the setup or run issue above and the saved summary.")
+    raise RuntimeError("This exercise did not complete. Read the setup or run issue above, and the saved summary if one was printed.")
 
 # COMMAND ----------
 
@@ -73,7 +73,7 @@ print("Scores:", row["scores"])
 print("Feedback trace ID:", summary["feedback_trace_id"])
 print("Feedback assessment ID:", summary["feedback_assessment_id"])
 print("Feedback provenance:", summary["feedback_provenance"])
-print("Continuous evaluation started:", summary["automatic_evaluation_started"])
+print("Automatic evaluation started:", summary["automatic_evaluation_started"])
 print("Scheduled evaluation started:", summary["scheduled_evaluation_started"])
 
 # COMMAND ----------
@@ -91,12 +91,12 @@ print("Scheduled evaluation started:", summary["scheduled_evaluation_started"])
 # MAGIC
 # MAGIC ## What MLflow adds after release
 # MAGIC
-# MAGIC - **Review queues and label schemas** (MLflow 3.14) route traces to reviewers and write their answers back onto the trace, ready for evaluation. See [review queues](https://mlflow.org/docs/latest/genai/assessments/review-queues/).
-# MAGIC - **Automatic evaluation** runs registered LLM judges on traces as they arrive, at a sampling rate you choose. It supports LLM judges only, so rule checks like `policy_decision` stay in CI and in the application. In open source MLflow, the judges run through an AI Gateway endpoint. See [automatic evaluation](https://mlflow.org/docs/latest/genai/eval-monitor/automatic-evaluations/).
+# MAGIC - **Review queues** (MLflow 3.14) route traces to reviewers, ask the questions you define as label schemas, and write each answer back onto the trace, ready for evaluation. See [review queues](https://mlflow.org/docs/latest/genai/assessments/review-queues/).
+# MAGIC - **Automatic evaluation** runs registered scorers on traces as they arrive, at a sampling rate you choose. In open source MLflow it supports LLM judges only and runs them through an AI Gateway endpoint, so rule checks like `policy_decision` stay in CI and in the application. Databricks production monitoring can also run code-based scorers. See [automatic evaluation](https://mlflow.org/docs/latest/genai/eval-monitor/automatic-evaluations/).
 # MAGIC - **Agents** add a trajectory to evaluate. Tool-call scorers such as `ToolCallCorrectness`, session-level scorers such as `UserFrustration`, and `ConversationSimulator` extend this same loop to tools and multi-turn conversations.
 # MAGIC
 # MAGIC ## Close the loop
 # MAGIC
 # MAGIC We started with one fluent, wrong answer. We traced it to a stale document, built checks that catch it on every answer, tested the judge that grades it, and made a release decision that answers three questions. Now reviewed feedback becomes the next test, and the loop starts again.
 # MAGIC
-# MAGIC Before you leave, write down one risk in your own application, one case that would catch it, and one release rule you would enforce. For an optional look at other evaluators, open **06_optional_integrations**.
+# MAGIC Before you leave, write down one risk in your own application, one case that would catch it, and one release rule you would enforce. For an optional last chapter, open **06_optional_integrations**: can another evaluator add evidence?

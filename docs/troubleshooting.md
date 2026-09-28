@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Most problems come from one of three places: the environment, the model provider, or the tracking location. Each checkpoint prints the step it is on, and every run saves a `summary.json` that names the failure without exposing keys or hosts.
+Most problems come from one of three places: the environment, the model provider, or the tracking location. Each checkpoint prints the step it is on. Every run that passes the configuration check saves a `summary.json` that names the failure without exposing keys or hosts.
 
 ## Local route
 
@@ -10,7 +10,7 @@ Most problems come from one of three places: the environment, the model provider
 | The configuration check is not ready | Load `OPENAI_API_KEY` in the terminal that runs the command. Remove an inherited `OPENAI_BASE_URL`. Leave `MLFLOW_TRACKING_URI` unset for the default route. |
 | The check is ready but a live call fails | Check your OpenAI account access, model permissions, quota, and connection. The configuration check never contacts OpenAI. |
 | The MLflow UI shows no workshop results | Run a checkpoint first, start the server from the same directory, and check the database path and experiment name. A bare `mlflow server` opens a different database. |
-| Port 5000 is in use | Change only `--port 5000` to `--port 5001` and open `http://127.0.0.1:5001`. Keep the SQLite URI unchanged. |
+| Port 5000 is in use | Change only `--port 5000` to `--port 5001` and open `http://127.0.0.1:5001`. Keep the SQLite URI unchanged. If you use the support app, also set `WORKSHOP_MLFLOW_UI_URL` to `http://127.0.0.1:5001`. |
 | An old or unexpected experiment appears | Check inherited `MLFLOW_EXPERIMENT_ID`, `MLFLOW_EXPERIMENT_NAME`, `MLFLOW_TRACKING_URI`, and `WORKSHOP_OUTPUT_DIR` values. |
 
 The workshop writes to SQLite directly, so pointing `MLFLOW_TRACKING_URI` at the UI's HTTP address will not work. If you choose a different database, start the UI with that same path. See the [MLflow tracking server documentation](https://mlflow.org/docs/latest/self-hosting/architecture/tracking-server/) for other setups.

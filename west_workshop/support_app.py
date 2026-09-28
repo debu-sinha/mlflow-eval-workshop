@@ -237,7 +237,7 @@ def create_app(service=None):
         try:
             result = call_with_deadline(service.report)
             if result is None:
-                return render_template("report_pending.html", message="No release report has been published to this experiment yet. Run checkpoint 4, then publish its saved summary using the instructions in the README."), 404
+                return render_template("report_pending.html", message="No release report has been published to this experiment yet. Run checkpoint 4, then publish its saved summary as described in docs/support-app.md."), 404
             return result
         except Exception:
             return render_template("report_pending.html", message="The saved release evidence is unavailable. Check the app's MLflow experiment permission and the published report artifact."), 503
