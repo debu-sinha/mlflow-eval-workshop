@@ -1,0 +1,23 @@
+name: Offline tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Install the locked environment
+        run: uv sync --locked --python 3.12
+      - name: Verify the environment without network calls
+        run: uv run --locked python scripts/verify_west_environment.py
+      - name: Run the offline tests
+        run: uv run --locked pytest -q
