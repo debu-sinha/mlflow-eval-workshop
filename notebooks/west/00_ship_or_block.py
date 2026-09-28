@@ -2,35 +2,36 @@
 # MAGIC %md
 # MAGIC # Would you ship this answer?
 # MAGIC
-# MAGIC ODSC AI West 2026 | Debu Sinha
+# MAGIC ODSC AI West 2026 · Debu Sinha · **Prologue** · Trace · Score · Trust · Decide · Learn
 # MAGIC
-# MAGIC The session opens with the live support app and a preview of the recorded release report. This notebook begins the technical walkthrough. The refund rule is deliberately simple: eligibility could be computed in ordinary business logic. We are studying whether the assistant's generated advice uses the current policy, explains it correctly, and avoids claiming transactions it cannot perform.
-# MAGIC
-# MAGIC ![A recorded release report](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/main/notebooks/images/west/release-report.png)
-# MAGIC
-# MAGIC Start with the finished report in **04_compare_and_gate**. It compares the customer's answers, the scores, and the release decisions. This image is one saved local run; your own run may differ.
-# MAGIC
-# MAGIC ## The customer's request
-# MAGIC
-# MAGIC A customer asks for a full refund 45 days after buying an item. Our fictional Northstar Shop policy says:
+# MAGIC A customer bought a tote 45 days ago and asks for a full refund. Our fictional Northstar Shop has a short policy:
 # MAGIC
 # MAGIC | Situation | Correct guidance |
 # MAGIC |---|---|
-# MAGIC | Non-defective item, day 0 through day 30 | Full refund eligibility |
-# MAGIC | Non-defective item, after day 30 | Store credit eligibility |
-# MAGIC | Defective item, any purchase age | Support review |
+# MAGIC | Non-defective item, day 0 through day 30 | Full refund |
+# MAGIC | Non-defective item, after day 30 | Store credit |
+# MAGIC | Defective item, any age | Support review |
 # MAGIC
-# MAGIC The assistant explains eligibility. It cannot approve or process a transaction.
+# MAGIC The assistant explains eligibility. It can never approve or process a transaction.
 # MAGIC
-# MAGIC The candidate has an outdated 90-day refund policy. Before reading its score, decide whether its answer follows the current policy.
+# MAGIC The rule is deliberately simple, and ordinary code could compute it. What we are testing is the generated advice. Does it follow the current policy, explain it correctly, and avoid claiming an action it cannot take?
+# MAGIC
+# MAGIC The candidate in this notebook retrieves an outdated policy with a 90-day window. **Before you run anything, decide what the right answer is on day 45.**
+# MAGIC
+# MAGIC ![A recorded release report](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/main/notebooks/images/west/release-report.png)
+# MAGIC
+# MAGIC This is where the story ends: a release report that blocks one version and ships another. Chapter 4 builds it from your own run. The chapters in between explain every number on it.
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Set up this notebook
-# MAGIC Use the setup for your platform in the [README](https://github.com/debu-sinha/mlflow-eval-workshop#readme). In Databricks Free Edition, select **Standard environment 5**, add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` using your Git folder's actual path, and click **Apply**. Wait for the Python restart before running the cells.
+# MAGIC ## Set up
 # MAGIC
-# MAGIC The next cell finds the repository and configures this notebook's model and experiment. In Databricks it uses your workspace identity. Locally it keeps your terminal settings. Each notebook runs independently.
+# MAGIC **Databricks:** in the **Environment** side panel, open **Base environment**, choose **More**, and select **Standard v5**. Add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` with your Git folder's path, click **Apply**, and wait for Python to restart.
+# MAGIC
+# MAGIC **Locally:** run this file from the repository with `uv run --locked python notebooks/west/00_ship_or_block.py`, in the terminal where you loaded your API key.
+# MAGIC
+# MAGIC The next cell finds the repository and configures this notebook's model and experiment. Every notebook sets itself up, so each one runs on its own.
 
 # COMMAND ----------
 
@@ -54,11 +55,11 @@ configure_notebook()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Run the opening case
+# MAGIC ## Ask the candidate
 # MAGIC
-# MAGIC This cell makes one application request and checks the declared eligibility against the reference label. It does not call an LLM judge.
+# MAGIC This cell sends the 45-day question to the stale-policy candidate once, then checks the declared eligibility against the reference label. There is no judge yet, only one rule you can read.
 # MAGIC
-# MAGIC **Exercise status: passed** means the exercise completed and caught the intended policy failure. **Decision: block** means the candidate answer should be stopped. These are different outcomes.
+# MAGIC Two lines matter in the output. **Exercise status: passed** means the exercise ran and caught what it was built to catch. **Decision: block** is the verdict on the candidate. Keep them apart. A passing exercise can block a bad release.
 
 # COMMAND ----------
 
@@ -72,11 +73,11 @@ if summary.get("status") != "passed":
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Read the answer and the check
+# MAGIC ## Read the answer before the score
 # MAGIC
-# MAGIC A *reference label* is the expected decision written into the test case. `policy_decision` checks the answer's declared eligibility against that label: 1 means it matches; 0 means it does not.
+# MAGIC A *reference label* is the decision a reviewer wrote into the test case. `policy_decision` scores 1 when the answer's declared eligibility matches that label and 0 when it does not.
 # MAGIC
-# MAGIC Read the actual response below. Which sentence creates a promise the current policy cannot support?
+# MAGIC Read the assistant's words first. Which sentence makes a promise the current policy cannot keep?
 
 # COMMAND ----------
 
@@ -90,8 +91,10 @@ print("Trace ID:", row["trace_id"])
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Take it further
+# MAGIC ## What we know, and what we don't
 # MAGIC
-# MAGIC On day 30, a non-defective purchase is still eligible for a full refund. On day 31, it is eligible for store credit. Find those named cases in `west_workshop/data.py` and explain why both belong in a test set.
+# MAGIC We know the candidate offered a day-45 customer a full refund. We do not know why. The cause could be the model, the prompt, or the information the model received. Guessing is expensive, so the next chapter looks at what actually happened inside the request.
 # MAGIC
-# MAGIC Next, open **01_trace_the_failure**. We'll inspect the policy the assistant actually received.
+# MAGIC **Take it further.** Day 30 is still a full refund and day 31 is store credit. Find both cases in `west_workshop/data.py` and explain why a test set needs both.
+# MAGIC
+# MAGIC Next, open **01_trace_the_failure**: where did the refund promise begin?

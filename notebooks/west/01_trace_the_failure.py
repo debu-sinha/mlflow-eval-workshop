@@ -2,27 +2,30 @@
 # MAGIC %md
 # MAGIC # Where did the refund promise begin?
 # MAGIC
-# MAGIC ODSC AI West 2026 | Debu Sinha
+# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · **Trace** · Score · Trust · Decide · Learn
 # MAGIC
-# MAGIC A *trace* records one application request. A *span* records one step within that request. Our trace has three named steps:
+# MAGIC In the prologue, the candidate told a day-45 customer they qualify for a full refund. There are three suspects: the policy it retrieved, the prompt, or the model's handling of that evidence. A *trace* lets us check instead of guess. It records one request, and each *span* inside it records one step:
 # MAGIC
 # MAGIC | Span | What it records |
 # MAGIC |---|---|
-# MAGIC | `refund_assistant` | The full request and response |
-# MAGIC | `retrieve_refund_policy` | The policy supplied to the assistant |
-# MAGIC | `generate_support_answer` | The model inputs and answer |
+# MAGIC | `refund_assistant` | The whole request and the final answer |
+# MAGIC | `retrieve_refund_policy` | The policy document the assistant received |
+# MAGIC | `generate_support_answer` | The model call, its inputs, and its answer |
 # MAGIC
-# MAGIC This example uses a small retriever that returns a policy document selected by the application variant. It does not use a vector database. Keeping retrieval simple makes the failure easy to inspect.
+# MAGIC The retriever here is deliberately tiny. It returns one of two policy documents, which keeps the cause easy to see. A production retriever is bigger, and the question stays the same: which source reached the model for this request?
 # MAGIC
-# MAGIC Choose a likely cause before running: the retrieved policy, the prompt, or the model's handling of the evidence.
+# MAGIC **Pick a suspect before you run the cell.**
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Set up this notebook
-# MAGIC Use the setup for your platform in the [README](https://github.com/debu-sinha/mlflow-eval-workshop#readme). In Databricks Free Edition, select **Standard environment 5**, add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` using your Git folder's actual path, and click **Apply**. Wait for the Python restart before running the cells.
+# MAGIC ## Set up
 # MAGIC
-# MAGIC The next cell finds the repository and configures this notebook's model and experiment. In Databricks it uses your workspace identity. Locally it keeps your terminal settings. Each notebook runs independently.
+# MAGIC **Databricks:** in the **Environment** side panel, open **Base environment**, choose **More**, and select **Standard v5**. Add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` with your Git folder's path, click **Apply**, and wait for Python to restart.
+# MAGIC
+# MAGIC **Locally:** run this file from the repository with `uv run --locked python notebooks/west/01_trace_the_failure.py`, in the terminal where you loaded your API key.
+# MAGIC
+# MAGIC The next cell finds the repository and configures this notebook's model and experiment. Every notebook sets itself up, so each one runs on its own.
 
 # COMMAND ----------
 
@@ -46,11 +49,11 @@ configure_notebook()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Generate and inspect a trace
+# MAGIC ## Generate a trace, then score it again
 # MAGIC
-# MAGIC This cell creates a fresh answer to the 45-day request, checks eligibility, then fetches the stored trace and evaluates its answer format. The replay uses the saved response; it does not generate a second application answer.
+# MAGIC This cell asks the candidate the 45-day question once and checks its eligibility. Then it loads the stored trace and scores the saved answer's format a second time. That replay reuses the recorded answer and makes no new application request.
 # MAGIC
-# MAGIC A format check can pass even when the refund decision is wrong. The two checks answer different questions.
+# MAGIC Scoring a stored trace is how you evaluate production traffic after the fact. Notice that a format check can pass while the refund decision is wrong, because the two checks answer different questions.
 
 # COMMAND ----------
 
@@ -66,7 +69,7 @@ if summary.get("status") != "passed":
 # MAGIC %md
 # MAGIC ## Find the source of the answer
 # MAGIC
-# MAGIC Read the actual retrieved text below. Then open your experiment in **MLflow > Traces**, select the printed trace ID, and expand the retrieval and generation spans. In Databricks the experiment is normally `/Users/<your-user>/odsc-west-2026`; locally it is `odsc-west-2026`.
+# MAGIC Read the retrieved text below. Then open the experiment in **MLflow > Traces**, select the printed trace ID, and expand the retrieval and generation spans. In Databricks the experiment is `/Users/<your-user>/odsc-west-2026`. Locally it is `odsc-west-2026`.
 
 # COMMAND ----------
 
@@ -86,7 +89,7 @@ print("\nStored trace replay:", summary["trace_evaluation_evidence"])
 # MAGIC %md
 # MAGIC ## Read the tracing code
 # MAGIC
-# MAGIC The decorators on the three functions create the trace and its spans. The predictor passes the retrieved document into the model call. Inspect the implementation below; printing it makes no model calls.
+# MAGIC Three decorators create the trace and its spans. The predictor passes the retrieved document into the model call. Printing the source below makes no model calls.
 
 # COMMAND ----------
 
@@ -98,10 +101,12 @@ print(inspect.getsource(make_predictor))
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Make the diagnosis
+# MAGIC ## The diagnosis
 # MAGIC
-# MAGIC Point to the 90-day window in the retrieval span. Compare it with the current 30-day policy. The stored trace gives us a specific change to test: retrieve the current document.
+# MAGIC The retrieval span says 90 days. The current policy says 30. The model explained the document it was given, and that document was stale. A bigger model would still receive the same stale document. The trace hands us one specific change to test: retrieve the current policy.
 # MAGIC
-# MAGIC If a future retriever returns two conflicting policies, what additional evidence would you want in the trace?
+# MAGIC One corrected answer proves little, though. Which other cases did the stale window break, and would we notice the next time? That needs checks that run on every answer.
 # MAGIC
-# MAGIC Next, open **02_build_the_scorer_stack**.
+# MAGIC **Take it further.** Suppose a retriever returned two conflicting policies. What would you want the trace to record so a reviewer could tell which one the model used?
+# MAGIC
+# MAGIC Next, open **02_build_the_scorer_stack**: which checks should run on every answer?

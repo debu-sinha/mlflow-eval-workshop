@@ -1,32 +1,39 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Explain the release decision
+# MAGIC # Better, regressed, or noise?
 # MAGIC
-# MAGIC ODSC AI West 2026 | Debu Sinha
+# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · Trace · Score · Trust · **Decide** · Learn
 # MAGIC
-# MAGIC ![A saved local release report](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/main/notebooks/images/west/release-report.png)
+# MAGIC ![A saved release report](https://raw.githubusercontent.com/debu-sinha/mlflow-eval-workshop/main/notebooks/images/west/release-report.png)
 # MAGIC
-# MAGIC The session opens with the live support app, then previews this report. This image is a saved local example. The cells below generate your own interactive report with actual responses and scores. Run this longer comparison during preparation when possible, so you can inspect its saved evidence during the session.
+# MAGIC We have a trace that explains the failure, checks that run on every answer, and a judge we have tested. Now the release question. Every release decision has to answer three questions:
 # MAGIC
-# MAGIC After seeing the result, work through **00**, **01**, **02**, and **03** to understand the customer case, traces, scorers, and judge. Then return here to inspect the release rules before continuing to **05**.
+# MAGIC 1. **Did it get better?**
+# MAGIC 2. **Which cases regressed?**
+# MAGIC 3. **Is the change real, or noise?**
+# MAGIC
+# MAGIC The image above is one saved run. The cells below build your own report from real answers and scores. The comparison takes several minutes, so run it before the session when you can and reopen its saved result during the session.
 # MAGIC
 # MAGIC ## What the comparison holds fixed
 # MAGIC
-# MAGIC | Version | Retrieved policy | Purpose |
+# MAGIC | Version | Retrieved policy | Role |
 # MAGIC |---|---|---|
-# MAGIC | Baseline | Current 30-day policy | Reference release |
-# MAGIC | Candidate | Stale 90-day policy | Deliberate retrieval fault |
-# MAGIC | Repaired | Current 30-day policy | Candidate after the targeted fix |
+# MAGIC | Baseline | Current, 30 days | The current release |
+# MAGIC | Candidate | Stale, 90 days | The version with the retrieval fault |
+# MAGIC | Repaired | Current, 30 days | The candidate after the fix |
 # MAGIC
-# MAGIC The three versions answer the same ten cases with the same application model, scorers, and reference labels. Baseline and repaired use the same policy but make independent model calls, so their scores can differ. The comparison changes the retrieved policy; it does not fine-tune a model.
+# MAGIC All three answer the same ten cases with the same model, scorers, and reference labels. Only the retrieved policy changes, and no model is trained. Baseline and repaired use the same policy but make independent model calls, so their answers and scores can differ.
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Set up this notebook
-# MAGIC Use the setup for your platform in the [README](https://github.com/debu-sinha/mlflow-eval-workshop#readme). In Databricks Free Edition, select **Standard environment 5**, add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` using your Git folder's actual path, and click **Apply**. Wait for the Python restart before running the cells.
+# MAGIC ## Set up
 # MAGIC
-# MAGIC The next cell finds the repository and configures this notebook's model and experiment. In Databricks it uses your workspace identity. Locally it keeps your terminal settings. Each notebook runs independently.
+# MAGIC **Databricks:** in the **Environment** side panel, open **Base environment**, choose **More**, and select **Standard v5**. Add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` with your Git folder's path, click **Apply**, and wait for Python to restart.
+# MAGIC
+# MAGIC **Locally:** run `uv run --locked python -m west_workshop --provider openai --checkpoint 4` from the repository, in the terminal where you loaded your API key, and open the printed `report_path`.
+# MAGIC
+# MAGIC The next cell finds the repository and configures this notebook's model and experiment. Every notebook sets itself up, so each one runs on its own.
 
 # COMMAND ----------
 
@@ -50,29 +57,32 @@ configure_notebook()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Read the release rules before running
+# MAGIC ## Read the release rules before you see a result
 # MAGIC
-# MAGIC A *release gate* turns the recorded checks into a decision. Each version must have every named case, a successful application response, and all required scores.
+# MAGIC A *release gate* turns recorded evidence into a decision. The rules are fixed before any version is evaluated:
 # MAGIC
-# MAGIC For each case, the gate uses the lower of `deterministic_stack` and `policy_judge`. It requires all deterministic checks to pass, a mean of at least 90% for both baseline and the evaluated version, and no more than 10% regressions versus baseline. The paired comparison can also block a statistically significant loss.
+# MAGIC - Every case needs a successful answer and every required score. Missing evidence blocks the release.
+# MAGIC - Every deterministic check must pass on every case.
+# MAGIC - Each case scores the lower of `deterministic_stack` and `policy_judge`. Both the baseline and the evaluated version need a mean of at least 90%.
+# MAGIC - No more than 10% of cases may regress against the baseline, and a significant paired loss also blocks.
 # MAGIC
-# MAGIC With ten cases, a mean of 90% can include one failing judge score. It cannot excuse a failed mandatory deterministic check. Read the individual explanations.
+# MAGIC With ten cases, a 90% mean can include one judge rejection. It can never excuse a failed deterministic check.
 
 # COMMAND ----------
 
 from west_workshop.runtime import QUALITY_FLOOR, REGRESSION_LIMIT
 
-print("Minimum mean evaluation score:", QUALITY_FLOOR)
-print("Maximum regression rate versus baseline:", REGRESSION_LIMIT)
+print("Minimum mean score:", QUALITY_FLOOR)
+print("Maximum regression rate against the baseline:", REGRESSION_LIMIT)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Generate the report
+# MAGIC ## Build the report
 # MAGIC
-# MAGIC The judge first checks eight separate rubric controls. If they pass, the cell evaluates 30 application responses across the three versions. It can take several minutes on Free Edition. Keep one notebook running at a time.
+# MAGIC The judge must first pass its eight controls. Then the cell makes 30 application requests, ten for each version, and scores every answer with every check and the judge. Progress prints as it goes. Keep one notebook running at a time.
 # MAGIC
-# MAGIC The exercise completes only if the stale candidate is blocked, the repaired version passes the gate, and the measured mean improves with the dataset and scorers unchanged. An incomplete run is not accepted as a successful comparison.
+# MAGIC The exercise passes only if the stale candidate is blocked, the repaired version passes the gate, and the score improves with the dataset and scorers unchanged. An incomplete run is never counted as a success.
 
 # COMMAND ----------
 
@@ -92,24 +102,33 @@ if summary.get("status") != "passed":
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Read the result and follow the evidence
+# MAGIC ## Answer the three questions
 # MAGIC
-# MAGIC Open the report's expandable sections to inspect the retrieved policies, every case, and the release rules. Locally, open the printed HTML path in a browser. In Databricks, the report appears above.
+# MAGIC Locally, open the printed HTML path in a browser. In Databricks, the report appears above. The three answers sit directly under the two decisions.
 # MAGIC
-# MAGIC The score change compares candidate with repaired. The regression limit compares each version with the baseline. Keep those comparisons distinct.
+# MAGIC **Did it get better?** Compare the stale candidate with the repaired version. Then read **What actually improved?** A correct eligibility label can still come with a wrong explanation, which is why the two counts can move differently. In one recorded Free Edition run, correct eligibility went from 7/10 to 10/10 while cases passing every check went from 2/10 to 10/10. [Read that run's two case studies](https://github.com/debu-sinha/mlflow-eval-workshop#read-the-answer-behind-the-score).
 # MAGIC
-# MAGIC The report now separates **correct eligibility** from **combined checks passed**. A correct eligibility label can accompany an incorrect policy explanation. In a recorded Free Edition run on September 6, eligibility improved from 7/10 to 10/10, while combined checks improved from 2/10 to 10/10. Those are that run's observations, not expected values for your run. [Read its two case studies](https://github.com/debu-sinha/mlflow-eval-workshop/blob/main/README.md#read-the-answer-behind-the-score).
+# MAGIC **Which cases regressed?** Count against two references. The repair is judged against the stale candidate, and the release is judged against the current baseline.
+# MAGIC
+# MAGIC **Is it real, or noise?** Ten paired cases can confirm a large change. The exact McNemar test compares the cases that improved with the cases that regressed. With ten cases, it needs at least six of them moving the same way before it can call a change significant. That is why the gate never relies on the test alone: the regression limit and the mandatory checks catch smaller problems.
 
 # COMMAND ----------
 
 comparison = summary["repair_comparison"]
+evidence = comparison["paired_evidence"]
+low, high = evidence["interval"]
 print("Candidate mean:", comparison["candidate_mean"])
 print("Repaired mean:", comparison["repaired_mean"])
-print("Improved cases:", comparison["improved_cases"])
-print("Regressed cases:", comparison["regressed_cases"])
+print("Improved cases:", evidence["improved"])
+print("Regressed cases:", evidence["regressed"])
+print(f"{evidence['test']} p-value: {evidence['p_value']:.4f}")
+print(f"95% bootstrap interval for the change: {low:+.0%} to {high:+.0%}")
 for name, gate in summary["gates"].items():
     print("\nVersion:", name, "| decision:", gate["decision"])
     print("Reason:", gate["reason"])
+    against_baseline = gate.get("paired_evidence")
+    if against_baseline:
+        print("Regressed against the baseline:", against_baseline["regressed"])
 
 # COMMAND ----------
 
@@ -118,7 +137,7 @@ from west_workshop.report import score_breakdown, judge_review_cases
 for version in score_breakdown(summary):
     print(version)
 
-# Correct labels with rejected replies need a person to inspect the explanation.
+# A correct label with a rejected reply needs a person to read the explanation.
 for row in judge_review_cases(summary):
     print("\nReview:", row["version"], row["case_id"])
     print("Actual answer:", row["output"])
@@ -130,12 +149,12 @@ for row in judge_review_cases(summary):
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Explain your release decision
+# MAGIC ## Make the call
 # MAGIC
-# MAGIC Find one improved case and read both answers. Then inspect any failing judge score, even if the overall gate passes. What evidence would make you change the decision?
+# MAGIC Pick one improved case and read both answers. Then read every failing judge score, even when the gate passes. What evidence would change your decision?
 # MAGIC
-# MAGIC In the recorded example, the baseline judge rejects “visit your account to claim it,” although the rubric permits customer next steps. The stale day-30 reply has a different problem: its refund label is correct, but its explanation cites 90 days. Decide which is an application error and which is an apparent judge error. Keep both recorded scores; a human review does not retroactively change the gate.
+# MAGIC In the recorded run, the baseline judge rejected "visit your account to claim it," although the rubric permits customer next steps. The stale day-30 reply had a different problem: a correct label with an explanation that cites 90 days. One is an application error and one looks like a judge error. Which is which? Keep both recorded scores either way, because a human review does not rewrite the gate after the fact.
 # MAGIC
-# MAGIC To inspect the implementation, open `west_workshop/runtime.py` and read `_gate` and `_repair_comparison`. The general paired comparison is in `eval_gate.py`; checkpoint 4 adds the mandatory policy checks and quality floor.
+# MAGIC The gate's implementation is in `west_workshop/runtime.py`, in `_gate` and `_repair_comparison`. The paired statistics live in `eval_gate.py`, which also runs as a CI step that exits with code 1 on a regression. MLflow 3.14 added `@mlflow.test` for the same job inside pytest.
 # MAGIC
-# MAGIC A pass applies to this teaching dataset. Next, open **05_production_feedback** to see how a new review becomes evidence for the next release.
+# MAGIC A pass here applies to this teaching dataset. Next, open **05_production_feedback**: what happens after release?

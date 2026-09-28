@@ -2,29 +2,34 @@
 # MAGIC %md
 # MAGIC # Which checks should run on every answer?
 # MAGIC
-# MAGIC ODSC AI West 2026 | Debu Sinha
+# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · Trace · **Score** · Trust · Decide · Learn
 # MAGIC
-# MAGIC A *scorer* checks one property of a response. This notebook evaluates the stale-policy candidate on ten named cases, including the day-30 boundary, defective items, and an instruction to claim a refund was processed.
+# MAGIC We found the stale policy by reading one trace. Nobody can read ten thousand. A *scorer* reads for you: it checks one property of one answer, the same way every time. This chapter runs a stack of scorers on ten named cases, including the day-30 boundary, two defective items, and a customer who tells the assistant to say the refund is already processed.
 # MAGIC
-# MAGIC | Scorer | What a passing result means |
+# MAGIC | Scorer | A pass means |
 # MAGIC |---|---|
-# MAGIC | `eligibility_format` | The answer contains a line beginning with a recognized eligibility identifier |
-# MAGIC | `response_length` | The answer has between 20 and 1,400 characters |
-# MAGIC | `pii_detection` | The built-in check did not detect personal information |
-# MAGIC | `policy_decision` | Declared eligibility matches the reference label |
-# MAGIC | `no_false_transaction` | A narrow phrase check did not find a false execution claim |
-# MAGIC | `deterministic_stack` | All five checks above pass |
-# MAGIC | `policy_judge` | The LLM judge accepts both the policy explanation and transaction language |
+# MAGIC | `eligibility_format` | The answer has a line starting with a recognized eligibility label |
+# MAGIC | `response_length` | The answer has 20 to 1,400 characters |
+# MAGIC | `pii_detection` | No email, phone number, or other listed personal data was found |
+# MAGIC | `policy_decision` | The declared eligibility matches the reference label |
+# MAGIC | `no_false_transaction` | A narrow phrase check found no claim that a refund was processed |
+# MAGIC | `deterministic_stack` | All five checks above passed |
+# MAGIC | `policy_judge` | An LLM judge accepts the policy explanation and the transaction language |
 # MAGIC
-# MAGIC For these checks, 1 means pass and 0 means fail. A missing score is incomplete evidence. Pattern checks have limits: a new paraphrase can escape a phrase check, and a judge can make its own mistake.
+# MAGIC 1 means pass and 0 means fail. A missing score is not a pass. It is missing evidence. Rules miss paraphrases and judges make their own mistakes, so the stack uses both, and keeps each result visible.
+# MAGIC
+# MAGIC `RegexMatch`, `PIIDetection`, and `ResponseLength` are built into MLflow since 3.14. `make_scorer_ensemble` arrived in 3.15.2.
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Set up this notebook
-# MAGIC Use the setup for your platform in the [README](https://github.com/debu-sinha/mlflow-eval-workshop#readme). In Databricks Free Edition, select **Standard environment 5**, add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` using your Git folder's actual path, and click **Apply**. Wait for the Python restart before running the cells.
+# MAGIC ## Set up
 # MAGIC
-# MAGIC The next cell finds the repository and configures this notebook's model and experiment. In Databricks it uses your workspace identity. Locally it keeps your terminal settings. Each notebook runs independently.
+# MAGIC **Databricks:** in the **Environment** side panel, open **Base environment**, choose **More**, and select **Standard v5**. Add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` with your Git folder's path, click **Apply**, and wait for Python to restart.
+# MAGIC
+# MAGIC **Locally:** run this file from the repository with `uv run --locked python notebooks/west/02_build_the_scorer_stack.py`, in the terminal where you loaded your API key.
+# MAGIC
+# MAGIC The next cell finds the repository and configures this notebook's model and experiment. **Doing the live lab?** Run this cell, then jump straight to **Your turn**. The lab sets up its own tracking.
 
 # COMMAND ----------
 
@@ -48,9 +53,9 @@ configure_notebook()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Evaluate all ten cases
+# MAGIC ## Score all ten cases
 # MAGIC
-# MAGIC The cell makes fresh application and judge requests. Wait for it to finish before running another notebook. The exercise expects to catch the stale policy; a completed run can therefore show **passed** for the exercise and **block** for the candidate.
+# MAGIC This cell sends ten questions to the stale-policy candidate and scores every answer with the whole stack, judge included. Wait for it to finish before starting another notebook. Expect **passed** for the exercise and **block** for the candidate.
 
 # COMMAND ----------
 
@@ -64,9 +69,9 @@ if summary.get("status") != "passed":
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Compare the individual scores
+# MAGIC ## Compare the scores
 # MAGIC
-# MAGIC Start with the policy decision, the combined deterministic checks, and the judge. Then inspect every score and explanation for the 45-day case. In MLflow, use **Evaluation runs** to compare rows and open their traces.
+# MAGIC Start with three columns: the policy label, the deterministic stack, and the judge. Where do they disagree, and why? Then read every score and explanation for the 45-day case. In MLflow, **Evaluation runs** lets you compare rows and open each trace.
 
 # COMMAND ----------
 
@@ -85,9 +90,9 @@ for assessment in opening["assessments"]:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Read the scorer implementation
+# MAGIC ## Read the scorer code
 # MAGIC
-# MAGIC `@scorer` wraps a Python check for MLflow. `make_scorer_ensemble(..., ensemble_fn="agg_all")` combines the five checks so that any failure makes the stack fail. The LLM judge remains visible as a separate score.
+# MAGIC `@scorer` turns a Python function into an MLflow scorer. `make_scorer_ensemble(..., ensemble_fn="agg_all")` combines the five checks so that any failure fails the stack. The LLM judge stays a separate score, so you can always see which kind of check objected.
 
 # COMMAND ----------
 
@@ -99,13 +104,14 @@ print(inspect.getsource(build_scorers))
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Your turn: write a scorer and evaluate a new case
+# MAGIC ## Your turn: write a scorer and evaluate a case you design
 # MAGIC
-# MAGIC Allow about ten minutes. First run the starter scorer against the four **authored format examples** below; no model calls are needed. It deliberately accepts two malformed answers. Replace its one-line body so it accepts exactly one recognized `Eligibility:` line, at the start of the answer. Ignore trailing spaces on that line. Keep the examples and expected values fixed.
+# MAGIC You have about ten minutes.
 # MAGIC
-# MAGIC Run your edited scorer cell and the examples again. Then edit `new_case` with a request that is absent from the ten-case dataset and its policy-based expected label. The supplied day-32 request is a runnable starting point. Write down what behavior your case tests before seeing a model response.
-# MAGIC
-# MAGIC For the short live exercise, run this notebook's setup cell, then start here. You can skip the prepared ten-case evaluation and source-inspection cells above. The lab configures its own tracking when you reach the evaluation call.
+# MAGIC 1. Run the starter scorer on the four authored answers below. No model is called. The starter accepts two answers it should reject.
+# MAGIC 2. Replace its one-line body so it accepts exactly one recognized `Eligibility:` line, at the start of the answer. Ignore trailing spaces on that line. Keep the examples and expected values as they are.
+# MAGIC 3. Edit `new_case` with a request that is not in the ten-case dataset. Write its expected decision from the policy before you see any answer. The day-32 request supplied here works as is.
+# MAGIC 4. Run the evaluation cell and read your results.
 
 # COMMAND ----------
 
@@ -149,7 +155,7 @@ if not all(format_agreement):
 # MAGIC ) == 1
 # MAGIC ```
 # MAGIC
-# MAGIC This checks the response contract. It does not verify eligibility or the explanation. Those need separate checks.
+# MAGIC This checks the response contract. It says nothing about whether the eligibility or the explanation is right. Those need their own checks.
 
 # COMMAND ----------
 
@@ -164,7 +170,7 @@ new_case = {
     },
     "expectations": {"expected_decision": "store_credit", "policy": CURRENT_POLICY},
 }
-# Keep one known boundary case as a reference; do not modify the release dataset.
+# Keep one known boundary case as a reference. The release dataset stays unchanged.
 lab_cases = [dataset()[2], new_case]
 assert new_case["inputs"]["case_id"] not in {row["inputs"]["case_id"] for row in dataset()}
 print("New case:", new_case)
@@ -174,9 +180,9 @@ print("New case:", new_case)
 # MAGIC %md
 # MAGIC ## Make the MLflow evaluation call yourself
 # MAGIC
-# MAGIC `inputs` keys become keyword arguments to `predict_fn`. Its returned text becomes `outputs` for each scorer; `expectations` contains the reference labels. This is the same [MLflow evaluation API](https://mlflow.org/docs/latest/genai/eval-monitor/quickstart/) used inside the prepared checkpoints.
+# MAGIC This is the same call every prepared chapter uses. The keys in each case's `inputs` become keyword arguments to `predict_fn`, its return value becomes `outputs` for every scorer, and `expectations` carries the reference labels. See the [MLflow evaluation quickstart](https://mlflow.org/docs/latest/genai/eval-monitor/quickstart/).
 # MAGIC
-# MAGIC The next cell makes two fresh application requests with the current policy and runs two Python scorers. It does not call an LLM judge. MLflow may also make a prediction to check the function's tracing. The separate `west-attendee-lab` run preserves the actual cases, scorer definition, and scores. **Run all** also works with the starter scorer; the printed format disagreement means the exercise still needs your edit.
+# MAGIC The cell makes two application requests to the current-policy assistant and scores both answers with your scorer and `policy_decision`. It calls no judge. The run is named `west-attendee-lab` and saves your cases and your scorer's definition beside the results. **Run all** works with the starter too, and its printed disagreement means the exercise still needs your edit.
 
 # COMMAND ----------
 
@@ -215,18 +221,16 @@ for trace_id in lab_table["trace_id"]:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Explain what your test establishes
+# MAGIC ## Say what your test establishes
 # MAGIC
-# MAGIC Open your lab run in MLflow. Read the new response, both scores, and its trace. Did the assistant preserve one eligibility line despite the customer's instruction? Does its declared decision match your label? A missing score needs investigation; a low score is a finding to retain.
+# MAGIC Open your lab run in MLflow and read the new answer, both scores, and its trace. Did the assistant keep one eligibility line despite the customer's instruction? Does its declared decision match your label? A low score is a finding, so keep it. A missing score needs investigation.
 # MAGIC
-# MAGIC This small lab does not make a release decision. Even two passing checks say nothing about the explanation's policy accuracy. Checkpoint 4 still uses its original ten cases and full scorer stack. To promote your new case or scorer into a release requirement, version the change and evaluate **all three versions** again with that same requirement; keep earlier runs.
+# MAGIC Finish two sentences: "This test checks ___. It does not establish ___." For example, one valid eligibility line does not establish that the explanation cites the current policy.
 # MAGIC
-# MAGIC For your own application, follow [Adapt this evaluation to your app](https://github.com/debu-sinha/mlflow-eval-workshop/blob/main/README.md#adapt-this-evaluation-to-your-app).
+# MAGIC This lab makes no release decision, and chapter 4 still uses its original ten cases. To promote your case or scorer into a release requirement, version the change and evaluate every compared version again under that same requirement. For your own application, follow [Adapt it to your app](https://github.com/debu-sinha/mlflow-eval-workshop#adapt-it-to-your-app).
 # MAGIC
 # MAGIC ## Test the limits of a rule
 # MAGIC
-# MAGIC Consider the authored example, “I will issue the store credit to your account now.” It promises execution. Explain why a phrase check might miss it and why the semantic judge needs an explicit rule about transaction promises.
+# MAGIC One authored answer says, "I will issue the store credit to your account now." That promises execution. Why might a phrase check miss it, and why does the judge's rubric need an explicit rule about promises?
 # MAGIC
-# MAGIC A response can be short, correctly formatted, and still wrong. Which checks would you require for every release?
-# MAGIC
-# MAGIC Next, open **03_trust_the_judge** to examine the judge itself.
+# MAGIC Every score so far came from code you can read, except one. The policy judge is itself a model. Next, open **03_trust_the_judge**: what if the judge is wrong?

@@ -2,21 +2,26 @@
 # MAGIC %md
 # MAGIC # What if the judge is wrong?
 # MAGIC
-# MAGIC ODSC AI West 2026 | Debu Sinha
+# MAGIC ODSC AI West 2026 · Debu Sinha · Prologue · Trace · Score · **Trust** · Decide · Learn
 # MAGIC
-# MAGIC A judge also needs evaluation. *Calibration* here means comparing its decisions with reference labels on six authored replies. These replies were written for the workshop; they are not fresh application outputs.
+# MAGIC The policy judge caught what no rule could: a correct label with a stale explanation. It is also a model, and models make mistakes. Before its score decides a release, we evaluate the judge itself.
 # MAGIC
-# MAGIC We compare two judge configurations with the same policy rubric and model: one returns the value first, and one generates its rationale first. We do not assume the second will improve agreement.
+# MAGIC *Calibration* here means comparing the judge's decisions with reference labels on six replies written for the workshop. They are authored examples, not fresh application answers.
 # MAGIC
-# MAGIC A separate set of eight positive and negative controls checks basic rubric behavior before checkpoint 4 can compare releases. These small teaching sets do not establish accuracy on real customer traffic.
+# MAGIC We compare two versions of the same judge, with the same rubric and model. One returns its verdict first. The other writes its rationale first, using `make_judge(generate_rationale_first=True)`, new in MLflow 3.16. We do not assume the second one wins. We measure.
+# MAGIC
+# MAGIC Eight separate controls, four that should pass and four that should fail, gate the judge before chapter 4 compares releases. These small sets check the rubric's behavior. They cannot establish accuracy on real traffic.
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Set up this notebook
-# MAGIC Use the setup for your platform in the [README](https://github.com/debu-sinha/mlflow-eval-workshop#readme). In Databricks Free Edition, select **Standard environment 5**, add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` using your Git folder's actual path, and click **Apply**. Wait for the Python restart before running the cells.
+# MAGIC ## Set up
 # MAGIC
-# MAGIC The next cell finds the repository and configures this notebook's model and experiment. In Databricks it uses your workspace identity. Locally it keeps your terminal settings. Each notebook runs independently.
+# MAGIC **Databricks:** in the **Environment** side panel, open **Base environment**, choose **More**, and select **Standard v5**. Add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` with your Git folder's path, click **Apply**, and wait for Python to restart.
+# MAGIC
+# MAGIC **Locally:** run this file from the repository with `uv run --locked python notebooks/west/03_trust_the_judge.py`, in the terminal where you loaded your API key.
+# MAGIC
+# MAGIC The next cell finds the repository and configures this notebook's model and experiment. Every notebook sets itself up, so each one runs on its own.
 
 # COMMAND ----------
 
@@ -40,9 +45,9 @@ configure_notebook()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Read a reply before seeing the judge's score
+# MAGIC ## Grade the replies yourself first
 # MAGIC
-# MAGIC Decide whether each reply follows the current policy and avoids claiming transaction execution. Give your reason before moving to the evaluation cell.
+# MAGIC For each reply, decide whether it follows the current policy and avoids claiming a transaction. Write down your reason before you look at the judge.
 
 # COMMAND ----------
 
@@ -56,11 +61,11 @@ for example in calibration_dataset():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Evaluate and preserve both judge definitions
+# MAGIC ## Run both judges and keep their definitions
 # MAGIC
-# MAGIC The next cell saves each full definition as an MLflow run artifact, loads it back, and checks that it matches. Locally it also demonstrates the scorer registry. Databricks Free Edition uses the saved artifacts, so server-side scorer versioning is not required.
+# MAGIC The next cell saves each judge's full definition as an MLflow run artifact, loads it back, and checks that nothing changed. Locally it also registers both versions in MLflow's scorer registry. On Databricks Free Edition the saved artifacts are the record, so server-side scorer versioning is not required.
 # MAGIC
-# MAGIC The six-example agreement can be less than 100% even when the exercise completes. Read every disagreement. The separate eight controls must pass.
+# MAGIC Agreement on the six replies can land below 100% even when the exercise passes. Read every disagreement. The eight controls must all pass.
 
 # COMMAND ----------
 
@@ -74,9 +79,9 @@ if summary.get("status") != "passed":
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Compare the decisions with the reference labels
+# MAGIC ## Compare the judges with the labels
 # MAGIC
-# MAGIC The reference label is the expected judgment about the authored reply. It is separate from an application's refund eligibility label. A score of 1 corresponds to an accepted reply; 0 corresponds to a rejected reply.
+# MAGIC Here the reference label is a verdict on the reply, separate from the refund label in chapter 2. A score of 1 means the judge accepted the reply. A score of 0 means it rejected it.
 
 # COMMAND ----------
 
@@ -100,7 +105,7 @@ for version in summary["scorer_versions"]:
 # MAGIC %md
 # MAGIC ## Read the rubric
 # MAGIC
-# MAGIC The judge checks eligibility and execution separately. It must evaluate the assistant's reply, without mistaking the customer's instruction for something the assistant actually said. Read how the rubric handles day 30, defective items, and permitted next steps.
+# MAGIC The judge checks eligibility and execution separately. It must grade what the assistant said, and never mistake the customer's instruction for the assistant's own claim. Find how the rubric handles day 30, defective items, and customer next steps.
 
 # COMMAND ----------
 
@@ -114,10 +119,10 @@ print(inspect.getsource(_policy_judge))
 # MAGIC %md
 # MAGIC ## Review a disagreement
 # MAGIC
-# MAGIC Read the customer request, assistant reply, reference label, and judge explanation together. If the label is wrong, document and correct the labeling error. If the judge is wrong, improve the rubric and rerun the same examples. Keep earlier results available.
+# MAGIC Read the request, the reply, the reference label, and the judge's explanation together. If the label is wrong, correct the label and record why. If the judge is wrong, improve the rubric and rerun the same examples. Keep the earlier results either way.
 # MAGIC
-# MAGIC There is a real example to practice on in [Read the answer behind the score](https://github.com/debu-sinha/mlflow-eval-workshop/blob/main/README.md#read-the-answer-behind-the-score). A recorded baseline answer told the customer to visit their account to claim credit. The judge rejected it as assistant execution, although its rubric permits customer next steps. Read the reply before revealing the discussion. Passing a small control set did not prevent this mistake on a generated answer.
+# MAGIC There is a real case to practice on in [A judge rejection that deserves correction](https://github.com/debu-sinha/mlflow-eval-workshop#a-judge-rejection-that-deserves-correction). A recorded baseline answer told the customer to visit their account to claim store credit. The judge rejected it as a transaction, although its rubric permits customer next steps. Read the reply before you read the discussion. Eight passing controls did not prevent this mistake on a generated answer.
 # MAGIC
-# MAGIC In 04, the report's **Review the judge** section finds this kind of disagreement in your own run. A rejected reply with a correct label can also have an incorrect explanation, so the label alone cannot settle the review.
+# MAGIC **Take it further.** Once reviewers have labeled enough real traces, MLflow can align a judge to their feedback with `judge.align()`, which uses the MemAlign optimizer by default since MLflow 3.13. Calibration comes first, because alignment learns from labels you trust. See [judge alignment](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/llm-judge/alignment/).
 # MAGIC
-# MAGIC Return to **04_compare_and_gate**. If you already ran the opening report and have changed nothing, reuse it to inspect the release rules. If you changed the judge, rerun the comparison.
+# MAGIC We can now trust the judge as far as its evidence goes. Return to **04_compare_and_gate** for the release decision. If you ran its report earlier and have changed nothing, reuse it. If you changed the judge, run the comparison again.

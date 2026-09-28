@@ -1,23 +1,23 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Can another evaluator add useful evidence?
+# MAGIC # Can another evaluator add evidence?
 # MAGIC
-# MAGIC ODSC AI West 2026 | Debu Sinha
+# MAGIC ODSC AI West 2026 · Debu Sinha · Optional chapter
 # MAGIC
-# MAGIC This optional notebook sends a fresh 45-day request to the repaired assistant. It evaluates the answer with two MLflow integrations:
+# MAGIC This notebook sends a fresh 45-day question to the repaired assistant and scores the answer with two third-party evaluators that run inside MLflow:
 # MAGIC
-# MAGIC | Evaluator | Question to investigate |
+# MAGIC | Evaluator | The question it investigates |
 # MAGIC |---|---|
-# MAGIC | Phoenix Hallucination | Is the response supported by the supplied policy context? |
-# MAGIC | TruLens Coherence | Does the response make sense and read coherently? |
+# MAGIC | Phoenix Hallucination | Is the answer supported by the supplied policy? |
+# MAGIC | TruLens Coherence | Does the answer read clearly and hang together? |
 # MAGIC
-# MAGIC These are different dimensions. A coherent answer can still conflict with policy. Inspect each evaluator's label, score, and explanation before deciding how to use it.
+# MAGIC These measure different things. A coherent answer can still contradict the policy, as the stale candidate showed. Read each evaluator's value and explanation before deciding how to use it.
 # MAGIC
 # MAGIC ## Install the optional dependencies
 # MAGIC
-# MAGIC Locally, use `uv sync --locked --python 3.12 --extra ecosystem`. In Databricks Free Edition, select **Standard environment 5** and apply `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-ecosystem.txt`, replacing the path with your Git folder's actual path. Use this combined file in place of the core requirements file.
+# MAGIC **Locally:** run `uv sync --locked --python 3.12 --extra ecosystem`, then `uv run --locked --extra ecosystem python -m west_workshop --provider openai --integrations`.
 # MAGIC
-# MAGIC Wait for installation and the Python restart. In Databricks this notebook uses your workspace identity and an accessible model endpoint. No OpenAI key is needed for that route.
+# MAGIC **Databricks:** in the **Environment** side panel, open **Base environment**, choose **More**, and select **Standard v5**. Add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-ecosystem.txt` with your Git folder's path, in place of the core requirements file. Click **Apply** and wait for Python to restart. The notebook uses your workspace identity and an accessible model endpoint, so no OpenAI key is needed.
 
 # COMMAND ----------
 
@@ -43,7 +43,7 @@ configure_notebook()
 # MAGIC %md
 # MAGIC ## Verify the environment
 # MAGIC
-# MAGIC This checks installed package versions before making model calls. The optional integrations require the combined pins; installing the newest Phoenix version over this environment can break MLflow's adapter.
+# MAGIC This checks installed package versions and builds both evaluators before any model call. The integrations need the combined pins. Installing the newest Phoenix evaluation package over this environment breaks MLflow's adapter.
 
 # COMMAND ----------
 
@@ -57,7 +57,7 @@ verify_environment(ecosystem=True, databricks=os.environ.get("WORKSHOP_PROVIDER"
 # MAGIC %md
 # MAGIC ## Run both evaluators
 # MAGIC
-# MAGIC The application and both evaluators make real provider requests. A passed exercise means both returned usable evidence. It does not mean their scores are interchangeable or that one answer establishes general accuracy.
+# MAGIC The application and both evaluators make real provider requests. A passed exercise means both returned usable evidence. It does not make their scores interchangeable, and one answer establishes nothing general.
 
 # COMMAND ----------
 
@@ -71,9 +71,9 @@ if summary.get("status") != "passed":
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Read the response and each explanation
+# MAGIC ## Read the answer and each explanation
 # MAGIC
-# MAGIC Compare what the two evaluators actually assessed. For the Phoenix check, the current policy is supplied as context. Read the original feedback value and explanation rather than assuming every evaluator uses the same scale.
+# MAGIC Compare what the two evaluators actually assessed. Phoenix receives the current policy as context. Read each original value and explanation instead of assuming every evaluator uses the same scale.
 
 # COMMAND ----------
 
@@ -90,8 +90,8 @@ print("\nTrace ID:", row["trace_id"])
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Choose what belongs in your evaluation
+# MAGIC ## Decide what belongs in your evaluation
 # MAGIC
-# MAGIC Which evaluator adds evidence your policy checks do not already provide? What examples would you use to test that claim? Consider the extra calls, latency, and disagreement review before adding another judge to every request.
+# MAGIC Which evaluator adds evidence that your policy checks do not? What examples would prove it? Count the extra calls, the latency, and the disagreements someone must review before adding another judge to every request.
 # MAGIC
-# MAGIC The core release gate remains the one you inspected in checkpoint 4. This exercise does not change it.
+# MAGIC This chapter leaves the release gate from chapter 4 unchanged.
