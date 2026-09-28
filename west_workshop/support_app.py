@@ -43,6 +43,19 @@ def _workspace_url(host):
     return None
 
 
+def _local_ui_url(value):
+    """Accept only a loopback HTTP address for the local MLflow UI link."""
+    try:
+        parsed = urlsplit(value.strip().rstrip("/"))
+        if (parsed.scheme == "http" and parsed.hostname in {"127.0.0.1", "localhost"}
+                and not parsed.username and not parsed.password
+                and not parsed.path and not parsed.query and not parsed.fragment):
+            return f"http://{parsed.hostname}:{parsed.port or 80}"
+    except ValueError:
+        pass
+    return None
+
+
 class SupportService:
     def __init__(self):
         self.provider = selected_provider()
@@ -90,9 +103,14 @@ class SupportService:
             raise WorkshopExecutionError("The answer's saved retrieval trace could not be verified.")
         eligibility = re.search(_ELIGIBILITY_PATTERN, answer)
         workspace_host = _workspace_url(os.environ.get("DATABRICKS_HOST", ""))
-        trace_url = None
+        trace_url, trace_hint = None, None
         if self.provider == "databricks" and workspace_host:
             trace_url = f"{workspace_host}/ml/experiments/{self.experiment_id}/traces?selectedEvaluationId={trace_id}"
+        elif self.provider == "openai":
+            local_ui = _local_ui_url(os.environ.get("WORKSHOP_MLFLOW_UI_URL", "http://127.0.0.1:5000"))
+            if local_ui:
+                trace_url = f"{local_ui}/#/experiments/{self.experiment_id}/traces?selectedEvaluationId={trace_id}"
+                trace_hint = "This link needs the local MLflow UI from the README, running on the same database."
         return {
             "answer": answer,
             "body": answer[eligibility.end():].lstrip(" .:\n\r") if eligibility and eligibility.start() == 0 else answer,
@@ -101,6 +119,7 @@ class SupportService:
             "variant": variant,
             "trace_id": trace_id,
             "trace_url": trace_url,
+            "trace_hint": trace_hint,
             "experiment_id": self.experiment_id,
             "retrieved_policy": evidence.get("page_content"),
             "policy_version": evidence.get("metadata", {}).get("policy_version"),
@@ -206,7 +225,7 @@ def create_app(service=None):
         try:
             return jsonify(call_with_deadline(lambda: service.answer(order, question.strip(), variant)))
         except TimeoutError:
-            return jsonify(error="This request took too long. It may still be finishing. Wait a moment before trying again; if the app stays busy, restart it from Databricks Apps."), 504
+            return jsonify(error="This request took too long. It may still be finishing. Wait a moment before trying again. If the app stays busy, restart it from Databricks Apps."), 504
         except Exception:
             # Raw provider errors and credentials never reach the browser or logs.
             return jsonify(error="We couldn't complete this request with a verified trace. Please retry. If it continues, check model access, MLflow permissions, and available quota."), 503

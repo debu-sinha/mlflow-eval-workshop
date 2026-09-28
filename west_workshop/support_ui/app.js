@@ -111,8 +111,9 @@ function showEvidence(useResponse) {
     byId("evidence-trace").textContent = response.trace_id;
     byId("original-answer").textContent = response.answer;
     byId("trace-link").hidden = !response.trace_url;
-    byId("local-trace-hint").hidden = !!response.trace_url;
     if (response.trace_url) byId("trace-link").href = response.trace_url;
+    byId("local-trace-hint").textContent = response.trace_hint || "Open your MLflow UI and find this trace ID in the odsc-west-2026 experiment.";
+    byId("local-trace-hint").hidden = !!response.trace_url && !response.trace_hint;
   }
   byId("evidence-dialog").showModal();
 }
