@@ -1,31 +1,32 @@
 #!/usr/bin/env python3
-"""Evaluation gate for CI/CD pipelines.
+"""Release gate for CI/CD pipelines.
 
-Compares two MLflow evaluation runs by aligning samples on a stable key
-and exits with code 1 if the candidate regresses beyond the configured
-threshold. Missing, ambiguous, or nonfinite evidence blocks the gate.
+Compares two MLflow evaluation runs case by case and exits with code 1 when
+the candidate regresses beyond the configured limit. Missing, ambiguous, or
+nonfinite evidence blocks the gate.
 
-Sample alignment prefers MLflow-native identifiers (client_request_id or
-dataset_record_id from trace metadata) when available, and falls back to
-hashing the request body when they are not set.
-
-Wire this into GitHub Actions, GitLab CI, or any CI system that checks
-exit codes.
+Cases are aligned by MLflow-native identifiers (client_request_id, or
+dataset_record_id from trace metadata) when present, and otherwise by a hash
+of the request.
 
 Gate policy:
     1. Invalid evidence or different case sets -> FAIL
-    2. Regression rate > threshold -> FAIL
-    3. Paired significance test detects a candidate loss -> FAIL
-       (McNemar with exact binomial fallback for small samples on binary
-        scorers, paired sign-flip permutation test on continuous scorers)
+    2. Regression rate above the limit -> FAIL
+    3. A paired significance test detects a candidate loss -> FAIL
+       (McNemar's test for pass/fail scores, exact below 25 discordant pairs,
+        and a paired sign-flip permutation test for continuous scores)
     4. Otherwise -> PASS
 
+The gate also reports a paired bootstrap interval for the mean change, so a
+reader can see how large a change the evidence supports.
+
 Usage:
-    python eval_gate.py --baseline-run-id <RUN_ID> --candidate-run-id <RUN_ID>
-    python eval_gate.py --baseline-run-id <RUN_ID> --candidate-run-id <RUN_ID> --threshold 0.05
+    python eval_gate.py --baseline-run-id <RUN_ID> --candidate-run-id <RUN_ID> --scorer deterministic_stack
+    python eval_gate.py --baseline-run-id <RUN_ID> --candidate-run-id <RUN_ID> --scorer policy_judge --threshold 0.05
 
 Environment:
-    MLFLOW_TRACKING_URI: MLflow tracking server URL (default: http://localhost:5000)
+    MLFLOW_TRACKING_URI: the tracking store holding both runs. For this
+    workshop's local route, use sqlite:///artifacts/west-live/mlflow-west.db.
 
 Exit codes:
     0: Candidate passes (no significant regression)
@@ -48,10 +49,15 @@ import numpy as np
 # Below this count, the gate fails closed to prevent misconfigured pipelines
 # from silently promoting bad models.
 #
-# Workshop demos use 2 so the small sample sets in Modules 3 and 4 can
-# exercise the full path. Production gates should set --min-overlap to
-# 30 or higher. Choose the required coverage for the application.
+# The workshop's checkpoint 4 passes min_overlap equal to its ten cases.
+# The command-line default is deliberately permissive for small experiments.
+# Production gates should set --min-overlap to 30 or higher, chosen for the
+# coverage the application needs.
 _MIN_OVERLAP = 2
+
+# Paired bootstrap settings. A fixed seed makes the interval reproducible.
+_BOOTSTRAP_RESAMPLES = 10_000
+_BOOTSTRAP_SEED = 20261028
 
 # MLflow run IDs are 32-character lowercase hex strings. Validate before
 # interpolating into a search filter to prevent injection.
@@ -276,6 +282,61 @@ def _mcnemar_exact_pvalue(b: int, c: int) -> float:
     return min(1.0, 2 * tail)
 
 
+def paired_evidence(
+    baseline_scores: dict[str, float],
+    candidate_scores: dict[str, float],
+    confidence: float = 0.95,
+    resamples: int = _BOOTSTRAP_RESAMPLES,
+    seed: int = _BOOTSTRAP_SEED,
+) -> dict:
+    """Summarize a paired comparison without making a pass or fail decision.
+
+    Returns the case counts that moved in each direction, the mean change with a
+    paired bootstrap percentile interval, and a two-sided p-value: the exact
+    McNemar test for pass/fail scores, or the sign-flip permutation test for
+    continuous scores. Both runs must contain exactly the same finite scores.
+    """
+    keys = sorted(baseline_scores)
+    if not keys or sorted(candidate_scores) != keys:
+        raise ValueError("Paired evidence needs the same nonempty set of case keys in both runs.")
+    before = np.array([_parse_score(baseline_scores[key]) for key in keys], dtype=float)
+    after = np.array([_parse_score(candidate_scores[key]) for key in keys], dtype=float)
+    if not (np.all(np.isfinite(before)) and np.all(np.isfinite(after))):
+        raise ValueError("Paired evidence needs a finite score for every case.")
+    if not 0 < confidence < 1 or resamples < 1:
+        raise ValueError("Use a confidence between 0 and 1 and at least one resample.")
+    diffs = after - before
+    binary = set(np.unique(np.concatenate([before, after]))) <= {0.0, 1.0}
+    improved = [key for key, diff in zip(keys, diffs) if diff > 0]
+    regressed = [key for key, diff in zip(keys, diffs) if diff < 0]
+    rng = np.random.default_rng(seed)
+    if binary:
+        test_name = "exact McNemar"
+        p_value = _mcnemar_exact_pvalue(len(regressed), len(improved))
+    else:
+        test_name = "sign-flip permutation"
+        signs = rng.choice([-1, 1], size=(resamples, len(diffs)))
+        extreme = int(np.sum(np.abs(np.mean(signs * diffs, axis=1)) >= abs(float(np.mean(diffs)))))
+        p_value = (extreme + 1) / (resamples + 1)
+    samples = np.mean(diffs[rng.integers(0, len(diffs), size=(resamples, len(diffs)))], axis=1)
+    tail = (1 - confidence) / 2 * 100
+    low, high = np.percentile(samples, [tail, 100 - tail])
+    return {
+        "cases": len(keys),
+        "improved": improved,
+        "regressed": regressed,
+        "unchanged": len(keys) - len(improved) - len(regressed),
+        "baseline_mean": float(np.mean(before)),
+        "candidate_mean": float(np.mean(after)),
+        "mean_change": float(np.mean(diffs)),
+        "test": test_name,
+        "p_value": float(p_value),
+        "confidence": confidence,
+        "interval": [float(low), float(high)],
+        "interval_method": f"paired bootstrap percentile, {resamples} resamples, seed {seed}",
+    }
+
+
 def run_gate(
     baseline_scores: dict[str, float],
     candidate_scores: dict[str, float],
@@ -412,6 +473,11 @@ def run_gate(
     print(f"Improvements:       {improvements}/{n}")
     print(f"{test_name} p-value: {p_value:.4f}")
     print(f"Cohen's d:          {effect_size:.3f}")
+    evidence = paired_evidence(
+        dict(zip(shared_keys, bl_values)), dict(zip(shared_keys, cd_values))
+    )
+    low, high = evidence["interval"]
+    print(f"95% interval:       {low:+.1%} to {high:+.1%} (paired bootstrap)")
     print(f"Threshold:          {max_regression_rate:.1%}")
     if not is_binary:
         print(f"Minimum delta:      {min_delta:g} (absolute scorer units)")

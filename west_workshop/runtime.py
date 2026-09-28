@@ -11,6 +11,8 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
+import time
 import uuid
 from urllib.parse import urlsplit
 
@@ -30,6 +32,23 @@ class WorkshopExecutionError(RuntimeError):
     """A safe error with no provider response, header, or host."""
 
 
+# Progress lines go to the notebook or terminal that started the run. Dependency
+# output stays quiet, so these lines are the only live status during long calls.
+_PROGRESS_STREAM = None
+_VARIANT_LABELS = {
+    "baseline": "the baseline (current policy)",
+    "candidate": "the candidate (stale policy)",
+    "repaired": "the repaired assistant (current policy)",
+    "authored_calibration": "both judges on 6 authored replies",
+    "authored_judge_validation": "the judge on 8 authored controls",
+}
+
+
+def _progress(message):
+    if _PROGRESS_STREAM is not None:
+        print(message, file=_PROGRESS_STREAM, flush=True)
+
+
 def _configure_timeouts(provider=None):
     # These names exist in MLflow 3.16 environment_variables.
     settings = {
@@ -44,6 +63,9 @@ def _configure_timeouts(provider=None):
         "MLFLOW_GENAI_EVAL_PREDICT_RATE_LIMIT": "0.5" if selected_provider(provider) == "databricks" else "auto",
         "MLFLOW_GENAI_EVAL_SCORER_RATE_LIMIT": "1" if selected_provider(provider) == "databricks" else "0",
         "MLFLOW_GENAI_EVAL_MAX_RETRIES": "1",
+        # make_predictor is already traced, so skip MLflow's extra validation call.
+        # Each evaluated case then costs exactly one application request.
+        "MLFLOW_GENAI_EVAL_SKIP_TRACE_VALIDATION": "true",
         "MLFLOW_GENAI_EVAL_LLM_TIMEOUT": "45",
         "MLFLOW_GATEWAY_ROUTE_TIMEOUT_SECONDS": "45",
         "MLFLOW_GENAI_EVAL_ASYNC_TIMEOUT": "120",
@@ -294,11 +316,13 @@ def _setup_tracking(provider: str, output_dir: Path):
 
 
 def _scorer_manifest(scorers):
+    import mlflow
+
     rows = []
     for item in scorers:
         serialized = item.model_dump()
         digest = hashlib.sha256(json.dumps(serialized, sort_keys=True, default=str).encode()).hexdigest()
-        rows.append({"name": item.name, "definition_sha256": digest, "implementation": "mlflow-3.16.0"})
+        rows.append({"name": item.name, "definition_sha256": digest, "implementation": "mlflow-" + mlflow.__version__})
     return rows
 
 
@@ -422,6 +446,10 @@ def _evaluate(provider, variant, rows, scorers, directory, *, authored=False):
     import pandas as pd
 
     manifest = _scorer_manifest(scorers)
+    started = time.monotonic()
+    noun = "case" if len(rows) == 1 else "cases"
+    what = _VARIANT_LABELS.get(variant, variant)
+    _progress(f"  Scoring {what}" if authored else f"  Answering and scoring {len(rows)} {noun} with {what}")
     with mlflow.start_run(run_name="west-" + variant, nested=mlflow.active_run() is not None) as run:
         retrieval_policy = STALE_POLICY if variant == "candidate" else CURRENT_POLICY
         mlflow.log_params({"workshop_variant": variant, "dataset_sha256": dataset_digest(rows), "evaluation_policy_sha256": hashlib.sha256(CURRENT_POLICY.encode()).hexdigest(), "retrieval_policy_sha256": hashlib.sha256(retrieval_policy.encode()).hexdigest(), "provider": provider, "application_model": application_model(provider), "judge_model": judge_model(provider), "authored_calibration_outputs": authored})
@@ -439,11 +467,12 @@ def _evaluate(provider, variant, rows, scorers, directory, *, authored=False):
         artifact_path = directory / (variant + "-rows.json")
         _write_json(artifact_path, trace_rows)
         mlflow.log_dict(_sanitize(trace_rows), "evaluation_rows.json")
+    _progress(f"    {'complete' if complete else 'INCOMPLETE'} in {time.monotonic() - started:.0f} s")
     return {"run_id": run_id, "rows": trace_rows, "row_count": len(trace_rows), "complete": complete, "metrics": metrics, "scorers": manifest, "trace_ids": [row["trace_id"] for row in trace_rows], "rows_path": str(artifact_path), "dataset_digest": dataset_digest(rows)}
 
 
 def _gate(baseline, candidate, expected_rows):
-    from eval_gate import run_gate
+    from eval_gate import paired_evidence, run_gate
 
     required = ["deterministic_stack", "policy_judge"]
     complete = _complete(baseline["rows"], expected_rows, required) and _complete(candidate["rows"], expected_rows, required)
@@ -456,13 +485,14 @@ def _gate(baseline, candidate, expected_rows):
         "candidate": [row["case_id"] for row in candidate["rows"] if row["scores"]["deterministic_stack"] != 1.0],
     }
     aggregate_passed, aggregate_reason = run_gate(baseline_scores, candidate_scores, max_regression_rate=REGRESSION_LIMIT, min_overlap=len(expected_rows))
+    evidence = paired_evidence(baseline_scores, candidate_scores)
     if any(mandatory_failures.values()):
-        return {"passed": False, "decision": "block", "complete": True, "reason": "A mandatory deterministic invariant failed.", "mandatory_failures": mandatory_failures, "aggregate_passed": aggregate_passed, "aggregate_reason": aggregate_reason, "quality_floor": QUALITY_FLOOR, "paired_rows": [{"case_id": key, "baseline": baseline_scores[key], "candidate": candidate_scores[key]} for key in sorted(candidate_scores)]}
+        return {"passed": False, "decision": "block", "complete": True, "reason": "A mandatory deterministic invariant failed.", "mandatory_failures": mandatory_failures, "aggregate_passed": aggregate_passed, "aggregate_reason": aggregate_reason, "quality_floor": QUALITY_FLOOR, "max_regression_rate": REGRESSION_LIMIT, "paired_evidence": evidence, "paired_rows": [{"case_id": key, "baseline": baseline_scores[key], "candidate": candidate_scores[key]} for key in sorted(candidate_scores)]}
     mean = sum(candidate_scores.values()) / len(candidate_scores)
     baseline_mean = sum(baseline_scores.values()) / len(baseline_scores)
     floor_passed = mean >= QUALITY_FLOOR and baseline_mean >= QUALITY_FLOOR
     passed = bool(aggregate_passed and floor_passed)
-    return {"passed": passed, "decision": "ship" if passed else "block", "complete": True, "reason": aggregate_reason if floor_passed else "Candidate or baseline is below the absolute quality floor.", "candidate_mean": mean, "baseline_mean": baseline_mean, "quality_floor": QUALITY_FLOOR, "max_regression_rate": REGRESSION_LIMIT, "paired_rows": [{"case_id": key, "baseline": baseline_scores[key], "candidate": candidate_scores[key]} for key in sorted(candidate_scores)], "limitation": "Ten teaching cases demonstrate mechanics. They do not certify production readiness."}
+    return {"passed": passed, "decision": "ship" if passed else "block", "complete": True, "reason": aggregate_reason if floor_passed else "Candidate or baseline is below the absolute quality floor.", "candidate_mean": mean, "baseline_mean": baseline_mean, "quality_floor": QUALITY_FLOOR, "max_regression_rate": REGRESSION_LIMIT, "paired_evidence": evidence, "paired_rows": [{"case_id": key, "baseline": baseline_scores[key], "candidate": candidate_scores[key]} for key in sorted(candidate_scores)], "limitation": "Ten teaching cases demonstrate mechanics. They do not certify production readiness."}
 
 
 def _judge_versions(provider, experiment_id, judges):
@@ -493,8 +523,8 @@ def _judge_versions(provider, experiment_id, judges):
             if provider == "openai":
                 judge.register(name=name, experiment_id=experiment_id)
                 registered = get_scorer(name=name, experiment_id=experiment_id, version=number)
-                # Registry loading uses the registered name. Compare the rubric and
-                # model separately; the artifact retains the evaluation scorer name.
+                # A registered scorer loads under its registered name, so compare the
+                # rubric and model directly. The artifact keeps the evaluation name.
                 if registered.instructions != judge.instructions or registered.model != judge.model:
                     raise WorkshopExecutionError("The registered judge does not match its saved definition.")
                 record.update(registered_name=name, registry_version=number)
@@ -516,10 +546,13 @@ def _validate_judge(provider, judge, directory):
 
 
 def _repair_comparison(candidate, repaired):
+    from eval_gate import paired_evidence
+
     required = ("deterministic_stack", "policy_judge")
     before = {r["case_id"]: min(r["scores"][s] for s in required) for r in candidate["rows"]}
     after = {r["case_id"]: min(r["scores"][s] for s in required) for r in repaired["rows"]}
-    return {"candidate_mean": sum(before.values()) / len(before),
+    return {"paired_evidence": paired_evidence(before, after),
+            "candidate_mean": sum(before.values()) / len(before),
             "repaired_mean": sum(after.values()) / len(after),
             "improved_cases": sorted(k for k in before if after[k] > before[k]),
             "regressed_cases": sorted(k for k in before if after[k] < before[k]),
@@ -545,6 +578,7 @@ def _execute(index, provider, directory, experiment_id):
             if trace is None:
                 raise WorkshopExecutionError("The generated trace could not be retrieved.")
             trace_scorer = build_scorers(provider, include_judge=False)[0]
+            _progress("  Scoring the stored trace again, with no new answer")
             with mlflow.start_run(run_name="west-trace-replay") as replay_run:
                 replay = mlflow.genai.evaluate(data=[trace], scorers=[trace_scorer])
                 summary["trace_evaluation_run_id"] = replay.run_id or replay_run.info.run_id
@@ -558,6 +592,7 @@ def _execute(index, provider, directory, experiment_id):
     if index == 3:
         authored_rows = calibration_dataset()
         judges = [_policy_judge(provider, rationale_first=False, name="value_first"), _policy_judge(provider, rationale_first=True, name="rationale_first")]
+        _progress("  Saving both judge definitions and loading them back")
         versions, judges = _judge_versions(provider, experiment_id, judges)
         result = _evaluate(provider, "authored_calibration", authored_rows, judges, directory, authored=True)
         agreement = {}
@@ -572,6 +607,7 @@ def _execute(index, provider, directory, experiment_id):
         if not validation["passed"]:
             return {"status": "error", "judge_validation": validation, "decision": "block", "error": "The judge failed the separate rubric controls. Review the assessments before comparing releases."}
         results = [_evaluate(provider, variant, rows, scorers, directory) for variant in ("baseline", "candidate", "repaired")]
+        _progress("  Applying the release rules")
         candidate_gate = _gate(results[0], results[1], rows)
         repaired_gate = _gate(results[0], results[2], rows)
         comparison = _repair_comparison(results[1], results[2]) if all(item["complete"] for item in results) else None
@@ -590,6 +626,7 @@ def _execute(index, provider, directory, experiment_id):
     from mlflow.entities import AssessmentSource, AssessmentSourceType
 
     trace_id = result["trace_ids"][0]
+    _progress("  Attaching the review note to the trace")
     feedback = mlflow.log_feedback(trace_id=trace_id, name="workshop_authored_followup", value="needs_human_followup", source=AssessmentSource(source_type=AssessmentSourceType.HUMAN, source_id="workshop-authored-example"), rationale="Authored teaching feedback, not an observed customer event. Add a review queue for defective-item requests.", metadata={"provenance": "authored_workshop_example"})
     return {"status": "passed", "evaluations": [result], "feedback_trace_id": trace_id, "feedback_assessment_id": feedback.assessment_id, "decision": "Route flagged traces to human review and promote reviewed cases into the next dataset version.", "automatic_evaluation_started": False, "scheduled_evaluation_started": False, "feedback_provenance": "authored_workshop_example_on_a_live_trace"}
 
@@ -610,7 +647,9 @@ def run_checkpoint(index: int, provider=None, output_dir=None) -> dict:
     summary["judge_request_timeout_seconds"] = 45
     summary["source_sha256"] = _source_manifest()
     summary["judge_retries"] = "Managed by the installed MLflow judge adapter. The one-retry limit applies to the application client."
-    print(f"Checkpoint {index}: making real {provider} calls. Application timeout is 45 seconds with one retry.", flush=True)
+    global _PROGRESS_STREAM
+    print(f"Checkpoint {index}: making real {provider} calls. Each request times out after 45 seconds and retries once.", flush=True)
+    _PROGRESS_STREAM = sys.stdout
     with _quiet_dependencies():
         try:
             experiment_id = _setup_tracking(provider, output)
@@ -623,6 +662,8 @@ def run_checkpoint(index: int, provider=None, output_dir=None) -> dict:
             summary["live_validation"] = "completed" if summary["status"] == "passed" else "failed"
         except Exception as error:
             summary.update(status="error", live_validation="failed", error_type=type(error).__name__, error="The live checkpoint did not complete. Verify authentication, model access, package versions, and tracking, then rerun. No replacement response was used.")
+        finally:
+            _PROGRESS_STREAM = None
     summary["summary_path"] = str(directory / "summary.json")
     summary = _sanitize(summary)
     _write_json(directory / "summary.json", summary)
@@ -641,7 +682,9 @@ def run_integrations(provider=None, output_dir=None) -> dict:
     summary = {"provider": provider, "status": "error", "git_commit": _commit(), "utc_timestamp": datetime.now(timezone.utc).isoformat()}
     summary["source_sha256"] = _source_manifest()
     _configure_timeouts(provider)
+    global _PROGRESS_STREAM
     print(f"Optional integration check: calling real {provider} services for Phoenix and TruLens.", flush=True)
+    _PROGRESS_STREAM = sys.stdout
     with _quiet_dependencies():
         try:
             _setup_tracking(provider, output)
@@ -658,6 +701,8 @@ def run_integrations(provider=None, output_dir=None) -> dict:
             summary.update(status="passed" if result["complete"] else "error", evaluations=[result], live_validation="completed" if result["complete"] else "failed")
         except Exception as error:
             summary.update(error_type=type(error).__name__, error="A real optional integration did not complete. Check the ecosystem lock and provider access. No replacement score was used.", live_validation="failed")
+        finally:
+            _PROGRESS_STREAM = None
     summary["summary_path"] = str(directory / "summary.json")
     summary = _sanitize(summary)
     _write_json(directory / "summary.json", summary)

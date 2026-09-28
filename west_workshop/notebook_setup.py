@@ -1,4 +1,4 @@
-"""Notebook-native Free Edition defaults; local scripts keep terminal settings."""
+"""Notebook-native Free Edition defaults. Local scripts keep their terminal settings."""
 
 import os
 import logging
@@ -44,7 +44,7 @@ def configure_lab():
     provider = selected_provider()
     readiness = preflight(provider)
     if not readiness["ready"]:
-        raise RuntimeError("Lab setup is incomplete: " + "; ".join(readiness["reasons"]))
+        raise RuntimeError("Lab setup is incomplete. " + " ".join(readiness["reasons"]))
     if provider == "databricks":
         # MLflow catches this unsupported optional metadata lookup itself.
         # Keep other warnings, errors, trace readback, and actual scores visible.
