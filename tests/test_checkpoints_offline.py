@@ -61,12 +61,11 @@ def test_checkpoint_2_scores_ten_cases_with_every_scorer(offline_openai, tmp_pat
     assert len(offline_openai.calls) == 10
 
 
-def test_checkpoint_3_keeps_real_judge_definitions_and_makes_twenty_judge_requests(offline_openai, tmp_path, monkeypatch):
+def _patch_chapter_3_judges(monkeypatch, graded, overturn=None):
     # The real make_judge definitions are saved, reloaded, and registered.
-    # A counting fake does the grading, so no model is called.
+    # A counting fake does the grading, so no model is called. `overturn`
+    # names one (judge, case) pair whose verdict the fake reverses.
     from west_workshop import runtime
-
-    graded = []
 
     def counting_judge(provider=None, *, rationale_first=True, name="policy_judge"):
         inner = fake_policy_judge(provider, rationale_first=rationale_first, name=name)
@@ -74,7 +73,8 @@ def test_checkpoint_3_keeps_real_judge_definitions_and_makes_twenty_judge_reques
         @scorer(name=name)
         def judge(inputs, outputs, expectations):
             graded.append(name)
-            return inner.run(inputs=inputs, outputs=outputs, expectations=expectations)
+            verdict = inner.run(inputs=inputs, outputs=outputs, expectations=expectations)
+            return not verdict if (name, inputs.get("case_id")) == overturn else verdict
 
         return judge
 
@@ -86,14 +86,28 @@ def test_checkpoint_3_keeps_real_judge_definitions_and_makes_twenty_judge_reques
 
     monkeypatch.setattr(runtime, "_policy_judge", counting_judge)
     monkeypatch.setattr(runtime, "_judge_versions", keep_real_definitions)
+
+
+def test_checkpoint_3_keeps_real_judge_definitions_and_makes_twenty_judge_requests(offline_openai, tmp_path, monkeypatch):
+    graded = []
+    _patch_chapter_3_judges(monkeypatch, graded)
     summary = _run(3, tmp_path)
     assert [item["round_trip_verified"] for item in summary["scorer_versions"]] == [True, True]
     assert summary["evaluations"][0]["row_count"] == 6 and summary["evaluations"][0]["complete"]
-    assert set(summary["agreement_with_authored_labels"]) == {"value_first", "rationale_first"}
+    assert summary["agreement_with_authored_labels"] == {"value_first": 1.0, "rationale_first": 1.0}
     assert summary["judge_validation"]["passed"]
+    assert summary["decision"].startswith("Both judge versions matched every reference label")
     assert len(graded) == 20, "each judge grades six replies, then the rationale-first judge grades eight controls"
     assert graded.count("value_first") == 6
     assert offline_openai.calls == [], "the chapter makes no application requests"
+
+
+def test_checkpoint_3_asks_for_review_when_a_judge_disagrees_with_a_label(offline_openai, tmp_path, monkeypatch):
+    _patch_chapter_3_judges(monkeypatch, [], overturn=("value_first", "label_stale_policy"))
+    summary = _run(3, tmp_path)
+    assert summary["agreement_with_authored_labels"] == {"value_first": 5 / 6, "rationale_first": 1.0}
+    assert summary["judge_validation"]["passed"], "only the eight controls must all pass"
+    assert summary["decision"] == "Review every disagreement before trusting the judge."
 
 
 @pytest.fixture

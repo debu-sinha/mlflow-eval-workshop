@@ -599,7 +599,10 @@ def _execute(index, provider, directory, experiment_id):
         for judge in judges:
             agreement[judge.name] = sum(row["scores"].get(judge.name) == float(row["expectations"]["authored_human_label"]) for row in result["rows"]) / len(authored_rows)
         validation = _validate_judge(provider, judges[1], directory)
-        return {"status": "passed" if result["complete"] and validation["passed"] else "error", "evaluations": [result], "scorer_versions": versions, "agreement_with_authored_labels": agreement, "judge_validation": validation, "decision": "Review disagreements before trusting the judge.", "limitation": "Authored calibration exercise only. Rationale-first is not assumed to improve agreement, and these small sets are not representative validation."}
+        disagreed = any(value < 1 for value in agreement.values()) or bool(validation.get("disagreements"))
+        decision = ("Review every disagreement before trusting the judge." if disagreed
+                    else "Both judge versions matched every reference label, and the controls passed. Trust the judge only as far as these authored examples reach.")
+        return {"status": "passed" if result["complete"] and validation["passed"] else "error", "evaluations": [result], "scorer_versions": versions, "agreement_with_authored_labels": agreement, "judge_validation": validation, "decision": decision, "limitation": "Authored calibration exercise only. Rationale-first is not assumed to improve agreement, and these small sets are not representative validation."}
     if index == 4:
         rows = dataset()
         scorers = build_scorers(provider)
