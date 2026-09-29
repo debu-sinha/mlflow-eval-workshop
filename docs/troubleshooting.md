@@ -1,6 +1,17 @@
 # Troubleshooting
 
-Most problems come from one of three places: the environment, the model provider, or the tracking location. Each checkpoint prints the step it is on. Every run that passes the configuration check saves a `summary.json` that names the failure without exposing keys or hosts.
+Most problems come from one of three places: the environment, the model provider, or the tracking location. Each checkpoint prints the step it is on. A run that does not pass prints a setup issue or a run issue that names the likely cause. Every run that passes the configuration check also saves a `summary.json` that records the run issue, without keys or hosts.
+
+## When an exercise does not pass
+
+| The run issue starts with | What to check |
+|---|---|
+| At least one answer or score is missing | A model request failed or timed out. Locally, check your OpenAI key, model access, and quota. In Databricks, check that the endpoint is available and that no other notebook is calling it. Then rerun. |
+| No answer failed the policy check | Chapters 0 to 2 expect the stale candidate to give at least one wrong eligibility. Fresh answers vary, and this time every label was right. Read the answers, then rerun once. |
+| The judge could not score all eight rubric controls | Chapter 4 checks the judge on eight authored controls before it compares releases. A judge request failed, so check the judge model's access and quota, then rerun. |
+| The judge disagreed with at least one of its eight rubric controls | The next line names each control the judge got wrong. Open the `west-authored_judge_validation` run in MLflow and read that control's reply, the judge's explanation, and the authored label. Rerun only after you understand the disagreement. |
+| The comparison finished, but the gates did not block the stale candidate and ship the repair | Read each version's reason in the report and open **Review the judge**. Every deterministic check must pass in the baseline and the evaluated version, and both need at least 90% of cases passing every required check. So one failed check, or two judge rejections in the baseline or the repair, can block the repair. Keep the thresholds fixed. |
+| The live checkpoint did not complete | The run stopped with an error before it finished. Check authentication, model access, package versions, and tracking, then rerun. |
 
 ## Local route
 

@@ -64,7 +64,7 @@ from west_workshop import run_checkpoint
 summary = run_checkpoint(2)
 show_result(summary)
 if summary.get("status") != "passed":
-    raise RuntimeError("This exercise did not complete. Read the setup or run issue above, and the saved summary if one was printed.")
+    raise RuntimeError("This exercise did not pass. Read the setup or run issue printed above, then docs/troubleshooting.md.")
 
 # COMMAND ----------
 

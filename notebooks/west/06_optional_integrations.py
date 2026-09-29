@@ -66,7 +66,7 @@ from west_workshop import run_integrations
 summary = run_integrations()
 show_result(summary)
 if summary.get("status") != "passed":
-    raise RuntimeError("The integrations did not complete. Inspect the package check and saved summary.")
+    raise RuntimeError("The integrations did not pass. Read the package check and the run issue printed above, then docs/troubleshooting.md.")
 
 # COMMAND ----------
 

@@ -97,7 +97,7 @@ if summary.get("summary_path"):
 if callable(globals().get("displayHTML")):
     displayHTML(render_release_report(summary))
 if summary.get("status") != "passed":
-    raise RuntimeError("This comparison did not complete. Read the report and saved summary before rerunning.")
+    raise RuntimeError("This comparison did not pass. Read the run issue printed above and the report, then docs/troubleshooting.md.")
 
 # COMMAND ----------
 

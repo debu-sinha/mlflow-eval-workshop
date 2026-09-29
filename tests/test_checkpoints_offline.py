@@ -110,6 +110,76 @@ def test_checkpoint_3_asks_for_review_when_a_judge_disagrees_with_a_label(offlin
     assert summary["decision"] == "Review every disagreement before trusting the judge."
 
 
+def test_checkpoint_3_names_the_control_the_judge_got_wrong(offline_openai, tmp_path, monkeypatch, capsys):
+    from west_workshop.notebook_setup import show_result
+
+    _patch_chapter_3_judges(monkeypatch, [], overturn=("rationale_first", "review_customer_next_step"))
+    summary = run_checkpoint(3, "openai", tmp_path / "west-live")
+    assert summary["status"] == "error" and not summary["judge_validation"]["passed"]
+    assert summary["error"].startswith("The judge disagreed with at least one of its eight rubric controls"), summary.get("error")
+    capsys.readouterr()
+    show_result(summary)
+    printed = capsys.readouterr().out
+    assert "Run issue: The judge disagreed" in printed
+    assert "Judge control disagreements: review_customer_next_step" in printed
+
+
+class _RejectingChatClient:
+    """A provider that refuses every request, like a bad key or an exhausted quota."""
+
+    def __init__(self):
+        self.chat = self
+        self.completions = self
+
+    def create(self, **request):
+        raise RuntimeError("401: the provider rejected the request")
+
+
+def test_a_failed_model_request_names_the_likely_cause(offline_openai, tmp_path, monkeypatch):
+    from west_workshop import runtime
+
+    monkeypatch.setattr(runtime, "_client", lambda provider: _RejectingChatClient())
+    summary = run_checkpoint(0, "openai", tmp_path / "west-live")
+    assert summary["status"] == "error" and summary["live_validation"] == "failed"
+    assert summary["error"].startswith("At least one answer or score is missing"), summary.get("error")
+    assert "API key" in summary["error"] and "quota" in summary["error"]
+
+
+def test_checkpoint_0_explains_a_stale_candidate_that_answered_correctly(offline_openai, tmp_path, monkeypatch):
+    from tests.fakes import _Response, canned_answer
+
+    def always_current_policy(*, model, messages, temperature, max_tokens):
+        request = json.loads(messages[1]["content"])
+        return _Response(canned_answer(request["days_since_purchase"], request["defective"], 30))
+
+    monkeypatch.setattr(offline_openai, "create", always_current_policy)
+    summary = run_checkpoint(0, "openai", tmp_path / "west-live")
+    assert summary["status"] == "error" and summary["decision"] == "inspect"
+    assert summary["error"].startswith("No answer failed the policy check"), summary.get("error")
+
+
+def test_checkpoint_4_blames_judge_access_when_the_judge_cannot_be_called(offline_openai, tmp_path, monkeypatch, capsys):
+    from west_workshop import runtime
+    from west_workshop.notebook_setup import show_result
+
+    def unreachable_judge(provider=None, *, rationale_first=True, name="policy_judge"):
+        @scorer(name=name)
+        def judge(inputs, outputs, expectations):
+            raise RuntimeError("the judge endpoint is unavailable")
+
+        return judge
+
+    monkeypatch.setattr(runtime, "_policy_judge", unreachable_judge)
+    summary = run_checkpoint(4, "openai", tmp_path / "west-live")
+    assert summary["status"] == "error" and summary["decision"] == "block"
+    assert summary["error"].startswith("The judge could not score all eight rubric controls"), summary.get("error")
+    assert offline_openai.calls == [], "no application request runs before the judge passes its controls"
+    assert summary["judge_validation"]["disagreements"], "every unscored control is recorded as a mismatch"
+    capsys.readouterr()
+    show_result(summary)
+    assert "Judge control disagreements" not in capsys.readouterr().out, "unscored controls are not disagreements"
+
+
 @pytest.fixture
 def checkpoint_4(offline_openai, tmp_path):
     return _run(4, tmp_path), offline_openai

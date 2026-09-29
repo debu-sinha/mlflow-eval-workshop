@@ -65,6 +65,10 @@ def show_result(summary):
         print("Setup issue:", reason)
     if summary.get("error"):
         print("Run issue:", summary["error"])
+    validation = summary.get("judge_validation") or {}
+    # Unscored controls are a failed request, not a disagreement, so name only scored ones.
+    if validation.get("disagreements") and (validation.get("evaluation") or {}).get("complete"):
+        print("Judge control disagreements:", ", ".join(validation["disagreements"]))
     if summary.get("experiment_id"):
         print("MLflow experiment ID:", summary["experiment_id"])
     for evaluation in summary.get("evaluations", []):

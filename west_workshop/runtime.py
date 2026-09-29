@@ -608,7 +608,10 @@ def _execute(index, provider, directory, experiment_id):
         scorers = build_scorers(provider)
         validation = _validate_judge(provider, next(s for s in scorers if s.name == "policy_judge"), directory)
         if not validation["passed"]:
-            return {"status": "error", "judge_validation": validation, "decision": "block", "error": "The judge failed the separate rubric controls. Review the assessments before comparing releases."}
+            error = ("The judge could not score all eight rubric controls, which usually means a judge request failed. Check the judge model's access and quota, then rerun."
+                     if not validation["evaluation"]["complete"]
+                     else "The judge disagreed with at least one of its eight rubric controls. Review the assessments before comparing releases.")
+            return {"status": "error", "judge_validation": validation, "decision": "block", "error": error}
         results = [_evaluate(provider, variant, rows, scorers, directory) for variant in ("baseline", "candidate", "repaired")]
         _progress("  Applying the release rules")
         candidate_gate = _gate(results[0], results[1], rows)
@@ -632,6 +635,26 @@ def _execute(index, provider, directory, experiment_id):
     _progress("  Attaching the review note to the trace")
     feedback = mlflow.log_feedback(trace_id=trace_id, name="workshop_authored_followup", value="needs_human_followup", source=AssessmentSource(source_type=AssessmentSourceType.HUMAN, source_id="workshop-authored-example"), rationale="Authored teaching feedback, not an observed customer event. Add a review queue for defective-item requests.", metadata={"provenance": "authored_workshop_example"})
     return {"status": "passed", "evaluations": [result], "feedback_trace_id": trace_id, "feedback_assessment_id": feedback.assessment_id, "decision": "Route flagged traces to human review and promote reviewed cases into the next dataset version.", "automatic_evaluation_started": False, "scheduled_evaluation_started": False, "feedback_provenance": "authored_workshop_example_on_a_live_trace"}
+
+
+def _failure_reason(index, summary):
+    """Name the most likely cause when a checkpoint finishes without passing."""
+    validation = summary.get("judge_validation") or {}
+    evaluations = summary.get("evaluations", []) + ([validation["evaluation"]] if validation.get("evaluation") else [])
+    if any(not item.get("complete") for item in evaluations):
+        return ("At least one answer or score is missing, which usually means a model request failed. "
+                "Check your API key or endpoint, model access, and quota, then rerun.")
+    if index == 1 and not summary.get("trace_evaluation_evidence", {}).get("complete", True):
+        return "The stored trace could not be scored again. Open it in MLflow, then rerun."
+    if index in (0, 1, 2):
+        return ("No answer failed the policy check, so the stale candidate was not caught this time. "
+                "Fresh answers vary. Read the answers, then rerun once.")
+    if index == 3:
+        return "The judge disagreed with at least one of its eight rubric controls. Read the control disagreements before trusting it."
+    if index == 4:
+        return ("The comparison finished, but the gates did not block the stale candidate and ship the repair. "
+                "Fresh answers vary. Read each gate's reason in the report before rerunning.")
+    return "The exercise did not pass. Read the saved summary before rerunning."
 
 
 def run_checkpoint(index: int, provider=None, output_dir=None) -> dict:
@@ -662,6 +685,8 @@ def run_checkpoint(index: int, provider=None, output_dir=None) -> dict:
 
                 summary["local_tracking_database"] = mlflow.get_tracking_uri().removeprefix("sqlite:///")
             summary.update(_execute(index, provider, directory, experiment_id))
+            if summary["status"] != "passed" and not summary.get("error"):
+                summary["error"] = _failure_reason(index, summary)
             summary["live_validation"] = "completed" if summary["status"] == "passed" else "failed"
         except Exception as error:
             summary.update(status="error", live_validation="failed", error_type=type(error).__name__, error="The live checkpoint did not complete. Verify authentication, model access, package versions, and tracking, then rerun. No replacement response was used.")
@@ -702,6 +727,8 @@ def run_integrations(provider=None, output_dir=None) -> dict:
             rows[0]["expectations"]["context"] = CURRENT_POLICY
             result = _evaluate(provider, "repaired", rows, scorers, directory)
             summary.update(status="passed" if result["complete"] else "error", evaluations=[result], live_validation="completed" if result["complete"] else "failed")
+            if not result["complete"]:
+                summary["error"] = _failure_reason(None, summary)
         except Exception as error:
             summary.update(error_type=type(error).__name__, error="A real optional integration did not complete. Check the ecosystem lock and provider access. No replacement score was used.", live_validation="failed")
         finally:
