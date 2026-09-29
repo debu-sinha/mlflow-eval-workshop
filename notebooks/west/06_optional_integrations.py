@@ -11,7 +11,7 @@
 # MAGIC | Phoenix Hallucination | Is the answer supported by the supplied policy? |
 # MAGIC | TruLens Coherence | Is the answer coherent, well structured, and logically organized? |
 # MAGIC
-# MAGIC These measure different things. A coherent answer can still contradict the policy, as the stale candidate showed. Read each evaluator's value and explanation before deciding how to use it.
+# MAGIC These measure different things. A coherent answer can still contradict the policy, as the stale candidate showed. Read each evaluator's value, and its explanation when it gives one, before deciding how to use it.
 # MAGIC
 # MAGIC ## Install the optional dependencies
 # MAGIC
@@ -71,9 +71,9 @@ if summary.get("status") != "passed":
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Read the answer and each explanation
+# MAGIC ## Read the answer and what each evaluator returned
 # MAGIC
-# MAGIC Compare what the two evaluators actually assessed. Phoenix receives the current policy as context. Read each original value and explanation instead of assuming every evaluator uses the same scale.
+# MAGIC Compare what the two evaluators actually assessed. Phoenix receives the current policy as context and returns a label, `factual` or `hallucinated`. MLflow's Phoenix adapter does not ask for an explanation, so that line prints `None`. TruLens returns its reasoning, and MLflow reports `yes` when the TruLens score, normalized to 0 to 1, is at least 0.5. Read each original value instead of assuming every evaluator uses the same scale.
 
 # COMMAND ----------
 
