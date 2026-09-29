@@ -243,6 +243,21 @@ def test_eval_gate_command_exits_with_the_documented_codes(checkpoint_4):
     assert invalid.returncode == 2
 
 
+def test_checkpoint_4_command_ends_with_the_report_path(offline_openai, tmp_path, monkeypatch, capsys):
+    from west_workshop.__main__ import main
+
+    monkeypatch.setattr(sys, "argv", ["west_workshop", "--provider", "openai", "--checkpoint", "4"])
+    assert main() == 0
+    printed = capsys.readouterr()
+    # Progress lines come first, and the rest of stdout stays valid JSON.
+    summary = json.loads(printed.out[printed.out.index("\n{") + 1:])
+    footer = printed.err.strip().splitlines()
+    assert footer[0] == "Exercise status: passed"
+    assert footer[-2] == "Full saved results: " + summary["summary_path"]
+    assert footer[-1] == "Saved visual report: " + summary["report_path"]
+    assert Path(summary["report_path"]).is_file()
+
+
 def test_checkpoint_5_attaches_human_feedback_to_the_live_trace(offline_openai, tmp_path):
     summary = _run(5, tmp_path)
     trace = mlflow.get_trace(summary["feedback_trace_id"])

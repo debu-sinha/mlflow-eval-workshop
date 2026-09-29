@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import sys
 
 
 def main():
@@ -36,7 +37,15 @@ def main():
             from .report import write_release_report
 
             result["report_path"] = str(write_release_report(result))
-    print(json.dumps(result, indent=2, sort_keys=True))
+    print(json.dumps(result, indent=2, sort_keys=True), flush=True)
+    if not args.check:
+        # A checkpoint summary runs to thousands of lines, so end with the lines people
+        # look for. They go to stderr, which keeps stdout valid JSON.
+        from .notebook_setup import show_result
+
+        show_result(result, file=sys.stderr)
+        if result.get("report_path"):
+            print("Saved visual report:", result["report_path"], file=sys.stderr)
     passed = result.get("ready") if args.check else result.get("status") == "passed"
     return 0 if passed else 2
 

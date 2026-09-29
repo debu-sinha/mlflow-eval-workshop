@@ -31,7 +31,7 @@
 # MAGIC
 # MAGIC **Databricks:** in the **Environment** side panel, open **Base environment**, choose **More**, and select **Standard v5**. Add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` with your Git folder's path, click **Apply**, confirm if asked, and wait for Python to restart.
 # MAGIC
-# MAGIC **Locally:** run `uv run --locked python -m west_workshop --provider openai --checkpoint 4` from the repository, in the terminal where you loaded your API key, and open the printed `report_path`.
+# MAGIC **Locally:** run `uv run --locked python -m west_workshop --provider openai --checkpoint 4` from the repository, in the terminal where you loaded your API key, and open the file printed after `Saved visual report:`.
 # MAGIC
 # MAGIC The next cell finds the repository and configures this notebook's model and experiment. Every notebook sets itself up, so each one runs on its own.
 

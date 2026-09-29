@@ -56,24 +56,27 @@ def configure_lab():
     return provider
 
 
-def show_result(summary):
+def show_result(summary, file=None):
     """Print the outcome and evidence locations without flooding a notebook with JSON."""
-    print("Exercise status:", summary.get("status", "unknown"))
+    def say(*parts):
+        print(*parts, file=file)
+
+    say("Exercise status:", summary.get("status", "unknown"))
     if summary.get("decision"):
-        print("Decision:", summary["decision"])
+        say("Decision:", summary["decision"])
     for reason in summary.get("preflight", {}).get("reasons", []):
-        print("Setup issue:", reason)
+        say("Setup issue:", reason)
     if summary.get("error"):
-        print("Run issue:", summary["error"])
+        say("Run issue:", summary["error"])
     validation = summary.get("judge_validation") or {}
     # Unscored controls are a failed request, not a disagreement, so name only scored ones.
     if validation.get("disagreements") and (validation.get("evaluation") or {}).get("complete"):
-        print("Judge control disagreements:", ", ".join(validation["disagreements"]))
+        say("Judge control disagreements:", ", ".join(validation["disagreements"]))
     if summary.get("experiment_id"):
-        print("MLflow experiment ID:", summary["experiment_id"])
+        say("MLflow experiment ID:", summary["experiment_id"])
     for evaluation in summary.get("evaluations", []):
-        print("Evaluation run:", evaluation["run_id"],
-              "| cases:", evaluation.get("row_count", 0),
-              "| complete:", evaluation.get("complete", False))
+        say("Evaluation run:", evaluation["run_id"],
+            "| cases:", evaluation.get("row_count", 0),
+            "| complete:", evaluation.get("complete", False))
     if summary.get("summary_path"):
-        print("Full saved results:", summary["summary_path"])
+        say("Full saved results:", summary["summary_path"])

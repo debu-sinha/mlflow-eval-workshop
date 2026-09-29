@@ -82,7 +82,7 @@ uv run --locked python -m west_workshop --provider openai --check
 uv run --locked python -m west_workshop --provider openai --checkpoint 4
 ```
 
-The check prints `"ready": true` or a list of reasons. It does not contact OpenAI. Checkpoint 4 prints one line per step while it runs, then a long JSON summary with its keys in alphabetical order. Find `report_path` near the end, open that HTML file in a browser, and keep it open.
+The check prints `"ready": true` or a list of reasons. It does not contact OpenAI. Checkpoint 4 prints one line per step while it runs, then a long JSON summary. It ends with a few short lines, including the path after `Saved visual report:`. Open that HTML file in a browser and keep it open.
 
 To browse the saved traces and runs, start the MLflow UI in a second terminal from the same directory:
 
@@ -143,7 +143,7 @@ uv run --locked python notebooks/west/01_trace_the_failure.py
 
 Python runs the file's code cells in order. The reading cells are comments that start with `# MAGIC`. Python skips them, so read them in the file itself. For the lab, edit `notebooks/west/02_build_the_scorer_stack.py` and run the file again after each change. Each run scores the ten prepared cases first, with 10 application and 10 judge requests, and then runs your lab with 2 more application requests. Chapter 4's file also saves the release report and prints its path after `Saved visual report:`.
 
-Every run makes fresh model calls, so your answers and scores can differ from the presenter's. A chapter prints `Exercise status: passed` when its exercise worked, and a `python -m west_workshop` command prints `"status": "passed"`. A passing exercise can still print a `block` decision, which means it caught the bad candidate it was built to catch. When an exercise does not pass, it prints a setup or run issue that says what to check. The chapter then stops with an error, and a `python -m west_workshop` command exits with code 2. Results are saved under `artifacts/west-live/`, and Git ignores them.
+Every run makes fresh model calls, so your answers and scores can differ from the presenter's. A chapter file or a `python -m west_workshop` command prints `Exercise status: passed` when its exercise worked. A passing exercise can still print `Decision: block`, which means it caught the bad candidate it was built to catch. When an exercise does not pass, it prints a setup or run issue that says what to check. The chapter then stops with an error, and the command exits with code 2. Results are saved under `artifacts/west-live/`, and Git ignores them.
 
 ## Adapt it to your app
 

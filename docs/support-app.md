@@ -63,7 +63,7 @@ Locally:
 uv run --locked python -m west_workshop.publish_report "<summary_path>" --provider openai
 ```
 
-Replace `<summary_path>` with the `summary.json` path from your chapter 4 run. The chapter file prints it after `Full saved results:`, and the `--checkpoint 4` command prints it as `summary_path`.
+Replace `<summary_path>` with the `summary.json` path from your chapter 4 run. Chapter 4 prints it after `Full saved results:`, whether you ran the chapter file or the `--checkpoint 4` command.
 
 In Databricks, add a new cell at the end of `04_compare_and_gate` and run it after the comparison finishes. `prepare()` reuses the storage it created earlier.
 
