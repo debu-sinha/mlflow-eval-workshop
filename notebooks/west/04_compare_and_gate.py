@@ -111,6 +111,8 @@ if summary.get("status") != "passed":
 # MAGIC **Which cases regressed?** Count against two references. The repair is judged against the stale candidate, and the release is judged against the current baseline.
 # MAGIC
 # MAGIC **Is it real, or noise?** Ten paired cases can confirm a large change. The exact McNemar test compares the cases that improved with the cases that regressed. With ten cases, it needs at least six of them moving the same way before it can call a change significant. That is why the gate never relies on the test alone: the regression limit and the mandatory checks catch smaller problems.
+# MAGIC
+# MAGIC The next cell also prints a 95% bootstrap interval. It resamples the ten per-case changes 10,000 times and shows the range of average change these cases support. With only ten cases, expect that range to be wide.
 
 # COMMAND ----------
 

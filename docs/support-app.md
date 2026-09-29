@@ -11,7 +11,7 @@ The policy switch chooses which document the retriever returns: the current 30-d
 1. Keep **Current policy** selected and the **45 days · Change of mind** order. Click **Can I get a refund?**, then send.
 2. Read the answer. Click **Follow this answer** to see the policy saved in this answer's retrieval span, with its trace ID.
 3. Select **Stale policy**, click **Can I get a refund?** again, and send. Switching policies clears the previous answer and the message box, so an old answer cannot be mistaken for a new one.
-4. Open **Release report** to see the recorded comparison across ten cases. A new chat answer is not part of that report.
+4. Open **Release report** to see the recorded comparison across ten cases. A new chat answer is not part of that report. Until you [publish a report](#publish-a-recorded-report-to-the-app) to the app's experiment, this page says that none has been published yet.
 
 ## Run it locally
 
@@ -27,7 +27,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The app uses the same SQLit
 
 This is optional. The presenter shows a hosted app in the opening, and every notebook works without one.
 
-Finish the [Databricks route](../README.md#databricks-free-edition-route) and run chapter 4 first. Then add a cell to a notebook in your Git folder to prepare the app's storage:
+Finish the [Databricks route](../README.md#databricks-free-edition-route) and run chapter 4 first. Then add a cell at the end of `04_compare_and_gate`, where the workshop package is already set up, and run it to prepare the app's storage:
 
 ```python
 from west_workshop.prepare_databricks_app import prepare
@@ -51,6 +51,8 @@ The app uses a volume-backed experiment because, during testing on Free Edition,
 
 After deployment, open the app URL and send a question. Each answer links to its exact trace. The app answers one request at a time, which keeps the demo within a shared endpoint's limits. Free Edition allows up to three apps per account and stops each app 24 hours after it is started, updated, or redeployed. Everyone who opens the app must belong to the same Databricks account, so each attendee deploys their own copy. See [Free Edition limits](https://docs.databricks.com/aws/en/getting-started/free-edition-limitations) and [app access](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/key-concepts).
 
+To pick up a newer version of this repository, deploy the app again. During testing, a redeploy of a running app kept the packages it had installed before, because `requirements.txt` itself had not changed. It only points to `requirements-workshop.txt`. When the pinned versions change, stop the app and start it again so it installs them fresh.
+
 ## Publish a recorded report to the app
 
 Publishing copies a saved chapter 4 summary into the app's experiment. It makes no model calls and does not change any score or decision.
@@ -58,10 +60,12 @@ Publishing copies a saved chapter 4 summary into the app's experiment. It makes 
 Locally:
 
 ```bash
-uv run --locked python -m west_workshop.publish_report "<path-to-checkpoint-4-summary.json>" --provider openai
+uv run --locked python -m west_workshop.publish_report "<summary_path>" --provider openai
 ```
 
-In Databricks, in a new cell at the end of chapter 4, after it has finished. `prepare()` reuses the storage it created earlier.
+Replace `<summary_path>` with the `summary.json` path from your chapter 4 run. The chapter file prints it after `Full saved results:`, and the `--checkpoint 4` command prints it as `summary_path`.
+
+In Databricks, add a new cell at the end of `04_compare_and_gate` and run it after the comparison finishes. `prepare()` reuses the storage it created earlier.
 
 ```python
 from west_workshop.publish_report import publish

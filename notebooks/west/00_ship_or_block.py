@@ -57,7 +57,7 @@ configure_notebook()
 # MAGIC %md
 # MAGIC ## Ask the candidate
 # MAGIC
-# MAGIC This cell sends the 45-day question to the stale-policy candidate once, then checks the declared eligibility against the reference label. There is no judge yet, only one rule you can read.
+# MAGIC This cell sends the 45-day question to the stale-policy candidate once, then checks the declared eligibility against the reference label. Inside, `run_checkpoint(0)` makes one `mlflow.genai.evaluate` call with a single Python scorer, `policy_decision`. There is no LLM judge yet, only one rule you can read.
 # MAGIC
 # MAGIC Two lines matter in the output. **Exercise status: passed** means the exercise ran and caught what it was built to catch. **Decision: block** is the verdict on the candidate. Keep them apart. A passing exercise can block a bad release.
 

@@ -39,7 +39,7 @@ Setup takes about 15 minutes. Please finish it before you arrive, because the wh
 | You need | Git, [uv](https://docs.astral.sh/uv/getting-started/installation/), and an OpenAI API key with available quota | A [Databricks Free Edition](https://docs.databricks.com/aws/en/getting-started/free-edition) account |
 | Application and judge model | `gpt-4o-mini` | `databricks-qwen3-next-80b-a3b-instruct` |
 | Where results live | A SQLite database on your laptop | An MLflow experiment in your workspace |
-| Cost | OpenAI usage charges | Free, within the [Free Edition limits](https://docs.databricks.com/aws/en/getting-started/free-edition-limitations) |
+| Cost | OpenAI usage charges. One pass through chapters 0 to 5 makes about 115 short `gpt-4o-mini` requests. | Free, within the [Free Edition limits](https://docs.databricks.com/aws/en/getting-started/free-edition-limitations) |
 
 On either route, run chapter 4 once before the session. It creates the release report you will open at the start, and it takes several minutes. Nothing in the session depends on your laptop succeeding. If your setup is not ready, follow on screen and run the lab afterward.
 
@@ -54,7 +54,7 @@ uv sync --locked --python 3.12
 uv run --locked python scripts/verify_west_environment.py
 ```
 
-The lock pins MLflow 3.16.1 and every dependency. The verifier makes no network calls. Keep running commands from this directory, and never install newer packages over the lock.
+The lock pins MLflow 3.16.1 and every dependency. The verifier makes no network calls. When the environment is ready, it prints `READY: environment contracts passed.` near the end. Keep running commands from this directory, and never install newer packages over the lock.
 
 Load your OpenAI key without leaving it in a file or your shell history. Skip this if `OPENAI_API_KEY` is already set in the terminal. You can create a key with the [OpenAI quickstart](https://developers.openai.com/api/docs/quickstart), and model calls may incur charges.
 
@@ -73,14 +73,16 @@ read -r -s OPENAI_API_KEY
 export OPENAI_API_KEY
 ```
 
-The key lasts for that terminal session, so use the same terminal for the rest of the workshop. A `.env` file is not loaded automatically. Check the configuration, then create the release report:
+The key lasts for that terminal session, so use the same terminal for the rest of the workshop. A `.env` file is not loaded automatically.
+
+Each chapter's exercise is a *checkpoint* with the chapter's number, so checkpoint 4 is chapter 4's release comparison. Check the configuration, then run checkpoint 4 to create the release report:
 
 ```bash
 uv run --locked python -m west_workshop --provider openai --check
 uv run --locked python -m west_workshop --provider openai --checkpoint 4
 ```
 
-The check prints `"ready": true` or a list of reasons. It does not contact OpenAI. Checkpoint 4 prints one line per step while it runs, then a JSON summary. Open the HTML file at `report_path` in a browser and keep it open.
+The check prints `"ready": true` or a list of reasons. It does not contact OpenAI. Checkpoint 4 prints one line per step while it runs, then a long JSON summary with its keys in alphabetical order. Find `report_path` near the end, open that HTML file in a browser, and keep it open.
 
 To browse the saved traces and runs, start the MLflow UI in a second terminal from the same directory:
 
@@ -95,8 +97,8 @@ Open [http://127.0.0.1:5000](http://127.0.0.1:5000) and select the `odsc-west-20
 The application, the judge, and MLflow tracking all run in your workspace, and no OpenAI key is needed.
 
 1. In **Workspace**, choose **Create > Git folder** and enter `https://github.com/debu-sinha/mlflow-eval-workshop.git` as the Git repository URL. The new Git folder opens on the default branch, `main`. Databricks can take a few minutes to create it. The [Git folder guide](https://docs.databricks.com/aws/en/repos/git-operations-with-repos) shows each step.
-2. Open `notebooks/west/04_compare_and_gate`. In the **Environment** side panel, open **Base environment**, choose **More**, and select **Standard v5**.
-3. Under **Dependencies**, add this line with your own Git folder path. Click **Apply**, confirm if asked, and wait for Python to restart:
+2. Open `notebooks/west/04_compare_and_gate`. Click the **Environment** button to the right of the notebook to open its side panel. Open **Base environment**, choose **More**, and select **Standard v5**.
+3. Under **Dependencies**, add this line with your own Git folder path. `<your-user>` is your Databricks user name, which is usually the email you sign in with. Click **Apply**, confirm if asked, and wait for Python to restart:
 
    ```text
    -r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt
@@ -116,16 +118,15 @@ for endpoint in WorkspaceClient().serving_endpoints.list():
         print(endpoint.name, endpoint.state.ready if endpoint.state else None)
 ```
 
-Then set your choices in a cell **before** the notebook's setup cell:
+Then add a cell at the top of each notebook you run, above its first code cell, which is the setup cell:
 
 ```python
 import os
 os.environ["WORKSHOP_DATABRICKS_MODEL"] = "<available-chat-endpoint>"
 os.environ["WORKSHOP_DATABRICKS_JUDGE_MODEL"] = "<available-chat-endpoint>"
-os.environ["MLFLOW_EXPERIMENT_NAME"] = "/Users/<your-user>/odsc-west-2026"
 ```
 
-Without a judge setting, the judge uses the application's endpoint. A judge that shares a model with the application can share its blind spots, which is one reason chapter 3 tests the judge. After changing either model, run chapters 3 and 4 again.
+Each notebook has its own Python session, and **Apply** restarts it, so a setting made in one notebook does not reach the others. To send results somewhere other than `/Users/<your-user>/odsc-west-2026`, also set `MLFLOW_EXPERIMENT_NAME` to an absolute experiment path in the same cell. Without a judge setting, the judge uses the application's endpoint. A judge that shares a model with the application can share its blind spots, which is one reason chapter 3 tests the judge. After changing either model, run chapters 3 and 4 again.
 
 ## During the session
 
@@ -140,9 +141,9 @@ Keep one model-calling notebook running at a time, and reopen saved results inst
 uv run --locked python notebooks/west/01_trace_the_failure.py
 ```
 
-The file runs every cell in order, including the reading cells. For the lab, edit `notebooks/west/02_build_the_scorer_stack.py` and run the file again after each change. Each run scores the ten prepared cases first, with 10 application and 10 judge requests, and then runs your lab. Chapter 4 uses the command from the local route above, because that command also writes the report.
+Python runs the file's code cells in order. The reading cells are comments that start with `# MAGIC`. Python skips them, so read them in the file itself. For the lab, edit `notebooks/west/02_build_the_scorer_stack.py` and run the file again after each change. Each run scores the ten prepared cases first, with 10 application and 10 judge requests, and then runs your lab with 2 more application requests. Chapter 4's file also saves the release report and prints its path after `Saved visual report:`.
 
-Every run makes fresh model calls, so your answers and scores can differ from the presenter's. A finished exercise prints `"status": "passed"`. It can also print `"decision": "block"`, which means the exercise worked and caught a bad candidate. A failed command exits with code 2 and prints what to check. Results are saved under `artifacts/west-live/`, and Git ignores them.
+Every run makes fresh model calls, so your answers and scores can differ from the presenter's. A chapter prints `Exercise status: passed` when its exercise worked, and a `python -m west_workshop` command prints `"status": "passed"`. A passing exercise can still print a `block` decision, which means it caught the bad candidate it was built to catch. When an exercise does not pass, it prints a setup or run issue that says what to check. The chapter then stops with an error, and a `python -m west_workshop` command exits with code 2. Results are saved under `artifacts/west-live/`, and Git ignores them.
 
 ## Adapt it to your app
 
@@ -164,7 +165,25 @@ The call is the same everywhere: `mlflow.genai.evaluate(data=cases, predict_fn=p
 
 **Turn a finding into a release rule.** Keep the original run. Review the new case and its label, version the change, and evaluate every compared version again under the same measurement. Promote reviewed cases into `dataset()` and checks into `build_scorers()`, then run chapter 4. A logged score is not a release rule until you add it to `_gate`. Recalibrate the judge whenever you change it.
 
-**Gate releases in CI.** `eval_gate.py` compares two recorded MLflow runs case by case. By default it exits with code 1 when more than 10% of cases regress, when a paired test finds a significant loss, or when evidence is missing. The chapter 4 command exits with code 2 when the comparison fails. MLflow 3.14 added `@mlflow.test` for the same job inside pytest. See [regression testing](https://mlflow.org/docs/latest/genai/eval-monitor/regression-testing/).
+**Gate releases in CI.** `eval_gate.py` compares two recorded MLflow runs case by case, one scorer at a time. By default it exits with code 1 when more than 10% of cases regress, when a paired test finds a significant loss, or when evidence is missing. To try it on your local chapter 4 run, open **Release rules and MLflow run details** in the report and copy the `baseline` and `candidate` run IDs. Point MLflow at the workshop database in PowerShell:
+
+```powershell
+$env:MLFLOW_TRACKING_URI = "sqlite:///artifacts/west-live/mlflow-west.db"
+```
+
+Or in Bash:
+
+```bash
+export MLFLOW_TRACKING_URI=sqlite:///artifacts/west-live/mlflow-west.db
+```
+
+Then compare the two runs:
+
+```bash
+uv run --locked python eval_gate.py --baseline-run-id <baseline-run-id> --candidate-run-id <candidate-run-id> --scorer deterministic_stack
+```
+
+The gate prints `PASSED` or `BLOCKED` with its reason. The chapter 4 command exits with code 2 when the comparison fails. MLflow 3.14 added `@mlflow.test` for the same job inside pytest. See [regression testing](https://mlflow.org/docs/latest/genai/eval-monitor/regression-testing/).
 
 Before a production release, collect a representative held-out set, check the judge against human reviewers, cover your high-impact failures, and measure latency and cost. You have finished the workshop when you can point to your new case, your scorer, the actual result, and one thing that result does not prove. Matching the presenter's numbers is not the goal.
 

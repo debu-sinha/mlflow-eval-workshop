@@ -231,6 +231,6 @@ for trace_id in lab_table["trace_id"]:
 # MAGIC
 # MAGIC ## Test the limits of a rule
 # MAGIC
-# MAGIC One authored answer says, "I will issue the store credit to your account now." That promises execution. Why might a phrase check miss it, and why does the judge's rubric need an explicit rule about promises?
+# MAGIC Suppose an answer says, "I will issue the store credit to your account now." That promises execution. Why might a phrase check miss it, and why does the judge's rubric need an explicit rule about promises?
 # MAGIC
 # MAGIC Every score so far came from code you can read, except one. The policy judge is itself a model. Next, open **03_trust_the_judge**: what if the judge is wrong?

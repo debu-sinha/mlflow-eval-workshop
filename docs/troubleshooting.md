@@ -18,7 +18,7 @@ Most problems come from one of three places: the environment, the model provider
 | Symptom | What to check |
 |---|---|
 | Python or package version error | Run `uv sync --locked --python 3.12` again, then `uv run --locked python scripts/verify_west_environment.py`. Do not install newer packages over the lock. |
-| The configuration check is not ready | Load `OPENAI_API_KEY` in the terminal that runs the command. Remove an inherited `OPENAI_BASE_URL`. Leave `MLFLOW_TRACKING_URI` unset for the default route. |
+| The configuration check is not ready | Load `OPENAI_API_KEY` in the terminal that runs the command. Remove an inherited `OPENAI_BASE_URL`. Leave `MLFLOW_TRACKING_URI` unset, or set it to a `sqlite:///` URI. |
 | The check is ready but a live call fails | Check your OpenAI account access, model permissions, quota, and connection. The configuration check never contacts OpenAI. |
 | The MLflow UI shows no workshop results | Run a checkpoint first, start the server from the same directory, and check the database path and experiment name. A bare `mlflow server` opens a different database. |
 | Port 5000 is in use | Change only `--port 5000` to `--port 5001` and open `http://127.0.0.1:5001`. Keep the SQLite URI unchanged. If you use the support app, also set `WORKSHOP_MLFLOW_UI_URL` to `http://127.0.0.1:5001`. |

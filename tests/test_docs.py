@@ -68,6 +68,14 @@ def test_readme_links_and_anchors_resolve():
             assert anchor in anchors, f"README links to a missing section: #{anchor}"
 
 
+@pytest.mark.parametrize("path", DOCS[1:], ids=lambda path: path.name)
+def test_links_within_each_guide_resolve(path):
+    text = path.read_text(encoding="utf-8")
+    anchors = {_slug(match) for match in re.findall(r"(?m)^#{1,6} (.+)$", text)}
+    for anchor in re.findall(r"\]\(#([^)\s]+)\)", text):
+        assert anchor in anchors, f"{path.name} links to a missing section: #{anchor}"
+
+
 def test_every_notebook_is_listed_in_the_readme():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     for path in NOTEBOOKS:
