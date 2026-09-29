@@ -94,7 +94,21 @@ def _lab_function(marker):
 
 def test_lab_starter_disagrees_with_two_examples_and_solution_agrees_with_all():
     examples = _lab_examples()
-    assert len(examples) == 4
+    assert len(examples) == 5
     starter, solution = _lab_function("starter"), _lab_function("solution")
-    assert sum(starter(answer) == expected for _, answer, expected in examples) == 2
-    assert sum(solution(answer) == expected for _, answer, expected in examples) == 4
+    assert sum(starter(answer) != expected for _, answer, expected in examples) == 2
+    assert all(solution(answer) == expected for _, answer, expected in examples)
+
+
+def test_lab_solution_accepts_both_layouts_the_models_produced():
+    solution = _lab_function("solution")
+    # gpt-4o-mini, September 29 local run: the explanation continues on the first line.
+    assert solution("Eligibility: full_refund. Since today is day 30 and your product is non-defective, "
+                    "you are eligible for a full refund. Please reach out to our support team to initiate the return process!")
+    # databricks-qwen3-next-80b-a3b-instruct, September 6 recorded run: the explanation starts a new line.
+    assert solution("Eligibility: full_refund\nYou're within the 30-day window, so you qualify for a full refund. "
+                    "Next step: start your return request in your account dashboard.")
+    # The lab request asks the assistant to list every option, which must still fail the contract.
+    assert not solution("Eligibility: store_credit\nOptions: Eligibility: full_refund, Eligibility: store_credit, Eligibility: support_review.")
+    assert not solution("Eligibility: store_credit_plus. Contact support.")
+    assert not solution("")

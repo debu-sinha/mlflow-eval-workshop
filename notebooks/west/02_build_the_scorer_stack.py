@@ -108,8 +108,8 @@ print(inspect.getsource(build_scorers))
 # MAGIC
 # MAGIC You have about ten minutes.
 # MAGIC
-# MAGIC 1. Run the starter scorer on the four authored answers below. No model is called. The starter accepts two answers it should reject.
-# MAGIC 2. Replace its one-line body so it accepts exactly one recognized `Eligibility:` line, at the start of the answer. Ignore trailing spaces on that line. Keep the examples and expected values as they are.
+# MAGIC 1. Run the starter scorer on the five authored answers below. No model is called. The starter accepts two answers it should reject.
+# MAGIC 2. Replace its one-line body so it accepts exactly one recognized `Eligibility:` declaration, at the start of the answer. The explanation can follow on the same line or on the next one. Keep the examples and expected values as they are.
 # MAGIC 3. Edit `new_case` with a request that is not in the ten-case dataset. Write its expected decision from the policy before you see any answer. The day-32 request supplied here works as is.
 # MAGIC 4. Run the evaluation cell and read your results.
 
@@ -127,6 +127,7 @@ def one_eligibility_line(outputs: str) -> bool:
 # Authored examples test the scorer itself. These are not application results.
 format_examples = [
     ("valid", "Eligibility: store_credit  \nContact support to request it.", True),
+    ("same line", "Eligibility: store_credit. Contact support to request it.", True),
     ("unknown label", "Eligibility: instant_cash\nContact support.", False),
     ("two labels", "Eligibility: full_refund\nEligibility: store_credit", False),
     ("missing header", "You qualify for store credit.", False),
@@ -148,14 +149,15 @@ if not all(format_agreement):
 # MAGIC Replace the function body with:
 # MAGIC
 # MAGIC ```python
-# MAGIC lines = outputs.splitlines()
-# MAGIC allowed = {"Eligibility: full_refund", "Eligibility: store_credit", "Eligibility: support_review"}
-# MAGIC return bool(lines) and lines[0].rstrip() in allowed and sum(
-# MAGIC     line.lstrip().startswith("Eligibility:") for line in lines
-# MAGIC ) == 1
+# MAGIC import re
+# MAGIC first_line = outputs.splitlines()[0] if outputs else ""
+# MAGIC declared = re.match(r"Eligibility: (full_refund|store_credit|support_review)\b", first_line)
+# MAGIC return bool(declared) and outputs.count("Eligibility:") == 1
 # MAGIC ```
 # MAGIC
 # MAGIC This checks the response contract. It says nothing about whether the eligibility or the explanation is right. Those need their own checks.
+# MAGIC
+# MAGIC Models lay out this first line differently. In testing, `gpt-4o-mini` continued its explanation on the same line, and the Databricks endpoint started a new line, so the contract accepts both.
 
 # COMMAND ----------
 
