@@ -201,7 +201,7 @@ The baseline answer for a non-defective item at 45 days was:
 > Eligibility: store_credit
 > Since it’s been 45 days since your purchase and the item isn’t defective, you’re eligible for store credit. Next step: visit your account to claim it.
 
-Every deterministic check passed. The judge rejected "visit your account to claim it" as if the assistant had carried out a transaction. The [rubric](west_workshop/runtime.py) permits customer next steps and rejects only a claim or promise that the assistant executes a transaction. This answer sends the customer to their own account. It never says the assistant issued credit, so the rejection looks like a judge mistake. The separate control `review_customer_next_step` also permits a customer to claim credit.
+Every deterministic check passed. The judge rejected "visit your account to claim it" as if the assistant had carried out a transaction. The [rubric](west_workshop/runtime.py) permits customer next steps and rejects only a claim or promise that the assistant executes a transaction. This answer sends the customer to their own account. It never says the assistant issued credit, so the rejection looks like a judge mistake. The separate control `review_customer_next_step` also permits a customer to claim credit, and in the same run the judge accepted the repaired answer's nearly identical next step, "visit your account to claim your credit."
 
 The recorded score stays 0. Spotting a judge mistake does not rewrite the gate. Document the disagreement, change the judge if needed, rerun its controls, and compare every version again under that same judge. Eight passing controls did not make the judge reliable on every generated answer.
 
