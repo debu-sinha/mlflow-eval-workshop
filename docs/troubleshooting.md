@@ -32,3 +32,10 @@ The workshop writes to SQLite directly, so pointing `MLFLOW_TRACKING_URI` at the
 | An unexpected experiment | Check inherited `MLFLOW_EXPERIMENT_ID` and `MLFLOW_EXPERIMENT_NAME`. An ID from a local SQLite store does not identify a workspace experiment. |
 
 A missing answer or score leaves a comparison incomplete, and the gate blocks it. Read the failure before rerunning, and keep the release thresholds fixed so every comparison stays meaningful.
+
+## Optional integrations
+
+| Symptom | What to check |
+|---|---|
+| The environment check prints `Package jsonschema not present in requirements.` | TruLens logs this when it loads an optional JSON schema validator. The workshop does not use that validator, so the message is harmless. |
+| Phoenix or TruLens fails to import | Install the `ecosystem` extra locally, or apply `requirements-ecosystem.txt` in Databricks. MLflow 3.16 needs the 2.x series of `arize-phoenix-evals`, so do not upgrade it on its own. |

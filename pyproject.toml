@@ -26,7 +26,11 @@ ecosystem = [
     # MLflow 3.16 builds Phoenix's legacy evaluator classes, which
     # arize-phoenix-evals 3.0 removed. Keep the 2.x series.
     "arize-phoenix-evals>=2.11,<3.0",
-    "trulens==2.14.0",
+    # MLflow's TruLens scorers import only these three packages. The trulens
+    # meta-package also installs its dashboard, which brings Jupyter and
+    # ipywidgets 8 into Databricks notebooks and breaks their progress bars.
+    "trulens-core==2.14.0",
+    "trulens-feedback==2.14.0",
     "trulens-providers-litellm==2.14.0",
     "litellm>=1.82.6,!=1.82.7,!=1.82.8",
     "nltk>=3.9",

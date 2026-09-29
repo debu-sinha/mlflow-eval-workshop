@@ -30,7 +30,6 @@ CORE_REQUIREMENTS = {
 }
 ECOSYSTEM_REQUIREMENTS = {
     "arize-phoenix-evals": ">=2.11,<3",
-    "trulens": "==2.14.0",
     "trulens-core": "==2.14.0",
     "trulens-feedback": "==2.14.0",
     "trulens-providers-litellm": "==2.14.0",
