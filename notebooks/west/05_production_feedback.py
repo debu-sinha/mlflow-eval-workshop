@@ -15,7 +15,7 @@
 # MAGIC %md
 # MAGIC ## Set up
 # MAGIC
-# MAGIC **Databricks:** in the **Environment** side panel, open **Base environment**, choose **More**, and select **Standard v5**. Add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` with your Git folder's path, click **Apply**, and wait for Python to restart.
+# MAGIC **Databricks:** in the **Environment** side panel, open **Base environment**, choose **More**, and select **Standard v5**. Add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt` with your Git folder's path, click **Apply**, confirm if asked, and wait for Python to restart.
 # MAGIC
 # MAGIC **Locally:** run this file from the repository with `uv run --locked python notebooks/west/05_production_feedback.py`, in the terminal where you loaded your API key.
 # MAGIC

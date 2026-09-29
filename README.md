@@ -96,7 +96,7 @@ The application, the judge, and MLflow tracking all run in your workspace, and n
 
 1. In **Workspace**, choose **Create > Git folder** and enter `https://github.com/debu-sinha/mlflow-eval-workshop.git` as the Git repository URL. The new Git folder opens on the default branch, `main`. Databricks can take a few minutes to create it. The [Git folder guide](https://docs.databricks.com/aws/en/repos/git-operations-with-repos) shows each step.
 2. Open `notebooks/west/04_compare_and_gate`. In the **Environment** side panel, open **Base environment**, choose **More**, and select **Standard v5**.
-3. Under **Dependencies**, add this line with your own Git folder path, then click **Apply** and wait for Python to restart:
+3. Under **Dependencies**, add this line with your own Git folder path. Click **Apply**, confirm if asked, and wait for Python to restart:
 
    ```text
    -r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-workshop.txt
@@ -104,7 +104,7 @@ The application, the judge, and MLflow tracking all run in your workspace, and n
 
 4. Click **Run all**. The report appears in the notebook when the comparison finishes.
 
-Dependencies belong to each notebook, so repeat steps 2 and 3 in each notebook you run. Standard v5 provides Python 3.12, and the requirements file adds MLflow 3.16.1. Results go to the `/Users/<your-user>/odsc-west-2026` experiment, and the notebook uses your own Databricks identity. These steps use the notebook's standard **Serverless** compute, not the **Git Folder Serverless** beta, which reads dependencies from a `pyproject.toml` instead.
+Dependencies belong to each notebook, so repeat steps 2 and 3 in each notebook you run. Standard v5 provides Python 3.12, and the requirements file adds MLflow 3.16.1. Keep Standard v5 even though Standard v6 is listed first. On Standard v6 the pinned protobuf is older than the one the notebook's Spark connection needs, so Python fails to start. Results go to the `/Users/<your-user>/odsc-west-2026` experiment, and the notebook uses your own Databricks identity. Use **Serverless** from the notebook's compute menu. Some workspaces also offer a **Git Folder Serverless** beta, which reads dependencies from `pyproject.toml` instead, and these steps don't cover it.
 
 If the default model is unavailable in your workspace, list the chat endpoints you can use:
 

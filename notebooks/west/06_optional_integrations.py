@@ -17,7 +17,7 @@
 # MAGIC
 # MAGIC **Locally:** run `uv sync --locked --python 3.12 --extra ecosystem`, then `uv run --locked --extra ecosystem python -m west_workshop --provider openai --integrations`.
 # MAGIC
-# MAGIC **Databricks:** in the **Environment** side panel, open **Base environment**, choose **More**, and select **Standard v5**. Add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-ecosystem.txt` with your Git folder's path, in place of the core requirements file. Click **Apply** and wait for Python to restart. The notebook uses your workspace identity and an accessible model endpoint, so no OpenAI key is needed.
+# MAGIC **Databricks:** in the **Environment** side panel, open **Base environment**, choose **More**, and select **Standard v5**. Add `-r /Workspace/Users/<your-user>/mlflow-eval-workshop/requirements-ecosystem.txt` with your Git folder's path, in place of the core requirements file. Click **Apply**, confirm if asked, and wait for Python to restart. The notebook uses your workspace identity and an accessible model endpoint, so no OpenAI key is needed.
 
 # COMMAND ----------
 

@@ -20,11 +20,14 @@ The workshop writes to SQLite directly, so pointing `MLFLOW_TRACKING_URI` at the
 | Symptom | What to check |
 |---|---|
 | A package or version error | Apply the requirements file with the base environment from the README, in this notebook. Dependencies belong to each notebook. |
+| Python fails to start after **Apply**, with a protobuf version error | Select **Standard v5** under **Base environment > More** and apply again. Standard v6 needs a newer protobuf than the workshop pins. |
+| The **Environment** panel warns that core Python package versions changed | This is expected. The requirements file replaces some base environment packages with the versions the workshop was tested with, such as NumPy 1.26.4. The notebooks run normally with this warning. |
 | A package is missing after pulling a Git update | Run the notebook's setup cell again. It refreshes Python's import cache before loading the workshop package. |
 | Serverless compute capacity is reached | In a notebook you no longer need, open the **Serverless** menu, then its **Serverless** submenu, and choose **Terminate**. Then click **Apply** again in the notebook you want. |
 | The endpoint is missing from Playground | Use the endpoint listing in the README to see which chat endpoints you can query. |
 | A rate limit or a missing answer | Stop overlapping notebook runs, let the limit reset, read the saved failure, then rerun. A daily fair-use quota can mean waiting until it resets. |
 | The judge disagrees with a reference label | Read the answer and the judge's explanation before changing either. Keep the label unless you find an error in it. |
+| The report shows a light background with BLOCK in teal and SHIP in red | Databricks dark mode inverts the colors of HTML output. The decisions and numbers are unchanged. |
 | MLflow warns that `extraContext` is not whitelisted | This concerns optional notebook metadata. The lab filters exactly this warning and keeps every other warning and error visible. |
 | An unexpected experiment | Check inherited `MLFLOW_EXPERIMENT_ID` and `MLFLOW_EXPERIMENT_NAME`. An ID from a local SQLite store does not identify a workspace experiment. |
 
