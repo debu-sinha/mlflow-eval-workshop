@@ -182,6 +182,9 @@ def _scores_from_traces(traces, scorer_name: str) -> dict[str, float]:
     """Require one finite, valid assessment for each uniquely identified case."""
     scores: dict[str, float] = {}
     for trace in traces:
+        state = getattr(trace.info, "state", None)
+        if getattr(state, "value", state) != "OK":
+            raise ValueError("A required trace did not finish successfully. No samples may be skipped.")
         key = _stable_key(trace)
         if not isinstance(key, str) or not key.strip():
             raise ValueError("A trace has no usable sample key. No samples may be skipped.")
@@ -208,7 +211,7 @@ def _scores_from_traces(traces, scorer_name: str) -> dict[str, float]:
         else:
             raw, error = None, None
         parsed = _parse_score(raw)
-        if error is not None or parsed is None:
+        if getattr(assessments[0], "error", None) is not None or error is not None or parsed is None:
             raise ValueError(
                 f"A required {scorer_name!r} assessment is missing, failed, "
                 "unparseable, or nonfinite. No samples may be skipped."

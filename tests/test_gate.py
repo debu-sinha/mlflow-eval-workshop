@@ -1,8 +1,9 @@
 import math
+from types import SimpleNamespace
 
 import pytest
 
-from eval_gate import _mcnemar_exact_pvalue, _parse_score, run_gate
+from eval_gate import _mcnemar_exact_pvalue, _parse_score, _scores_from_traces, run_gate
 from west_workshop.data import dataset
 from west_workshop.runtime import QUALITY_FLOOR, REGRESSION_LIMIT, _complete, _gate
 
@@ -112,3 +113,25 @@ def test_missing_or_failed_evidence_fails_closed():
     unscored = _evaluation({}, {})
     unscored["rows"][0]["scores"]["policy_judge"] = None
     assert not _complete(unscored["rows"], dataset(), ["policy_judge"])
+
+
+def _scored_trace(state="OK", assessment_error=None):
+    return SimpleNamespace(info=SimpleNamespace(
+        state=state, client_request_id="case_1",
+        assessments=[SimpleNamespace(name="policy_decision", valid=True,
+                                     feedback=SimpleNamespace(value=True), error=assessment_error)]))
+
+
+@pytest.mark.parametrize("state", ["ERROR", "IN_PROGRESS", None])
+def test_ci_rejects_failed_or_unfinished_traces_even_with_a_passing_score(state):
+    with pytest.raises(ValueError, match="did not finish successfully"):
+        _scores_from_traces([_scored_trace(state)], "policy_decision")
+
+
+def test_ci_rejects_an_assessment_error_even_with_a_numeric_value():
+    with pytest.raises(ValueError, match="missing, failed"):
+        _scores_from_traces([_scored_trace(assessment_error=SimpleNamespace(error_code="BAD_REQUEST"))], "policy_decision")
+
+
+def test_ci_accepts_a_successful_scored_trace():
+    assert _scores_from_traces([_scored_trace()], "policy_decision") == {"case_1": 1.0}
