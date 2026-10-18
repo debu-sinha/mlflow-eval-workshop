@@ -220,6 +220,34 @@ write("02_compare_and_decide.ipynb", [
         print("Control version:", controls["version"])
         print("Smoke coverage only; no population accuracy claim.")
     """),
+    dict(code("""
+    # Display two authored controls from the recorded evaluation, without rescoring.
+    from html import escape
+
+    control_examples = []
+    control_rows = (controls or {}).get("evaluation", {}).get("rows", [])
+    for control_id in ("review_customer_instruction", "review_execution_claim"):
+        row = next((item for item in control_rows if item.get("case_id") == control_id), None)
+        if row is None:
+            continue
+        expected = row["expectations"]["authored_human_label"]
+        actual = row.get("scores", {}).get("policy_judge", "Not recorded")
+        control_examples.append(
+            "<h3>" + ("Should pass" if expected else "Should fail") + "</h3>"
+            + "<p>Authored expected grade: <strong>" + str(int(expected))
+            + "</strong> · Recorded judge grade: <strong>" + escape(str(actual)) + "</strong></p>"
+            + "<p>Customer: " + escape(row["inputs"]["question"]) + "</p>"
+            + "<pre style='white-space:pre-wrap;font:inherit'>" + escape(row["output"]) + "</pre>"
+            + "<p style='font-size:14px'>Control: " + escape(control_id) + "</p>"
+        )
+    if control_examples:
+        display(HTML("<section style='font-size:20px;line-height:1.4'>"
+                     + "<h2>Test the judge on answers with known expectations</h2>"
+                     + "<p>1 = rubric pass. 0 = rubric fail. These two examples illustrate the full 20-control result above.</p>"
+                     + "<hr>".join(control_examples) + "</section>"))
+    else:
+        print("These control examples are unavailable in the recorded evidence.")
+    """), id="02-control-examples", metadata={"tags": ["control-display"], "jupyter": {"source_hidden": True}}),
     markdown("""
     ## Generate and evaluate the proposed repair
 
@@ -262,7 +290,9 @@ write("02_compare_and_decide.ipynb", [
     markdown("""
     ## Inspect the pairs
 
-    A paired row compares the **same case ID** before and after. Gains do not cancel protected failures. If evaluator evidence is invalid, no paired comparison is interpreted.
+    A paired row compares the **same case ID** before and after. A loss means a required check changes from 1 to 0. Protected cases allow no such loss. A 0-to-0 score is still a tie, not a new loss. That does not make the answer acceptable: mandatory candidate checks and unresolved material review findings have their own conditions.
+
+    The protected-loss rule is not an absolute passing-score requirement for every protected case. Add that separate requirement if your application needs it. If evaluator evidence is invalid, no paired comparison is interpreted.
 
     """),
     code("""
@@ -279,9 +309,14 @@ write("02_compare_and_decide.ipynb", [
     review_parts = ["<section style='font-size:18px;line-height:1.45'><h3>Recorded review</h3>",
                     "<p>Status: <strong>" + review_text(recorded_review.get("status")) + "</strong> · Reviewer: "
                     + review_text(recorded_review.get("reviewer_kind")) + " / "
-                    + review_text(recorded_review.get("reviewer_id")) + "</p>"]
+                    + review_text(recorded_review.get("reviewer_id")) + "</p>",
+                    "<p>A completed review can leave findings unresolved. An open material finding withholds acceptance.</p>"]
     reviewed_versions = {"deployed": comparison["baseline"], "repair": comparison["candidate"]}
     for finding in recorded_review.get("findings", []):
+        collapsed = finding.get("material") is False
+        if collapsed:
+            review_parts.append("<details><summary>Other recorded finding: " + review_text(finding.get("id"))
+                                + " · " + review_text(finding.get("status")) + " · nonmaterial</summary>")
         review_parts += ["<hr><p><strong>" + review_text(finding.get("id")) + ": "
                          + review_text(finding.get("summary")) + "</strong></p>",
                          "<p>Status: " + review_text(finding.get("status")) + " · Material: "
@@ -304,6 +339,8 @@ write("02_compare_and_decide.ipynb", [
                 review_parts.append("<p>No recorded assessment matches the finding's named check.</p>")
         elif variant is not None or case_id is not None:
             review_parts.append("<p>The finding's referenced case is unavailable in these compared records.</p>")
+        if collapsed:
+            review_parts.append("</details>")
     if not recorded_review.get("findings"):
         review_parts.append("<p>No findings recorded. Use the review status above to distinguish pending review from completed review.</p>")
     display(HTML("".join(review_parts) + "</section>"))

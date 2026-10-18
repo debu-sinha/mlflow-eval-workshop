@@ -13,7 +13,7 @@ The local judge incorrectly attributed the customer's request for an already pro
 
 Both bundles identify the models that reviewed their answers and grades. These are model reviews, not independent human labels or production approval. Each route uses the same model for its application and judge. Open the review panel in notebook 02 to inspect the customer input, answer and rationale before deciding.
 
-Saved mode contains dated, hash-verified outputs from those actual runs in `evidence/workshop/local/final` and `evidence/workshop/databricks/final`. Local and Databricks routes remain separate. Do not pool their scores or treat ten teaching cases as production coverage. Their manifest source identities describe the measured implementation. The final notebook adds a read-only review display without changing measurements.
+Saved mode contains dated, hash-verified outputs from those actual runs in `evidence/workshop/local/final` and `evidence/workshop/databricks/final`. Local and Databricks routes remain separate. Do not pool their scores or treat ten teaching cases as production coverage. Their manifest source identities describe the measured implementation. The final notebook adds read-only review and control displays without changing measurements.
 
 Historical answers were also rescored with the frozen v2 judge, without regenerating answers or replacing v1 decisions. Local totals changed from 8/6/9 to 8/3/8 and still contained wrong rejections. Native totals changed from 10/3/10 to 10/2/10. A revised rubric is another evaluator to test, not proof that judging has been fixed.
 
