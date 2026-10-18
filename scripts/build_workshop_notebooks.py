@@ -236,6 +236,8 @@ write("02_compare_and_decide.ipynb", [
             "<h3>" + ("Should pass" if expected else "Should fail") + "</h3>"
             + "<p>Authored expected grade: <strong>" + str(int(expected))
             + "</strong> · Recorded judge grade: <strong>" + escape(str(actual)) + "</strong></p>"
+            + "<p>Purchase age: " + escape(str(row["inputs"]["days_since_purchase"]))
+            + " days · Defective: " + ("yes" if row["inputs"]["defective"] else "no") + "</p>"
             + "<p>Customer: " + escape(row["inputs"]["question"]) + "</p>"
             + "<pre style='white-space:pre-wrap;font:inherit'>" + escape(row["output"]) + "</pre>"
             + "<p style='font-size:14px'>Control: " + escape(control_id) + "</p>"
