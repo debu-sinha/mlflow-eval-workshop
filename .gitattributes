@@ -1,0 +1,2 @@
+# Evidence manifests hash exact bytes. Preserve them on every platform.
+evidence/workshop/** -text

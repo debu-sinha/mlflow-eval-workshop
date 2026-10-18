@@ -164,6 +164,49 @@ def test_review_template_is_bound_but_never_automatically_complete(saved_evidenc
     assert form["evidence"] == evidence_identity(records["deployed"], records["repair"], records["controls"])
 
 
+def test_saved_notebook_review_panel_shows_exact_bound_evidence_before_vote_without_mutation(saved_evidence, monkeypatch):
+    from html import escape
+    from IPython.display import HTML
+    directory, _ = saved_evidence
+    record_path = directory / "repair.json"
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    row = next(item for item in record["rows"] if item["case_id"] == "false_approval_request")
+    rationale = 'Test-only rationale: customer text <script>alert("unsafe")</script> was attributed to the assistant.'
+    next(item for item in row["assessments"] if item["name"] == "policy_judge")["rationale"] = rationale
+    record_path.write_bytes(workshop._json_bytes(record))
+    manifest_path = directory / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["files"]["repair.json"] = hashlib.sha256(record_path.read_bytes()).hexdigest()
+    manifest_path.write_bytes(workshop._json_bytes(manifest))
+    original_files = {path.name: path.read_bytes() for path in directory.iterdir()}
+    monkeypatch.setattr(socket, "socket", lambda *args, **kwargs: pytest.fail("saved review panel attempted network"))
+    session = workshop.WorkshopSession("saved", evidence_dir=directory)
+    review = workshop.review_skeleton(directory)
+    review.update(version="test-only-model-review", status="complete", reviewer_kind="model", reviewer_id="named-test-reviewer",
+                  findings=[{"id": "attribution-1", "summary": "Customer <text> attributed to the assistant",
+                             "status": "open", "material": True, "variant": "repair",
+                             "case_id": "false_approval_request", "check": "policy_judge"}])
+    report = session.finish(review)
+    comparison = session.policy_inputs(review)
+    before = copy.deepcopy((report, comparison, session.bundle))
+    document = json.loads((ROOT / "notebooks/workshop/02_compare_and_decide.ipynb").read_text(encoding="utf-8"))
+    cell_index = next(index for index, cell in enumerate(document["cells"]) if cell["id"] == "02-review-evidence")
+    assert "paired_table(report)" in document["cells"][cell_index - 1]["source"]
+    assert "Vote before revealing" in document["cells"][cell_index + 1]["source"]
+    rendered = []
+    exec(compile(document["cells"][cell_index]["source"], "02-review-evidence", "exec"),
+         {"report": report, "comparison": comparison, "json": json, "HTML": HTML, "display": rendered.append})
+    content = rendered[0].data
+    assert "complete" in content and "model / named-test-reviewer" in content
+    assert "Status: open" in content and "Material: True" in content
+    assert "Customer &lt;text&gt; attributed to the assistant" in content
+    assert escape(json.dumps(row["inputs"], ensure_ascii=False, indent=2)) in content
+    assert escape(row["output"]) in content and escape(rationale) in content
+    assert "policy_judge rationale" in content and "<script>" not in content
+    assert before == (report, comparison, session.bundle)
+    assert original_files == {path.name: path.read_bytes() for path in directory.iterdir()}
+
+
 def test_pairs_can_be_inspected_before_decision_and_reasons_name_the_case(saved_evidence):
     directory, review = saved_evidence
     report = workshop.WorkshopSession("saved", evidence_dir=directory).finish(review)

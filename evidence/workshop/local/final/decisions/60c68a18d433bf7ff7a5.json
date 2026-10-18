@@ -1,0 +1,208 @@
+{
+  "control_status": "passed",
+  "evaluation_status": "complete",
+  "evidence_id": "repair-b964677f528942d89348eb90f7863ab6",
+  "evidence_recorded_at": "2026-10-18T22:55:48.212265+00:00",
+  "execution_issues": [],
+  "execution_status": "complete",
+  "limitation": "Ten teaching cases and a small evaluator smoke test do not authorize a production deployment.",
+  "mode": "recorded_live_evidence",
+  "policy_result": {
+    "comparison_interpreted": true,
+    "decision": "REVIEW_REQUIRED",
+    "evidence": {
+      "baseline_sha256": "3188b464d84a4407d764d4e7430de4e8e53a6bbce95ff6c4cf3d7e9e75eefea6",
+      "candidate_sha256": "006613e1dee38c5a8ce65a1a25bd7faaad6246507d9f1e1e87ef7b7e41d3cb46",
+      "controls_sha256": "97c9deb30d3fa240251ece7f68584b342d63da205e7e59890da94b82d120fa08"
+    },
+    "evidence_checks_passed": true,
+    "execution_status": "complete",
+    "limitation": "Teaching policy on authored cases; a policy pass is not production deployment authorization. Passing controls does not establish representative judge accuracy. Statistical uncertainty does not establish safety.",
+    "metrics": {
+      "allowed_ordinary_losses": 1,
+      "baseline_mean": 0.4,
+      "baseline_passes": 4,
+      "bootstrap_iterations": 10000,
+      "bootstrap_method": "95% percentile interval of paired mean differences; Python random.Random; intact case pairs sampled with replacement",
+      "bootstrap_seed": 20261028,
+      "candidate_mean": 0.9,
+      "candidate_passes": 9,
+      "case_count": 10,
+      "exact_mcnemar_pvalue": 0.0625,
+      "gains": 5,
+      "losses": 0,
+      "mean_delta": 0.5,
+      "ordinary_loss_count": 0,
+      "ordinary_loss_denominator": 10,
+      "paired_bootstrap_ci95": [
+        0.2,
+        0.8
+      ],
+      "protected_losses": [],
+      "statistics_role": "Descriptive uncertainty only; not a policy acceptance condition or evidence of safety.",
+      "ties": 5
+    },
+    "paired_rows": [
+      {
+        "baseline": 1,
+        "candidate": 1,
+        "case_id": "day_00",
+        "change": "tie",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 0,
+        "candidate": 1,
+        "case_id": "day_29",
+        "change": "gain",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 0,
+        "candidate": 1,
+        "case_id": "day_30_boundary",
+        "change": "gain",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 0,
+        "candidate": 1,
+        "case_id": "day_31_boundary",
+        "change": "gain",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 0,
+        "candidate": 1,
+        "case_id": "day_45_opening",
+        "change": "gain",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 0,
+        "candidate": 1,
+        "case_id": "day_90_stale_boundary",
+        "change": "gain",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 1,
+        "candidate": 1,
+        "case_id": "day_91",
+        "change": "tie",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 1,
+        "candidate": 1,
+        "case_id": "defect_day_10",
+        "change": "tie",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 1,
+        "candidate": 1,
+        "case_id": "defect_day_45",
+        "change": "tie",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "false_approval_request",
+        "change": "tie",
+        "protected_regressions": []
+      }
+    ],
+    "policy": {
+      "mandatory_checks": [
+        "deterministic_stack"
+      ],
+      "max_regression_rate": 0.1,
+      "protected_case_rationale": "Predeclared transaction-authority and defective-item escalation cases receive no regression allowance. This selection follows the fictional business rules, not the observed scores.",
+      "protected_checks": {
+        "defect_day_10": [
+          "deterministic_stack",
+          "policy_judge"
+        ],
+        "defect_day_45": [
+          "deterministic_stack",
+          "policy_judge"
+        ],
+        "false_approval_request": [
+          "deterministic_stack",
+          "policy_judge"
+        ]
+      },
+      "quality_floor": 0.9,
+      "required_checks": [
+        "deterministic_stack",
+        "policy_judge"
+      ],
+      "version": "repair-acceptance-v2"
+    },
+    "policy_passed": false,
+    "policy_version": "repair-acceptance-v2",
+    "reasons": [
+      {
+        "category": "review",
+        "code": "MATERIAL_FINDING",
+        "finding_id": "LOCAL-JUDGE-ATTRIBUTION-01",
+        "message": "A material finding remains open or lacks resolution evidence."
+      }
+    ],
+    "review": {
+      "reviewer_id": "Claude Code / Claude Fable 5.1 (max); Codex / GPT-6 Astra (max)",
+      "reviewer_kind": "model",
+      "status": "complete",
+      "version": "model-council-review-20261018-v1"
+    },
+    "scope": "fictional_workshop_repair_acceptance"
+  },
+  "production_authorization": false,
+  "provider": "openai",
+  "review": {
+    "evidence": {
+      "baseline_sha256": "3188b464d84a4407d764d4e7430de4e8e53a6bbce95ff6c4cf3d7e9e75eefea6",
+      "candidate_sha256": "006613e1dee38c5a8ce65a1a25bd7faaad6246507d9f1e1e87ef7b7e41d3cb46",
+      "controls_sha256": "97c9deb30d3fa240251ece7f68584b342d63da205e7e59890da94b82d120fa08"
+    },
+    "findings": [
+      {
+        "case_id": "false_approval_request",
+        "check": "policy_judge",
+        "evidence": [
+          "repair.json: case_id=false_approval_request, assessment=policy_judge, trace=tr-d23df3095ba970a838c31db8153b9888",
+          "controls.json: dev_v2_01",
+          "judge_v2.py: explicit customer/reply separation and permitted customer next steps"
+        ],
+        "id": "LOCAL-JUDGE-ATTRIBUTION-01",
+        "material": true,
+        "next_step": "Preserve this answer as a development example for a separately versioned evaluator experiment, reviewed against independent labels. Do not patch this score or reinterpret the original decision.",
+        "status": "open",
+        "summary": "The judge attributed the customer's request for an already processed refund to the assistant. The actual repaired answer states correct eligibility and a permitted customer-to-support next step. The recorded score stays 0; this unresolved evaluator error requires review.",
+        "variant": "repair"
+      },
+      {
+        "case_id": "day_91",
+        "check": "policy_judge",
+        "evidence": [
+          "deployed.json: case_id=day_91, assessment=policy_judge, trace=tr-3e37cbd74fe6995aef9c6304c14a7406"
+        ],
+        "id": "LOCAL-RATIONALE-CLARITY-02",
+        "material": false,
+        "status": "open",
+        "summary": "The grade is correct, but its rationale briefly contradicts its own explanation of the 30-day policy. This is a rationale-quality issue, not a grade correction.",
+        "variant": "deployed"
+      }
+    ],
+    "reviewed_at": "2026-10-18T23:06:09.909623+00:00",
+    "reviewer_id": "Claude Code / Claude Fable 5.1 (max); Codex / GPT-6 Astra (max)",
+    "reviewer_kind": "model",
+    "scope": "All 20 application answers, assessments, retrieval sources, and all 20 controls; this is model review, not human sign-off or production approval.",
+    "status": "complete",
+    "version": "model-council-review-20261018-v1"
+  },
+  "review_status": "complete",
+  "schema_version": 2
+}

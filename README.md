@@ -18,10 +18,10 @@ Start with saved mode. It requires no credentials and makes no model calls. The 
 
 ## Local Jupyter
 
-Use the branch or source archive that accompanies this workshop. This revision is prepared on `codex/odsc-west-final-20261018`. The repository's default branch may contain the earlier seven-chapter workshop until this revision is merged.
+Use the branch or source archive that accompanies this workshop. This revision is prepared on `odsc-west-2026-workshop`. The repository's default branch may contain the earlier seven-chapter workshop until this revision is merged.
 
 ```bash
-git clone --branch codex/odsc-west-final-20261018 https://github.com/debu-sinha/mlflow-eval-workshop.git
+git clone --branch odsc-west-2026-workshop https://github.com/debu-sinha/mlflow-eval-workshop.git
 cd mlflow-eval-workshop
 uv sync --locked --python 3.12 --extra local
 uv run --locked --extra local python scripts/verify_west_environment.py
@@ -124,12 +124,12 @@ Append the review using the same configured environment and original live direct
 python -m west_workshop evaluate --mode live --output artifacts/my-first-repair-run --review-json artifacts/my-review/review.json
 ```
 
-When both answer batches and controls are already recorded, this reuses them and appends the reviewed decision without new model calls. It preserves the initial pending decision. Copy the complete directory only after review to make a frozen saved bundle. A fresh unreviewed run intentionally ends at REVIEW_REQUIRED. The presentation builder requires a named completed review and displays any remaining findings and actual policy outcome.
+When both answer batches and controls are already recorded, this reuses them and appends the reviewed decision without new model calls. It preserves the initial pending decision. To freeze a shareable saved bundle after review, copy `manifest.json` and only the files listed in its `files` mapping, retaining their relative paths. The raw output directory can also contain a local tracking store and private runtime artifacts. Those are not part of the portable bundle. Verify the copied bundle in saved mode. A fresh unreviewed run intentionally ends at REVIEW_REQUIRED.
 
 ## Optional material and historical evidence
 
 The original [seven chapter files](notebooks/west/) remain reference material. Their v1 three-run comparison and historical results are distinct from the two-version workshop path. [Original instructions](docs/legacy-seven-chapter-readme.md) are archived for provenance, not the current starting route.
 
-The original audits ran real Phoenix Hallucination and TruLens Coherence adapters on one answer in both environments. Neither metric enters the repair policy. The public session abstract also named Guardrails AI. This revision does not claim a qualified Guardrails execution. The core phrase check is a custom check, not that library. See the validation record for precise integration scope.
+The original audits ran real Phoenix Hallucination and TruLens Coherence adapters on one answer in both environments. Neither metric enters the repair policy. The public session abstract also named Guardrails AI. This revision does not claim a qualified Guardrails execution. The core phrase check is a custom check, not that library. See [verified routes](docs/verified-routes.md) for precise integration scope.
 
 Current MLflow references: [GenAI evaluation](https://mlflow.org/docs/latest/genai/eval-monitor/), [RAG scorers](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/llm-judge/rag/), and [tool-call scorers](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/llm-judge/tool-call/). This example explains policy lookup and response evaluation. It does not execute financial transactions or demonstrate a multi-agent system.

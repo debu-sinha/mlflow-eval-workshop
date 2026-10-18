@@ -1,0 +1,83 @@
+{
+  "created_at": "2026-10-18T22:55:48.212265+00:00",
+  "decisions": [
+    "decisions/4dfefd9dff0840d02ebb.json",
+    "decisions/60c68a18d433bf7ff7a5.json"
+  ],
+  "evidence_id": "repair-b964677f528942d89348eb90f7863ab6",
+  "files": {
+    "cases.json": "37228da8925cd3b077358105fb93d927d9ae344b0fc4cd283af0b93d38b31897",
+    "control-evaluation.json": "1f5c34241fa29f5091407a3189f9a9eb78969ffa1df71382c183d50be11aab92",
+    "controls.json": "a41c39f00ae56fe8c2d3112c1d47317a07373c3034bcff84800f48a65eb3e76b",
+    "decisions/4dfefd9dff0840d02ebb.json": "4dfefd9dff0840d02ebbb6fd8c74b96c6aac3306bc9f755386df1a582b402868",
+    "decisions/60c68a18d433bf7ff7a5.json": "60c68a18d433bf7ff7a5207ef6bb817752dc7ce260e539e95d4a282a8607dd75",
+    "deployed.json": "1214aeeb540dd8e6a6d285e8e386d15363c0eb43cd65fff839c8e8921b6db18d",
+    "environment.json": "900d795731c2b089bbc37fefda9dfd60bfc713afee66a681a8adefc8045d4840",
+    "repair.json": "74dd2aaa081fc976ea991d08a100486e858fdfb201b73c948a2636c8ebfc34e6"
+  },
+  "git_commit": "111b1337b1957cfaa94ee41a8a160218293b5cac",
+  "measurement_identity": {
+    "application_model": "gpt-4o-mini",
+    "dataset_digest": "e07e94725bc552af55526ef95b275048a64d05a34cbaed7adcd3df748bef910d",
+    "judge_definition_sha256": "cbec7a786d1736e939bac148ec6ae2fd588a13844666fb2cf0cce5a571fd9da3",
+    "judge_model": "openai:/gpt-4o-mini",
+    "judge_version": "policy_judge_v2",
+    "policy_version": "repair-acceptance-v2",
+    "provider": "openai",
+    "source_sha256": {
+      "eval_gate.py": "80aae6c4ff3fb110152a8f20ed8bf60e56ddb728a0426707a9b8f18dafedb70a",
+      "pyproject.toml": "e2997ecd8b5daa3d26d32ac9d3874ee8dc6758a82365f057002987ed72d5dcb6",
+      "requirements-workshop.txt": "2fe3b7702c627b6bb6b0b5294529503daa7e4a669c00af103fd7a982e65e0dd0",
+      "uv.lock": "b12841c5c96153f22e30fe74fbf5f62eaaa3602b4600de9bbe822da130741d44",
+      "west_workshop/__init__.py": "597ca15a855f7fda9c1da24e279a3bec2a49a361b51b03a88f4e8685a2ce84ca",
+      "west_workshop/__main__.py": "9df08338e8abad43a263ddd4207413ff4e3b86da93f3cc30e89c70993efd3fef",
+      "west_workshop/config.py": "42dd94c3d033c12128753a8b440ed30ad70878fdefebb47e38b16ea4a13e0eb2",
+      "west_workshop/data.py": "da35e70bd7441f4fe84a62d6b201a382407abc8b25c3e0548ed27acb574f2082",
+      "west_workshop/judge_v2.py": "50fc5f6967f424ccb5af98db71339182075a9ac059518aed96617562d7e67043",
+      "west_workshop/notebook_setup.py": "62c5e5b4a6d2a9300793ca4377eae95fd0d40b314cbd007e3edb4cd6ef40d44b",
+      "west_workshop/prepare_databricks_app.py": "793c96736a0789ac79fc6c98bad9f2673256fab3057b46eec344432d1e298b20",
+      "west_workshop/publish_report.py": "76d91e74b71e597e72c3fb8b41dd32de3e4d23beea2d2906a98e4c0a21880c72",
+      "west_workshop/qualification_controls.py": "a90b5d98c2c69e789c49ab9bff52f01c8c93a53099d3c41853985e58c1f6a93a",
+      "west_workshop/repair_policy.py": "d762dcc5cdbd4eb7b58f63139ff886178e9b3a51ed0329b36e493c9ceabeb7d3",
+      "west_workshop/repair_workshop.py": "54fb7a476dee574aead0b4cc80b1c53a585423c90ad5168b288fc38efb770d52",
+      "west_workshop/report.py": "32b6a5b5b65b7bfcd832df72e309e9319336deefba2ee2584ff57a6dd985098f",
+      "west_workshop/runtime.py": "ba6fc419ab24a98a69120a07d5fad9ed2d86e6c8f708b20c3da38a2ddcb7f22d",
+      "west_workshop/support_app.py": "43d641df42ccc4b553603a9d0b071b0f40d6ac2df8ade3274ec8c4f9bfa10681"
+    },
+    "versions": {
+      "databricks-agents": null,
+      "databricks-sdk": "0.102.0",
+      "litellm": null,
+      "mlflow": "3.17.1",
+      "openai": "3.8.0"
+    }
+  },
+  "notebook_provenance": {
+    "at_creation": {
+      "notebooks/workshop/00_setup.ipynb": {
+        "cell_source_sha256": "1e3c3569159843a6d90d1323b41ac5a49cae2b8b6e6876b6e3df4c4076ecf8e8",
+        "raw_sha256": "b66814c0b6f0e8f701ed15351b3f8db530515dc908e7d59f3f5d22ba26816edb"
+      },
+      "notebooks/workshop/01_diagnose_and_evaluate.ipynb": {
+        "cell_source_sha256": "e914b4071a7f1d74f175c602c34ad067c7f76a4f3ed19b8e44fce5f9fa056840",
+        "raw_sha256": "e6090c134bd9aeead18b482690bc3a506fc1ace861a3b21b8bd85323502c8a3b"
+      },
+      "notebooks/workshop/02_compare_and_decide.ipynb": {
+        "cell_source_sha256": "13a4ebf51e3acb549164f712517e8ec0baa913555155448b9956c1ddb52bd142",
+        "raw_sha256": "3f9cedd0b7fad929261b5a551030f1e98e553483791a6688fb4f4623f1cb6f9a"
+      }
+    },
+    "informational_only": true
+  },
+  "production_authorization": false,
+  "provider": "openai",
+  "records": {
+    "cases": "cases.json",
+    "control-evaluation": "control-evaluation.json",
+    "controls": "controls.json",
+    "deployed": "deployed.json",
+    "environment": "environment.json",
+    "repair": "repair.json"
+  },
+  "schema_version": 2
+}

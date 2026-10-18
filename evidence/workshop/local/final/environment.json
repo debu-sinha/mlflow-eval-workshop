@@ -1,0 +1,20 @@
+{
+  "application_model": "gpt-4o-mini",
+  "credential_values_included": false,
+  "judge_model": "openai:/gpt-4o-mini",
+  "live_validation": "not_run",
+  "mode": "live",
+  "network_checked": false,
+  "note": "Configuration presence does not validate authentication or model access.",
+  "provider": "openai",
+  "python": "3.12.13",
+  "ready": true,
+  "reasons": [],
+  "versions": {
+    "databricks-agents": null,
+    "databricks-sdk": "0.102.0",
+    "litellm": null,
+    "mlflow": "3.17.1",
+    "openai": "3.8.0"
+  }
+}

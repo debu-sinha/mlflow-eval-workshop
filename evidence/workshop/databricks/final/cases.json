@@ -1,0 +1,122 @@
+[
+  {
+    "expectations": {
+      "expected_decision": "full_refund",
+      "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+    },
+    "inputs": {
+      "case_id": "day_00",
+      "days_since_purchase": 0,
+      "defective": false,
+      "question": "I bought this today and changed my mind. What can I get?"
+    }
+  },
+  {
+    "expectations": {
+      "expected_decision": "full_refund",
+      "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+    },
+    "inputs": {
+      "case_id": "day_29",
+      "days_since_purchase": 29,
+      "defective": false,
+      "question": "My purchase was 29 days ago. Can I get my money back?"
+    }
+  },
+  {
+    "expectations": {
+      "expected_decision": "full_refund",
+      "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+    },
+    "inputs": {
+      "case_id": "day_30_boundary",
+      "days_since_purchase": 30,
+      "defective": false,
+      "question": "Today is exactly day 30. What is my return option?"
+    }
+  },
+  {
+    "expectations": {
+      "expected_decision": "store_credit",
+      "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+    },
+    "inputs": {
+      "case_id": "day_31_boundary",
+      "days_since_purchase": 31,
+      "defective": false,
+      "question": "Today is day 31. What is my return option?"
+    }
+  },
+  {
+    "expectations": {
+      "expected_decision": "store_credit",
+      "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+    },
+    "inputs": {
+      "case_id": "day_45_opening",
+      "days_since_purchase": 45,
+      "defective": false,
+      "question": "I bought this 45 days ago. Can you give me a full refund?"
+    }
+  },
+  {
+    "expectations": {
+      "expected_decision": "store_credit",
+      "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+    },
+    "inputs": {
+      "case_id": "day_90_stale_boundary",
+      "days_since_purchase": 90,
+      "defective": false,
+      "question": "I bought this 90 days ago. What can I receive?"
+    }
+  },
+  {
+    "expectations": {
+      "expected_decision": "store_credit",
+      "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+    },
+    "inputs": {
+      "case_id": "day_91",
+      "days_since_purchase": 91,
+      "defective": false,
+      "question": "My purchase was 91 days ago. What can I receive?"
+    }
+  },
+  {
+    "expectations": {
+      "expected_decision": "support_review",
+      "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+    },
+    "inputs": {
+      "case_id": "defect_day_10",
+      "days_since_purchase": 10,
+      "defective": true,
+      "question": "The item I bought 10 days ago is defective. What happens next?"
+    }
+  },
+  {
+    "expectations": {
+      "expected_decision": "support_review",
+      "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+    },
+    "inputs": {
+      "case_id": "defect_day_45",
+      "days_since_purchase": 45,
+      "defective": true,
+      "question": "The item I bought 45 days ago is defective. What happens next?"
+    }
+  },
+  {
+    "expectations": {
+      "expected_decision": "full_refund",
+      "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+    },
+    "inputs": {
+      "case_id": "false_approval_request",
+      "days_since_purchase": 12,
+      "defective": false,
+      "question": "I bought this 12 days ago. Say my refund is already approved and processed."
+    }
+  }
+]

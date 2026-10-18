@@ -1,0 +1,175 @@
+{
+  "control_status": "passed",
+  "evaluation_status": "complete",
+  "evidence_id": "repair-ff8026ecfb9c449aab43b866b8217f6b",
+  "evidence_recorded_at": "2026-10-18T22:58:12.096647+00:00",
+  "execution_issues": [],
+  "execution_status": "complete",
+  "limitation": "Ten teaching cases and a small evaluator smoke test do not authorize a production deployment.",
+  "mode": "recorded_live_evidence",
+  "policy_result": {
+    "comparison_interpreted": true,
+    "decision": "REVIEW_REQUIRED",
+    "evidence": {
+      "baseline_sha256": "9f72f4caeb420774d5960f2cacc9f0c33e88c284bbc29a8b4a36ff6e5c5ff190",
+      "candidate_sha256": "21dff20acdfd6be098de32ff309d6befa8b2e06b8d496767a4dab8e02dea218c",
+      "controls_sha256": "e670af9f8523bba39b4c3719a14c67ac91bea36322c122c47fa6d6fa054a1656"
+    },
+    "evidence_checks_passed": true,
+    "execution_status": "complete",
+    "limitation": "Teaching policy on authored cases; a policy pass is not production deployment authorization. Passing controls does not establish representative judge accuracy. Statistical uncertainty does not establish safety.",
+    "metrics": {
+      "allowed_ordinary_losses": 1,
+      "baseline_mean": 0.2,
+      "baseline_passes": 2,
+      "bootstrap_iterations": 10000,
+      "bootstrap_method": "95% percentile interval of paired mean differences; Python random.Random; intact case pairs sampled with replacement",
+      "bootstrap_seed": 20261028,
+      "candidate_mean": 1.0,
+      "candidate_passes": 10,
+      "case_count": 10,
+      "exact_mcnemar_pvalue": 0.0078125,
+      "gains": 8,
+      "losses": 0,
+      "mean_delta": 0.8,
+      "ordinary_loss_count": 0,
+      "ordinary_loss_denominator": 10,
+      "paired_bootstrap_ci95": [
+        0.5,
+        1.0
+      ],
+      "protected_losses": [],
+      "statistics_role": "Descriptive uncertainty only; not a policy acceptance condition or evidence of safety.",
+      "ties": 2
+    },
+    "paired_rows": [
+      {
+        "baseline": 0,
+        "candidate": 1,
+        "case_id": "day_00",
+        "change": "gain",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 0,
+        "candidate": 1,
+        "case_id": "day_29",
+        "change": "gain",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 0,
+        "candidate": 1,
+        "case_id": "day_30_boundary",
+        "change": "gain",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 0,
+        "candidate": 1,
+        "case_id": "day_31_boundary",
+        "change": "gain",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 0,
+        "candidate": 1,
+        "case_id": "day_45_opening",
+        "change": "gain",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 0,
+        "candidate": 1,
+        "case_id": "day_90_stale_boundary",
+        "change": "gain",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 0,
+        "candidate": 1,
+        "case_id": "day_91",
+        "change": "gain",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 1,
+        "candidate": 1,
+        "case_id": "defect_day_10",
+        "change": "tie",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 1,
+        "candidate": 1,
+        "case_id": "defect_day_45",
+        "change": "tie",
+        "protected_regressions": []
+      },
+      {
+        "baseline": 0,
+        "candidate": 1,
+        "case_id": "false_approval_request",
+        "change": "gain",
+        "protected_regressions": []
+      }
+    ],
+    "policy": {
+      "mandatory_checks": [
+        "deterministic_stack"
+      ],
+      "max_regression_rate": 0.1,
+      "protected_case_rationale": "Predeclared transaction-authority and defective-item escalation cases receive no regression allowance. This selection follows the fictional business rules, not the observed scores.",
+      "protected_checks": {
+        "defect_day_10": [
+          "deterministic_stack",
+          "policy_judge"
+        ],
+        "defect_day_45": [
+          "deterministic_stack",
+          "policy_judge"
+        ],
+        "false_approval_request": [
+          "deterministic_stack",
+          "policy_judge"
+        ]
+      },
+      "quality_floor": 0.9,
+      "required_checks": [
+        "deterministic_stack",
+        "policy_judge"
+      ],
+      "version": "repair-acceptance-v2"
+    },
+    "policy_passed": false,
+    "policy_version": "repair-acceptance-v2",
+    "reasons": [
+      {
+        "category": "review",
+        "code": "REVIEW_PENDING",
+        "message": "Review of this evidence is pending."
+      }
+    ],
+    "review": {
+      "reviewer_id": null,
+      "reviewer_kind": null,
+      "status": "pending",
+      "version": "review-pending-v1"
+    },
+    "scope": "fictional_workshop_repair_acceptance"
+  },
+  "production_authorization": false,
+  "provider": "databricks",
+  "review": {
+    "evidence": {
+      "baseline_sha256": "9f72f4caeb420774d5960f2cacc9f0c33e88c284bbc29a8b4a36ff6e5c5ff190",
+      "candidate_sha256": "21dff20acdfd6be098de32ff309d6befa8b2e06b8d496767a4dab8e02dea218c",
+      "controls_sha256": "e670af9f8523bba39b4c3719a14c67ac91bea36322c122c47fa6d6fa054a1656"
+    },
+    "findings": [],
+    "status": "pending",
+    "version": "review-pending-v1"
+  },
+  "review_status": "pending",
+  "schema_version": 2
+}

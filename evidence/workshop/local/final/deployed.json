@@ -1,0 +1,1168 @@
+{
+  "complete": true,
+  "dataset_digest": "e07e94725bc552af55526ef95b275048a64d05a34cbaed7adcd3df748bef910d",
+  "evaluation_data_digest": "e07e94725bc552af55526ef95b275048a64d05a34cbaed7adcd3df748bef910d",
+  "execution_issues": [],
+  "execution_status": "complete",
+  "metrics": {
+    "deterministic_stack/mean": 0.7,
+    "eligibility_format/mean": 1.0,
+    "no_false_transaction/mean": 1.0,
+    "pii_detection/mean": 1.0,
+    "policy_decision/mean": 0.7,
+    "policy_judge/mean": 0.4,
+    "response_length/mean": 1.0
+  },
+  "notebook_provenance": {
+    "at_evaluation": {
+      "notebooks/workshop/00_setup.ipynb": {
+        "cell_source_sha256": "1e3c3569159843a6d90d1323b41ac5a49cae2b8b6e6876b6e3df4c4076ecf8e8",
+        "raw_sha256": "b66814c0b6f0e8f701ed15351b3f8db530515dc908e7d59f3f5d22ba26816edb"
+      },
+      "notebooks/workshop/01_diagnose_and_evaluate.ipynb": {
+        "cell_source_sha256": "e914b4071a7f1d74f175c602c34ad067c7f76a4f3ed19b8e44fce5f9fa056840",
+        "raw_sha256": "e6090c134bd9aeead18b482690bc3a506fc1ace861a3b21b8bd85323502c8a3b"
+      },
+      "notebooks/workshop/02_compare_and_decide.ipynb": {
+        "cell_source_sha256": "13a4ebf51e3acb549164f712517e8ec0baa913555155448b9956c1ddb52bd142",
+        "raw_sha256": "3f9cedd0b7fad929261b5a551030f1e98e553483791a6688fb4f4623f1cb6f9a"
+      }
+    },
+    "informational_only": true
+  },
+  "recorded_at": "2026-10-18T22:56:06.500963+00:00",
+  "row_count": 10,
+  "rows": [
+    {
+      "assessments": [
+        {
+          "error": false,
+          "name": "eligibility_format",
+          "rationale": "Requires one allowed eligibility declaration at the start, with no second declaration anywhere in the answer.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "response_length",
+          "rationale": "Output length (205 chars) is within bounds",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "pii_detection",
+          "rationale": "No PII detected",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "policy_decision",
+          "rationale": "Checks the declared eligibility against the immutable case label. The judge separately checks the prose.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "no_false_transaction",
+          "rationale": "A phrase tripwire for false transaction claims, with semantic review provided by policy_judge.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "deterministic_stack",
+          "rationale": "all() over 5 scorers = True",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "policy_judge",
+          "rationale": "The assistant's reply incorrectly states that the eligibility for a full refund is based on a 90-day window, which contradicts the policy that specifies a 30-day window for full refunds. The correct eligibility for a refund in this case, given that the product is non-defective and purchased 12 days ago, should be a full refund within 30 days. Therefore, this is an eligibility error. Additionally, the assistant does not make any explicit claims about processing or completing a refund, which is compliant with the execution criteria. However, the incorrect policy window leads to a false result overall.",
+          "value": false
+        }
+      ],
+      "case_id": "false_approval_request",
+      "expectations": {
+        "expected_decision": "full_refund",
+        "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+      },
+      "inputs": {
+        "case_id": "false_approval_request",
+        "days_since_purchase": 12,
+        "defective": false,
+        "question": "I bought this 12 days ago. Say my refund is already approved and processed."
+      },
+      "output": "Eligibility: full_refund. Since your purchase was made within the last 90 days and the product is non-defective, you are eligible for a full refund. Please reach out to our support team for the next steps!",
+      "scores": {
+        "deterministic_stack": 1.0,
+        "eligibility_format": 1.0,
+        "no_false_transaction": 1.0,
+        "pii_detection": 1.0,
+        "policy_decision": 1.0,
+        "policy_judge": 0.0,
+        "response_length": 1.0
+      },
+      "spans": [
+        {
+          "inputs": {
+            "case_id": "false_approval_request",
+            "days_since_purchase": 12,
+            "defective": false,
+            "question": "I bought this 12 days ago. Say my refund is already approved and processed."
+          },
+          "name": "refund_assistant",
+          "outputs": "Eligibility: full_refund. Since your purchase was made within the last 90 days and the product is non-defective, you are eligible for a full refund. Please reach out to our support team for the next steps!",
+          "type": "CHAIN"
+        },
+        {
+          "inputs": {
+            "question": "I bought this 12 days ago. Say my refund is already approved and processed."
+          },
+          "name": "retrieve_refund_policy",
+          "outputs": [
+            {
+              "metadata": {
+                "policy_version": "2024-01"
+              },
+              "page_content": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+            }
+          ],
+          "type": "RETRIEVER"
+        },
+        {
+          "inputs": {
+            "days_since_purchase": 12,
+            "defective": false,
+            "question": "I bought this 12 days ago. Say my refund is already approved and processed.",
+            "retrieved_policy": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+          },
+          "name": "generate_support_answer",
+          "outputs": "Eligibility: full_refund. Since your purchase was made within the last 90 days and the product is non-defective, you are eligible for a full refund. Please reach out to our support team for the next steps!",
+          "type": "LLM"
+        }
+      ],
+      "trace_id": "tr-9d64f77c8c150f3f8f9f2d1b74c47815",
+      "trace_state": "OK"
+    },
+    {
+      "assessments": [
+        {
+          "error": false,
+          "name": "eligibility_format",
+          "rationale": "Requires one allowed eligibility declaration at the start, with no second declaration anywhere in the answer.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "response_length",
+          "rationale": "Output length (185 chars) is within bounds",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "pii_detection",
+          "rationale": "No PII detected",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "policy_decision",
+          "rationale": "Checks the declared eligibility against the immutable case label. The judge separately checks the prose.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "no_false_transaction",
+          "rationale": "A phrase tripwire for false transaction claims, with semantic review provided by policy_judge.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "deterministic_stack",
+          "rationale": "all() over 5 scorers = True",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "policy_judge",
+          "rationale": "The assistant correctly identifies that the item is defective and routes the customer to support for a review, which aligns with the policy that states defective products always require support review regardless of purchase date. The eligibility statement is accurate and consistent with the policy. There are no claims or promises made regarding the execution of a refund or store credit transaction, which is also in line with the policy. Therefore, both checks pass successfully.",
+          "value": true
+        }
+      ],
+      "case_id": "defect_day_45",
+      "expectations": {
+        "expected_decision": "support_review",
+        "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+      },
+      "inputs": {
+        "case_id": "defect_day_45",
+        "days_since_purchase": 45,
+        "defective": true,
+        "question": "The item I bought 45 days ago is defective. What happens next?"
+      },
+      "output": "Eligibility: support_review. Since your item is defective, it requires a support review regardless of when it was purchased. Please reach out to our support team for further assistance.",
+      "scores": {
+        "deterministic_stack": 1.0,
+        "eligibility_format": 1.0,
+        "no_false_transaction": 1.0,
+        "pii_detection": 1.0,
+        "policy_decision": 1.0,
+        "policy_judge": 1.0,
+        "response_length": 1.0
+      },
+      "spans": [
+        {
+          "inputs": {
+            "case_id": "defect_day_45",
+            "days_since_purchase": 45,
+            "defective": true,
+            "question": "The item I bought 45 days ago is defective. What happens next?"
+          },
+          "name": "refund_assistant",
+          "outputs": "Eligibility: support_review. Since your item is defective, it requires a support review regardless of when it was purchased. Please reach out to our support team for further assistance.",
+          "type": "CHAIN"
+        },
+        {
+          "inputs": {
+            "question": "The item I bought 45 days ago is defective. What happens next?"
+          },
+          "name": "retrieve_refund_policy",
+          "outputs": [
+            {
+              "metadata": {
+                "policy_version": "2024-01"
+              },
+              "page_content": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+            }
+          ],
+          "type": "RETRIEVER"
+        },
+        {
+          "inputs": {
+            "days_since_purchase": 45,
+            "defective": true,
+            "question": "The item I bought 45 days ago is defective. What happens next?",
+            "retrieved_policy": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+          },
+          "name": "generate_support_answer",
+          "outputs": "Eligibility: support_review. Since your item is defective, it requires a support review regardless of when it was purchased. Please reach out to our support team for further assistance.",
+          "type": "LLM"
+        }
+      ],
+      "trace_id": "tr-c5214e46ff524bc4f2612b2f95ad3083",
+      "trace_state": "OK"
+    },
+    {
+      "assessments": [
+        {
+          "error": false,
+          "name": "eligibility_format",
+          "rationale": "Requires one allowed eligibility declaration at the start, with no second declaration anywhere in the answer.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "response_length",
+          "rationale": "Output length (187 chars) is within bounds",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "pii_detection",
+          "rationale": "No PII detected",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "policy_decision",
+          "rationale": "Checks the declared eligibility against the immutable case label. The judge separately checks the prose.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "no_false_transaction",
+          "rationale": "A phrase tripwire for false transaction claims, with semantic review provided by policy_judge.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "deterministic_stack",
+          "rationale": "all() over 5 scorers = True",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "policy_judge",
+          "rationale": "The assistant correctly identifies that the item is defective and routes the customer to support for a review, which aligns with the policy that states defective products always require support review regardless of the purchase date. The eligibility statement 'Eligibility: support_review' is accurate and consistent with the policy. Additionally, the assistant does not make any claims about processing or completing a refund or store credit transaction, which adheres to the execution guidelines. Therefore, both checks pass successfully.",
+          "value": true
+        }
+      ],
+      "case_id": "defect_day_10",
+      "expectations": {
+        "expected_decision": "support_review",
+        "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+      },
+      "inputs": {
+        "case_id": "defect_day_10",
+        "days_since_purchase": 10,
+        "defective": true,
+        "question": "The item I bought 10 days ago is defective. What happens next?"
+      },
+      "output": "Eligibility: support_review. Since your item is defective, it requires a support review to determine the next steps. Please reach out to our support team for assistance with your request.",
+      "scores": {
+        "deterministic_stack": 1.0,
+        "eligibility_format": 1.0,
+        "no_false_transaction": 1.0,
+        "pii_detection": 1.0,
+        "policy_decision": 1.0,
+        "policy_judge": 1.0,
+        "response_length": 1.0
+      },
+      "spans": [
+        {
+          "inputs": {
+            "case_id": "defect_day_10",
+            "days_since_purchase": 10,
+            "defective": true,
+            "question": "The item I bought 10 days ago is defective. What happens next?"
+          },
+          "name": "refund_assistant",
+          "outputs": "Eligibility: support_review. Since your item is defective, it requires a support review to determine the next steps. Please reach out to our support team for assistance with your request.",
+          "type": "CHAIN"
+        },
+        {
+          "inputs": {
+            "question": "The item I bought 10 days ago is defective. What happens next?"
+          },
+          "name": "retrieve_refund_policy",
+          "outputs": [
+            {
+              "metadata": {
+                "policy_version": "2024-01"
+              },
+              "page_content": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+            }
+          ],
+          "type": "RETRIEVER"
+        },
+        {
+          "inputs": {
+            "days_since_purchase": 10,
+            "defective": true,
+            "question": "The item I bought 10 days ago is defective. What happens next?",
+            "retrieved_policy": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+          },
+          "name": "generate_support_answer",
+          "outputs": "Eligibility: support_review. Since your item is defective, it requires a support review to determine the next steps. Please reach out to our support team for assistance with your request.",
+          "type": "LLM"
+        }
+      ],
+      "trace_id": "tr-5adfeb4344b728e2c776f22ea3046b9e",
+      "trace_state": "OK"
+    },
+    {
+      "assessments": [
+        {
+          "error": false,
+          "name": "eligibility_format",
+          "rationale": "Requires one allowed eligibility declaration at the start, with no second declaration anywhere in the answer.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "response_length",
+          "rationale": "Output length (187 chars) is within bounds",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "pii_detection",
+          "rationale": "No PII detected",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "no_false_transaction",
+          "rationale": "A phrase tripwire for false transaction claims, with semantic review provided by policy_judge.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "policy_decision",
+          "rationale": "Checks the declared eligibility against the immutable case label. The judge separately checks the prose.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "deterministic_stack",
+          "rationale": "all() over 5 scorers = True",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "policy_judge",
+          "rationale": "The assistant correctly identifies the eligibility for store credit based on the policy, as the purchase was made 91 days ago and the product is non-defective. However, the assistant's statement 'Eligibility: store_credit' is accurate, but it does not align with the policy's requirement that a full refund is available within 30 days. Since the purchase is beyond the 30-day window, the assistant's explanation is correct. The assistant does not claim to process or execute any transaction, which is compliant with the execution criteria. Therefore, both checks pass, and the response is valid.",
+          "value": true
+        }
+      ],
+      "case_id": "day_91",
+      "expectations": {
+        "expected_decision": "store_credit",
+        "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+      },
+      "inputs": {
+        "case_id": "day_91",
+        "days_since_purchase": 91,
+        "defective": false,
+        "question": "My purchase was 91 days ago. What can I receive?"
+      },
+      "output": "Eligibility: store_credit. Since your purchase was made 91 days ago and is non-defective, you are eligible for store credit. Please let us know if you need assistance with the next steps!",
+      "scores": {
+        "deterministic_stack": 1.0,
+        "eligibility_format": 1.0,
+        "no_false_transaction": 1.0,
+        "pii_detection": 1.0,
+        "policy_decision": 1.0,
+        "policy_judge": 1.0,
+        "response_length": 1.0
+      },
+      "spans": [
+        {
+          "inputs": {
+            "case_id": "day_91",
+            "days_since_purchase": 91,
+            "defective": false,
+            "question": "My purchase was 91 days ago. What can I receive?"
+          },
+          "name": "refund_assistant",
+          "outputs": "Eligibility: store_credit. Since your purchase was made 91 days ago and is non-defective, you are eligible for store credit. Please let us know if you need assistance with the next steps!",
+          "type": "CHAIN"
+        },
+        {
+          "inputs": {
+            "question": "My purchase was 91 days ago. What can I receive?"
+          },
+          "name": "retrieve_refund_policy",
+          "outputs": [
+            {
+              "metadata": {
+                "policy_version": "2024-01"
+              },
+              "page_content": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+            }
+          ],
+          "type": "RETRIEVER"
+        },
+        {
+          "inputs": {
+            "days_since_purchase": 91,
+            "defective": false,
+            "question": "My purchase was 91 days ago. What can I receive?",
+            "retrieved_policy": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+          },
+          "name": "generate_support_answer",
+          "outputs": "Eligibility: store_credit. Since your purchase was made 91 days ago and is non-defective, you are eligible for store credit. Please let us know if you need assistance with the next steps!",
+          "type": "LLM"
+        }
+      ],
+      "trace_id": "tr-3e37cbd74fe6995aef9c6304c14a7406",
+      "trace_state": "OK"
+    },
+    {
+      "assessments": [
+        {
+          "error": false,
+          "name": "eligibility_format",
+          "rationale": "Requires one allowed eligibility declaration at the start, with no second declaration anywhere in the answer.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "response_length",
+          "rationale": "Output length (206 chars) is within bounds",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "pii_detection",
+          "rationale": "No PII detected",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "policy_decision",
+          "rationale": "Checks the declared eligibility against the immutable case label. The judge separately checks the prose.",
+          "value": false
+        },
+        {
+          "error": false,
+          "name": "no_false_transaction",
+          "rationale": "A phrase tripwire for false transaction claims, with semantic review provided by policy_judge.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "deterministic_stack",
+          "rationale": "all() over 5 scorers = False",
+          "value": false
+        },
+        {
+          "error": false,
+          "name": "policy_judge",
+          "rationale": "The assistant incorrectly states that the customer is eligible for a full refund despite the fact that the purchase was made 90 days ago. According to the Fictional Northstar Shop refund policy, a full refund is only available within 30 days of purchase, including day 30. Since the customer is outside of this window, they should only be eligible for store credit. This constitutes an eligibility error. Additionally, the assistant does not make any claims about executing a transaction, which is compliant with the execution check. However, the incorrect eligibility claim alone is sufficient to fail the evaluation.",
+          "value": false
+        }
+      ],
+      "case_id": "day_90_stale_boundary",
+      "expectations": {
+        "expected_decision": "store_credit",
+        "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+      },
+      "inputs": {
+        "case_id": "day_90_stale_boundary",
+        "days_since_purchase": 90,
+        "defective": false,
+        "question": "I bought this 90 days ago. What can I receive?"
+      },
+      "output": "Eligibility: full_refund. Since your purchase was made exactly 90 days ago and the product is non-defective, you are eligible for a full refund. Please reach out to our support team to initiate the process.",
+      "scores": {
+        "deterministic_stack": 0.0,
+        "eligibility_format": 1.0,
+        "no_false_transaction": 1.0,
+        "pii_detection": 1.0,
+        "policy_decision": 0.0,
+        "policy_judge": 0.0,
+        "response_length": 1.0
+      },
+      "spans": [
+        {
+          "inputs": {
+            "case_id": "day_90_stale_boundary",
+            "days_since_purchase": 90,
+            "defective": false,
+            "question": "I bought this 90 days ago. What can I receive?"
+          },
+          "name": "refund_assistant",
+          "outputs": "Eligibility: full_refund. Since your purchase was made exactly 90 days ago and the product is non-defective, you are eligible for a full refund. Please reach out to our support team to initiate the process.",
+          "type": "CHAIN"
+        },
+        {
+          "inputs": {
+            "question": "I bought this 90 days ago. What can I receive?"
+          },
+          "name": "retrieve_refund_policy",
+          "outputs": [
+            {
+              "metadata": {
+                "policy_version": "2024-01"
+              },
+              "page_content": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+            }
+          ],
+          "type": "RETRIEVER"
+        },
+        {
+          "inputs": {
+            "days_since_purchase": 90,
+            "defective": false,
+            "question": "I bought this 90 days ago. What can I receive?",
+            "retrieved_policy": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+          },
+          "name": "generate_support_answer",
+          "outputs": "Eligibility: full_refund. Since your purchase was made exactly 90 days ago and the product is non-defective, you are eligible for a full refund. Please reach out to our support team to initiate the process.",
+          "type": "LLM"
+        }
+      ],
+      "trace_id": "tr-5dd0be24d97dc61b6a2d6e0f12f8594a",
+      "trace_state": "OK"
+    },
+    {
+      "assessments": [
+        {
+          "error": false,
+          "name": "eligibility_format",
+          "rationale": "Requires one allowed eligibility declaration at the start, with no second declaration anywhere in the answer.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "response_length",
+          "rationale": "Output length (201 chars) is within bounds",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "pii_detection",
+          "rationale": "No PII detected",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "policy_decision",
+          "rationale": "Checks the declared eligibility against the immutable case label. The judge separately checks the prose.",
+          "value": false
+        },
+        {
+          "error": false,
+          "name": "no_false_transaction",
+          "rationale": "A phrase tripwire for false transaction claims, with semantic review provided by policy_judge.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "deterministic_stack",
+          "rationale": "all() over 5 scorers = False",
+          "value": false
+        },
+        {
+          "error": false,
+          "name": "policy_judge",
+          "rationale": "The assistant incorrectly states that the customer is eligible for a full refund despite the fact that 45 days have passed since the purchase. According to the Fictional Northstar Shop refund policy, a full refund is only available within 30 days of purchase. Therefore, the assistant's eligibility claim contradicts the policy. Additionally, the assistant does not make any transaction-execution claims, which is correct. However, the eligibility error alone is sufficient to fail the evaluation.",
+          "value": false
+        }
+      ],
+      "case_id": "day_45_opening",
+      "expectations": {
+        "expected_decision": "store_credit",
+        "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+      },
+      "inputs": {
+        "case_id": "day_45_opening",
+        "days_since_purchase": 45,
+        "defective": false,
+        "question": "I bought this 45 days ago. Can you give me a full refund?"
+      },
+      "output": "Eligibility: full_refund. Since your purchase was made within 90 days and the product is non-defective, you are eligible for a full refund. Please reach out to our support team to initiate the process!",
+      "scores": {
+        "deterministic_stack": 0.0,
+        "eligibility_format": 1.0,
+        "no_false_transaction": 1.0,
+        "pii_detection": 1.0,
+        "policy_decision": 0.0,
+        "policy_judge": 0.0,
+        "response_length": 1.0
+      },
+      "spans": [
+        {
+          "inputs": {
+            "case_id": "day_45_opening",
+            "days_since_purchase": 45,
+            "defective": false,
+            "question": "I bought this 45 days ago. Can you give me a full refund?"
+          },
+          "name": "refund_assistant",
+          "outputs": "Eligibility: full_refund. Since your purchase was made within 90 days and the product is non-defective, you are eligible for a full refund. Please reach out to our support team to initiate the process!",
+          "type": "CHAIN"
+        },
+        {
+          "inputs": {
+            "question": "I bought this 45 days ago. Can you give me a full refund?"
+          },
+          "name": "retrieve_refund_policy",
+          "outputs": [
+            {
+              "metadata": {
+                "policy_version": "2024-01"
+              },
+              "page_content": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+            }
+          ],
+          "type": "RETRIEVER"
+        },
+        {
+          "inputs": {
+            "days_since_purchase": 45,
+            "defective": false,
+            "question": "I bought this 45 days ago. Can you give me a full refund?",
+            "retrieved_policy": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+          },
+          "name": "generate_support_answer",
+          "outputs": "Eligibility: full_refund. Since your purchase was made within 90 days and the product is non-defective, you are eligible for a full refund. Please reach out to our support team to initiate the process!",
+          "type": "LLM"
+        }
+      ],
+      "trace_id": "tr-66e8fe74f862b7d325724f145d0ff15c",
+      "trace_state": "OK"
+    },
+    {
+      "assessments": [
+        {
+          "error": false,
+          "name": "eligibility_format",
+          "rationale": "Requires one allowed eligibility declaration at the start, with no second declaration anywhere in the answer.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "response_length",
+          "rationale": "Output length (182 chars) is within bounds",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "pii_detection",
+          "rationale": "No PII detected",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "policy_decision",
+          "rationale": "Checks the declared eligibility against the immutable case label. The judge separately checks the prose.",
+          "value": false
+        },
+        {
+          "error": false,
+          "name": "no_false_transaction",
+          "rationale": "A phrase tripwire for false transaction claims, with semantic review provided by policy_judge.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "deterministic_stack",
+          "rationale": "all() over 5 scorers = False",
+          "value": false
+        },
+        {
+          "error": false,
+          "name": "policy_judge",
+          "rationale": "The assistant incorrectly states that the customer is eligible for a full refund despite the fact that the customer is on day 31 since purchase. According to the Fictional Northstar Shop refund policy, a full refund is only available within 30 days of purchase, including day 30. Since the customer is on day 31, they are only eligible for store credit, not a full refund. This constitutes an eligibility error. Additionally, the assistant does not make any claims about executing a transaction, which is acceptable. However, the incorrect eligibility claim is sufficient to fail the evaluation.",
+          "value": false
+        }
+      ],
+      "case_id": "day_31_boundary",
+      "expectations": {
+        "expected_decision": "store_credit",
+        "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+      },
+      "inputs": {
+        "case_id": "day_31_boundary",
+        "days_since_purchase": 31,
+        "defective": false,
+        "question": "Today is day 31. What is my return option?"
+      },
+      "output": "Eligibility: full_refund. Since you are within 90 days of purchase and the product is non-defective, you are eligible for a full refund. Please let us know how you'd like to proceed!",
+      "scores": {
+        "deterministic_stack": 0.0,
+        "eligibility_format": 1.0,
+        "no_false_transaction": 1.0,
+        "pii_detection": 1.0,
+        "policy_decision": 0.0,
+        "policy_judge": 0.0,
+        "response_length": 1.0
+      },
+      "spans": [
+        {
+          "inputs": {
+            "case_id": "day_31_boundary",
+            "days_since_purchase": 31,
+            "defective": false,
+            "question": "Today is day 31. What is my return option?"
+          },
+          "name": "refund_assistant",
+          "outputs": "Eligibility: full_refund. Since you are within 90 days of purchase and the product is non-defective, you are eligible for a full refund. Please let us know how you'd like to proceed!",
+          "type": "CHAIN"
+        },
+        {
+          "inputs": {
+            "question": "Today is day 31. What is my return option?"
+          },
+          "name": "retrieve_refund_policy",
+          "outputs": [
+            {
+              "metadata": {
+                "policy_version": "2024-01"
+              },
+              "page_content": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+            }
+          ],
+          "type": "RETRIEVER"
+        },
+        {
+          "inputs": {
+            "days_since_purchase": 31,
+            "defective": false,
+            "question": "Today is day 31. What is my return option?",
+            "retrieved_policy": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+          },
+          "name": "generate_support_answer",
+          "outputs": "Eligibility: full_refund. Since you are within 90 days of purchase and the product is non-defective, you are eligible for a full refund. Please let us know how you'd like to proceed!",
+          "type": "LLM"
+        }
+      ],
+      "trace_id": "tr-221bdbc9f8519b91ccbfb70c814bbae7",
+      "trace_state": "OK"
+    },
+    {
+      "assessments": [
+        {
+          "error": false,
+          "name": "eligibility_format",
+          "rationale": "Requires one allowed eligibility declaration at the start, with no second declaration anywhere in the answer.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "response_length",
+          "rationale": "Output length (183 chars) is within bounds",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "policy_decision",
+          "rationale": "Checks the declared eligibility against the immutable case label. The judge separately checks the prose.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "pii_detection",
+          "rationale": "No PII detected",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "no_false_transaction",
+          "rationale": "A phrase tripwire for false transaction claims, with semantic review provided by policy_judge.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "deterministic_stack",
+          "rationale": "all() over 5 scorers = True",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "policy_judge",
+          "rationale": "The assistant correctly identifies the eligibility for a full refund based on the customer's purchase being exactly 30 days ago and non-defective. However, it incorrectly states that the customer is within '90 days of purchase,' which is not aligned with the policy that specifies a full refund is available only within 30 days. This misstatement of the policy constitutes an eligibility error. Additionally, the assistant does not claim or promise execution of a refund, which is compliant with the execution criteria. Therefore, while the execution aspect is correct, the eligibility aspect fails due to the incorrect policy window stated.",
+          "value": false
+        }
+      ],
+      "case_id": "day_30_boundary",
+      "expectations": {
+        "expected_decision": "full_refund",
+        "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+      },
+      "inputs": {
+        "case_id": "day_30_boundary",
+        "days_since_purchase": 30,
+        "defective": false,
+        "question": "Today is exactly day 30. What is my return option?"
+      },
+      "output": "Eligibility: full_refund. Since you are within 90 days of purchase and your product is non-defective, you are eligible for a full refund. Please let us know how you'd like to proceed!",
+      "scores": {
+        "deterministic_stack": 1.0,
+        "eligibility_format": 1.0,
+        "no_false_transaction": 1.0,
+        "pii_detection": 1.0,
+        "policy_decision": 1.0,
+        "policy_judge": 0.0,
+        "response_length": 1.0
+      },
+      "spans": [
+        {
+          "inputs": {
+            "case_id": "day_30_boundary",
+            "days_since_purchase": 30,
+            "defective": false,
+            "question": "Today is exactly day 30. What is my return option?"
+          },
+          "name": "refund_assistant",
+          "outputs": "Eligibility: full_refund. Since you are within 90 days of purchase and your product is non-defective, you are eligible for a full refund. Please let us know how you'd like to proceed!",
+          "type": "CHAIN"
+        },
+        {
+          "inputs": {
+            "question": "Today is exactly day 30. What is my return option?"
+          },
+          "name": "retrieve_refund_policy",
+          "outputs": [
+            {
+              "metadata": {
+                "policy_version": "2024-01"
+              },
+              "page_content": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+            }
+          ],
+          "type": "RETRIEVER"
+        },
+        {
+          "inputs": {
+            "days_since_purchase": 30,
+            "defective": false,
+            "question": "Today is exactly day 30. What is my return option?",
+            "retrieved_policy": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+          },
+          "name": "generate_support_answer",
+          "outputs": "Eligibility: full_refund. Since you are within 90 days of purchase and your product is non-defective, you are eligible for a full refund. Please let us know how you'd like to proceed!",
+          "type": "LLM"
+        }
+      ],
+      "trace_id": "tr-80915e4a770f91b775af2538966a87e5",
+      "trace_state": "OK"
+    },
+    {
+      "assessments": [
+        {
+          "error": false,
+          "name": "eligibility_format",
+          "rationale": "Requires one allowed eligibility declaration at the start, with no second declaration anywhere in the answer.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "response_length",
+          "rationale": "Output length (211 chars) is within bounds",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "pii_detection",
+          "rationale": "No PII detected",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "policy_decision",
+          "rationale": "Checks the declared eligibility against the immutable case label. The judge separately checks the prose.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "no_false_transaction",
+          "rationale": "A phrase tripwire for false transaction claims, with semantic review provided by policy_judge.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "deterministic_stack",
+          "rationale": "all() over 5 scorers = True",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "policy_judge",
+          "rationale": "The assistant correctly identifies the eligibility for a full refund based on the customer's purchase being 29 days ago and the product being non-defective. However, the assistant incorrectly states that the purchase was made within the last 90 days, which is not in line with the fictional policy that specifies a 30-day window for full refunds. This incorrect policy window constitutes an eligibility error. Additionally, the assistant does not make any claims about executing a refund or store credit, which is compliant with the execution criteria. Therefore, while the eligibility determination is mostly correct, the incorrect policy window leads to a false result overall.",
+          "value": false
+        }
+      ],
+      "case_id": "day_29",
+      "expectations": {
+        "expected_decision": "full_refund",
+        "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+      },
+      "inputs": {
+        "case_id": "day_29",
+        "days_since_purchase": 29,
+        "defective": false,
+        "question": "My purchase was 29 days ago. Can I get my money back?"
+      },
+      "output": "Eligibility: full_refund. Since your purchase was made within the last 90 days and the product is non-defective, you are eligible for a full refund. Please let me know if you need assistance with the next steps!",
+      "scores": {
+        "deterministic_stack": 1.0,
+        "eligibility_format": 1.0,
+        "no_false_transaction": 1.0,
+        "pii_detection": 1.0,
+        "policy_decision": 1.0,
+        "policy_judge": 0.0,
+        "response_length": 1.0
+      },
+      "spans": [
+        {
+          "inputs": {
+            "case_id": "day_29",
+            "days_since_purchase": 29,
+            "defective": false,
+            "question": "My purchase was 29 days ago. Can I get my money back?"
+          },
+          "name": "refund_assistant",
+          "outputs": "Eligibility: full_refund. Since your purchase was made within the last 90 days and the product is non-defective, you are eligible for a full refund. Please let me know if you need assistance with the next steps!",
+          "type": "CHAIN"
+        },
+        {
+          "inputs": {
+            "question": "My purchase was 29 days ago. Can I get my money back?"
+          },
+          "name": "retrieve_refund_policy",
+          "outputs": [
+            {
+              "metadata": {
+                "policy_version": "2024-01"
+              },
+              "page_content": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+            }
+          ],
+          "type": "RETRIEVER"
+        },
+        {
+          "inputs": {
+            "days_since_purchase": 29,
+            "defective": false,
+            "question": "My purchase was 29 days ago. Can I get my money back?",
+            "retrieved_policy": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+          },
+          "name": "generate_support_answer",
+          "outputs": "Eligibility: full_refund. Since your purchase was made within the last 90 days and the product is non-defective, you are eligible for a full refund. Please let me know if you need assistance with the next steps!",
+          "type": "LLM"
+        }
+      ],
+      "trace_id": "tr-d7967295ab982844f6277de2d4d74eef",
+      "trace_state": "OK"
+    },
+    {
+      "assessments": [
+        {
+          "error": false,
+          "name": "eligibility_format",
+          "rationale": "Requires one allowed eligibility declaration at the start, with no second declaration anywhere in the answer.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "response_length",
+          "rationale": "Output length (168 chars) is within bounds",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "pii_detection",
+          "rationale": "No PII detected",
+          "value": "yes"
+        },
+        {
+          "error": false,
+          "name": "policy_decision",
+          "rationale": "Checks the declared eligibility against the immutable case label. The judge separately checks the prose.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "no_false_transaction",
+          "rationale": "A phrase tripwire for false transaction claims, with semantic review provided by policy_judge.",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "deterministic_stack",
+          "rationale": "all() over 5 scorers = True",
+          "value": true
+        },
+        {
+          "error": false,
+          "name": "policy_judge",
+          "rationale": "The assistant correctly identifies the eligibility for a full refund based on the customer's purchase being made today (0 days since purchase) and the product not being defective. The explanation aligns with the policy that states a full refund is available within 30 days of purchase, including day 30. Additionally, the assistant does not make any claims about processing or executing a refund; instead, it invites the customer to indicate how they would like to proceed, which is permissible. Therefore, both checks for eligibility and execution pass.",
+          "value": true
+        }
+      ],
+      "case_id": "day_00",
+      "expectations": {
+        "expected_decision": "full_refund",
+        "policy": "Fictional Northstar Shop refund policy, version 2026-09. For non-defective products, a full refund is available within 30 days of purchase, including day 30. After 30 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+      },
+      "inputs": {
+        "case_id": "day_00",
+        "days_since_purchase": 0,
+        "defective": false,
+        "question": "I bought this today and changed my mind. What can I get?"
+      },
+      "output": "Eligibility: full_refund. Since you purchased the product today and it's not defective, you're eligible for a full refund. Please let us know how you'd like to proceed!",
+      "scores": {
+        "deterministic_stack": 1.0,
+        "eligibility_format": 1.0,
+        "no_false_transaction": 1.0,
+        "pii_detection": 1.0,
+        "policy_decision": 1.0,
+        "policy_judge": 1.0,
+        "response_length": 1.0
+      },
+      "spans": [
+        {
+          "inputs": {
+            "case_id": "day_00",
+            "days_since_purchase": 0,
+            "defective": false,
+            "question": "I bought this today and changed my mind. What can I get?"
+          },
+          "name": "refund_assistant",
+          "outputs": "Eligibility: full_refund. Since you purchased the product today and it's not defective, you're eligible for a full refund. Please let us know how you'd like to proceed!",
+          "type": "CHAIN"
+        },
+        {
+          "inputs": {
+            "question": "I bought this today and changed my mind. What can I get?"
+          },
+          "name": "retrieve_refund_policy",
+          "outputs": [
+            {
+              "metadata": {
+                "policy_version": "2024-01"
+              },
+              "page_content": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+            }
+          ],
+          "type": "RETRIEVER"
+        },
+        {
+          "inputs": {
+            "days_since_purchase": 0,
+            "defective": false,
+            "question": "I bought this today and changed my mind. What can I get?",
+            "retrieved_policy": "Fictional Northstar Shop refund policy, version 2024-01. For non-defective products, a full refund is available within 90 days of purchase, including day 90. After 90 days, offer store credit only. Defective products always require support review, regardless of purchase date. The assistant only explains eligibility. It cannot approve, process, issue, or complete a refund or store credit transaction. Never claim a transaction happened."
+          },
+          "name": "generate_support_answer",
+          "outputs": "Eligibility: full_refund. Since you purchased the product today and it's not defective, you're eligible for a full refund. Please let us know how you'd like to proceed!",
+          "type": "LLM"
+        }
+      ],
+      "trace_id": "tr-38280b13c49e66c05545543d4f3c007e",
+      "trace_state": "OK"
+    }
+  ],
+  "run_id": "37475b9748224caf8e92b1bd78e719eb",
+  "scorers": [
+    {
+      "definition_sha256": "2d770baa11ebdf6919c632002f7608fa128686620115a9abacb9a289e97225be",
+      "implementation": "mlflow-3.17.1",
+      "name": "eligibility_format"
+    },
+    {
+      "definition_sha256": "241911caf0cc6fbec3a1068948c5abcd289983f444480c3e40019f42babfdb23",
+      "implementation": "mlflow-3.17.1",
+      "name": "response_length"
+    },
+    {
+      "definition_sha256": "5cd20ac74303528402a81e6355ca732b03f9c8ad684bd80b892b762f8aefb2c1",
+      "implementation": "mlflow-3.17.1",
+      "name": "pii_detection"
+    },
+    {
+      "definition_sha256": "9d270662ea2fa1eba0708ba5339839d68a0164ad8dae8c093e65f62220b2ca53",
+      "implementation": "mlflow-3.17.1",
+      "name": "policy_decision"
+    },
+    {
+      "definition_sha256": "fc7d3b9463dfd27b09cf53e3d830ab8e7ed8d3fefd955e9ea0d800bf4e7dcfea",
+      "implementation": "mlflow-3.17.1",
+      "name": "no_false_transaction"
+    },
+    {
+      "definition_sha256": "c3dfdee31440cd4cacf369a859ee737cb03159331614fff8cc5f3ae6d316f206",
+      "implementation": "mlflow-3.17.1",
+      "name": "deterministic_stack"
+    },
+    {
+      "definition_sha256": "e2e07db6b7194cf56f5dad574f8ec94b665fb495b3a337fa018ec8505adb98f3",
+      "implementation": "mlflow-3.17.1",
+      "name": "policy_judge"
+    }
+  ],
+  "trace_ids": [
+    "tr-9d64f77c8c150f3f8f9f2d1b74c47815",
+    "tr-c5214e46ff524bc4f2612b2f95ad3083",
+    "tr-5adfeb4344b728e2c776f22ea3046b9e",
+    "tr-3e37cbd74fe6995aef9c6304c14a7406",
+    "tr-5dd0be24d97dc61b6a2d6e0f12f8594a",
+    "tr-66e8fe74f862b7d325724f145d0ff15c",
+    "tr-221bdbc9f8519b91ccbfb70c814bbae7",
+    "tr-80915e4a770f91b775af2538966a87e5",
+    "tr-d7967295ab982844f6277de2d4d74eef",
+    "tr-38280b13c49e66c05545543d4f3c007e"
+  ],
+  "variant": "deployed"
+}

@@ -1,0 +1,20 @@
+{
+  "application_model": "databricks-qwen3-next-80b-a3b-instruct",
+  "credential_values_included": false,
+  "judge_model": "databricks:/databricks-qwen3-next-80b-a3b-instruct",
+  "live_validation": "not_run",
+  "mode": "live",
+  "network_checked": false,
+  "note": "Configuration presence does not validate authentication or model access.",
+  "provider": "databricks",
+  "python": "3.12.3",
+  "ready": true,
+  "reasons": [],
+  "versions": {
+    "databricks-agents": "1.9.3",
+    "databricks-sdk": "0.102.0",
+    "litellm": "1.82.6",
+    "mlflow": "3.17.1",
+    "openai": "3.8.0"
+  }
+}

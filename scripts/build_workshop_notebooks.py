@@ -37,8 +37,11 @@ MODE = os.environ.get("WORKSHOP_MODE", "saved")  # Explicit opt-in before any mo
 def write(name, cells):
     document = {"cells": cells, "metadata": {"kernelspec": {"display_name": "Python 3 (workshop)", "language": "python", "name": "python3"},
                                              "language_info": {"name": "python", "version": "3.12"}}, "nbformat": 4, "nbformat_minor": 5}
-    for number, cell in enumerate(document["cells"]):
-        cell["id"] = name[:2] + "-" + str(number).zfill(2)
+    number = 0
+    for cell in document["cells"]:
+        if "id" not in cell:
+            cell["id"] = name[:2] + "-" + str(number).zfill(2)
+            number += 1
     (DESTINATION / name).write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
@@ -265,6 +268,46 @@ write("02_compare_and_decide.ipynb", [
     code("""
     display(HTML(paired_table(report)))
     """),
+    dict(code("""
+    # Read-only evidence for the vote: no scoring, policy changes or network calls.
+    from html import escape
+
+    def review_text(value):
+        return escape(str(value)) if value is not None else "Not recorded"
+
+    recorded_review = report.get("review") or {}
+    review_parts = ["<section style='font-size:18px;line-height:1.45'><h3>Recorded review</h3>",
+                    "<p>Status: <strong>" + review_text(recorded_review.get("status")) + "</strong> · Reviewer: "
+                    + review_text(recorded_review.get("reviewer_kind")) + " / "
+                    + review_text(recorded_review.get("reviewer_id")) + "</p>"]
+    reviewed_versions = {"deployed": comparison["baseline"], "repair": comparison["candidate"]}
+    for finding in recorded_review.get("findings", []):
+        review_parts += ["<hr><p><strong>" + review_text(finding.get("id")) + ": "
+                         + review_text(finding.get("summary")) + "</strong></p>",
+                         "<p>Status: " + review_text(finding.get("status")) + " · Material: "
+                         + review_text(finding.get("material")) + "</p>"]
+        variant, case_id, check = (finding.get(key) for key in ("variant", "case_id", "check"))
+        version = reviewed_versions.get(variant, {}) if isinstance(variant, str) else {}
+        row = next((item for item in version.get("rows", []) if item.get("case_id") == case_id), None)
+        if row is not None:
+            review_parts += ["<p>Evidence: " + review_text(variant) + " / " + review_text(case_id) + "</p>",
+                             "<p><strong>Customer input</strong></p><pre style='white-space:pre-wrap'>"
+                             + review_text(json.dumps(row["inputs"], ensure_ascii=False, indent=2)) + "</pre>",
+                             "<p><strong>Assistant answer</strong></p><pre style='white-space:pre-wrap'>"
+                             + review_text(row["output"]) + "</pre>"]
+            assessments = [item for item in row.get("assessments", []) if item.get("name") == check]
+            for assessment in assessments:
+                review_parts += ["<p><strong>" + review_text(check) + " rationale</strong></p>"
+                                 + "<pre style='white-space:pre-wrap'>"
+                                 + review_text(assessment.get("rationale")) + "</pre>"]
+            if not assessments:
+                review_parts.append("<p>No recorded assessment matches the finding's named check.</p>")
+        elif variant is not None or case_id is not None:
+            review_parts.append("<p>The finding's referenced case is unavailable in these compared records.</p>")
+    if not recorded_review.get("findings"):
+        review_parts.append("<p>No findings recorded. Use the review status above to distinguish pending review from completed review.</p>")
+    display(HTML("".join(review_parts) + "</section>"))
+    """), id="02-review-evidence", metadata={"tags": ["review-display"], "jupyter": {"source_hidden": True}}),
     markdown("""
     ## Vote before revealing the decision
 
