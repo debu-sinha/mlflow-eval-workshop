@@ -123,7 +123,7 @@ print(inspect.getsource(_policy_judge))
 # MAGIC
 # MAGIC Read the request, the reply, the reference label, and the judge's explanation together. If the label is wrong, correct the label and record why. If the judge is wrong, improve the rubric and rerun the same examples. Keep the earlier results either way.
 # MAGIC
-# MAGIC There is a real case to practice on in [A judge rejection that deserves correction](https://github.com/debu-sinha/mlflow-eval-workshop#a-judge-rejection-that-deserves-correction). A recorded baseline answer told the customer to visit their account to claim store credit. The judge rejected it as a transaction, although its rubric permits customer next steps. Read the reply before you read the discussion. Eight passing controls did not prevent this mistake on a generated answer.
+# MAGIC There is a historical case to practice on in [A judge rejection that deserves correction](../../docs/legacy-seven-chapter-readme.md#a-judge-rejection-that-deserves-correction). A recorded baseline answer told the customer to visit their account to claim store credit. The judge rejected it as a transaction, although its rubric permits customer next steps. Read the reply before you read the discussion. Eight passing controls did not prevent this mistake on a generated answer.
 # MAGIC
 # MAGIC **Take it further.** Once reviewers have labeled enough real traces, MLflow can align a judge to their feedback with `judge.align()`, which uses the MemAlign optimizer by default since MLflow 3.13. Calibration comes first, because alignment learns from labels you trust. See [judge alignment](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/llm-judge/alignment/).
 # MAGIC

@@ -20,9 +20,9 @@ import time
 from packaging.specifiers import SpecifierSet
 
 CORE_REQUIREMENTS = {
-    "mlflow": "==3.16.1",
-    "mlflow-skinny": "==3.16.1",
-    "mlflow-tracing": "==3.16.1",
+    "mlflow": "==3.17.1",
+    "mlflow-skinny": "==3.17.1",
+    "mlflow-tracing": "==3.17.1",
     "openai": ">=1.106",
     "numpy": ">=1.26,<2",
     "protobuf": ">=5.26.1,<6",

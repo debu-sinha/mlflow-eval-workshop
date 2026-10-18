@@ -8,7 +8,7 @@
 # MAGIC
 # MAGIC | Scorer | A pass means |
 # MAGIC |---|---|
-# MAGIC | `eligibility_format` | The answer has a line starting with a recognized eligibility label |
+# MAGIC | `eligibility_format` | The answer starts with exactly one recognized eligibility declaration |
 # MAGIC | `response_length` | The answer has 20 to 1,400 characters |
 # MAGIC | `pii_detection` | No email, phone number, or other listed personal data was found |
 # MAGIC | `policy_decision` | The declared eligibility matches the reference label |
@@ -18,7 +18,7 @@
 # MAGIC
 # MAGIC 1 means pass and 0 means fail. A missing score is not a pass. It is missing evidence. Rules miss paraphrases and judges make their own mistakes, so the stack uses both, and keeps each result visible.
 # MAGIC
-# MAGIC `RegexMatch`, `PIIDetection`, and `ResponseLength` are built into MLflow since 3.14. `make_scorer_ensemble` arrived in 3.15.2.
+# MAGIC `PIIDetection` and `ResponseLength` are built into MLflow. The shared format check is a custom scorer that rejects duplicate or contradictory declarations. `make_scorer_ensemble` combines the five deterministic checks. The lab below starts with a deliberately weaker format check to repair.
 
 # COMMAND ----------
 

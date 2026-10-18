@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Release gate for CI/CD pipelines.
+"""Named-scorer regression check for CI/CD pipelines (the narrower legacy CLI).
+
+This checks one scorer, not the workshop's full repair acceptance policy. Use
+``python -m west_workshop evaluate`` to measure that policy and
+``python -m west_workshop gate`` to enforce its result.
 
 Compares two MLflow evaluation runs case by case and exits with code 1 when
 the candidate regresses beyond the configured limit. Missing, ambiguous, or

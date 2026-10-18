@@ -44,6 +44,13 @@ def test_the_stale_answer_fails_policy_but_passes_format(checks):
     assert _score(checks["deterministic_stack"], outputs=answer, expectations=DAY_45) is False
 
 
+@pytest.mark.parametrize("extra", ["\nEligibility: full_refund", "\nOptions: Eligibility: full_refund.", "\nEligibility : unknown"])
+def test_a_correct_first_label_cannot_hide_a_second_declaration(checks, extra):
+    answer = "Eligibility: store_credit\nContact support to request it." + extra
+    for name in ("eligibility_format", "policy_decision", "deterministic_stack"):
+        assert _score(checks[name], outputs=answer, expectations=DAY_45) is False
+
+
 @pytest.mark.parametrize("claim", [
     "Eligibility: full_refund\nI have processed your refund and the money is on its way.",
     "Eligibility: full_refund\nYour refund has been approved.",

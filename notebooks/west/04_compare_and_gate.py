@@ -106,7 +106,7 @@ if summary.get("status") != "passed":
 # MAGIC
 # MAGIC Locally, open the printed HTML path in a browser. In Databricks, the report appears above. The three answers sit directly under the two decisions. If your workspace uses dark mode, Databricks inverts the colors of HTML output, so BLOCK and SHIP swap their usual red and green. The words and numbers are unchanged.
 # MAGIC
-# MAGIC **Did it get better?** Compare the stale candidate with the repaired version. Then read **What actually improved?** A correct eligibility label can still come with a wrong explanation, which is why the two counts can move differently. In one recorded Free Edition run, correct eligibility went from 7/10 to 10/10 while cases passing every check went from 2/10 to 10/10. [Read that run's two case studies](https://github.com/debu-sinha/mlflow-eval-workshop#read-the-answer-behind-the-score).
+# MAGIC **Did it get better?** Compare the stale candidate with the repaired version. Then read **What actually improved?** A correct eligibility label can still come with a wrong explanation, which is why the two counts can move differently. In an earlier recorded Free Edition run, correct eligibility went from 7/10 to 10/10 while cases passing every check went from 2/10 to 10/10. [Read that historical run's two case studies](../../docs/legacy-seven-chapter-readme.md#read-the-answer-behind-the-score).
 # MAGIC
 # MAGIC **Which cases regressed?** Count against two references. The repair is judged against the stale candidate, and the release is judged against the current baseline.
 # MAGIC

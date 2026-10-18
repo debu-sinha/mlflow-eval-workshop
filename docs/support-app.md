@@ -15,7 +15,7 @@ The policy switch chooses which document the retriever returns: the current 30-d
 
 ## Run it locally
 
-Finish the [local route](../README.md#local-route) first, then run this in the terminal where you loaded your API key:
+Finish the [local route](../README.md#local-jupyter) first, then run this in the terminal where you loaded your API key:
 
 ```bash
 uv run --locked python app.py
@@ -27,7 +27,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The app uses the same SQLit
 
 This is optional. The presenter shows a hosted app in the opening, and every notebook works without one.
 
-Finish the [Databricks route](../README.md#databricks-free-edition-route) and run chapter 4 first. Then add a cell at the end of `04_compare_and_gate`, where the workshop package is already set up, and run it to prepare the app's storage:
+Finish the [Databricks route](../README.md#databricks-serverless) and run reference chapter 4 first. Then add a cell at the end of `04_compare_and_gate`, where the workshop package is already set up, and run it to prepare the app's storage:
 
 ```python
 from west_workshop.prepare_databricks_app import prepare

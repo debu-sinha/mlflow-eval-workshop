@@ -1,4 +1,4 @@
-"""Live MLflow 3.16 checkpoints. No substitute application or judge results."""
+"""Live MLflow reference checkpoints. No substitute application or judge results."""
 
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from datetime import datetime, timezone
@@ -7,6 +7,7 @@ import io
 import json
 import logging
 import math
+from numbers import Real
 import os
 from pathlib import Path
 import re
@@ -50,7 +51,7 @@ def _progress(message):
 
 
 def _configure_timeouts(provider=None):
-    # These names exist in MLflow 3.16 environment_variables.
+    # These names are verified against the project's locked MLflow environment.
     settings = {
         "MLFLOW_DISABLE_AGENT_HINT": "1",
         "MLFLOW_DISABLE_TELEMETRY": "true",
@@ -131,17 +132,51 @@ def _source_manifest():
 
 
 def _score(value):
+    """Normalize binary feedback, never turn an arbitrary number into a pass.
+
+    MLflow's built-in rule scorers may serialize their enum as ``yes``/``no``.
+    Other textual labels belong to explicitly configured external adapters, not
+    to the workshop's binary release contract.
+    """
+    # pandas exposes native Boolean scorer values as numpy.bool_ during trace
+    # replay. Normalize that scalar without importing NumPy into saved mode.
+    if type(value).__module__ == "numpy" and type(value).__name__ in {"bool", "bool_"}:
+        value = value.item()
     if isinstance(value, bool):
         return float(value)
-    if isinstance(value, (int, float)):
-        number = float(value)
-        return number if math.isfinite(number) else None
+    if isinstance(value, Real):
+        try:
+            number = float(value)
+        except (OverflowError, ValueError):
+            return None
+        return number if math.isfinite(number) and number in (0.0, 1.0) else None
     if isinstance(value, str):
-        if value.strip().lower() in {"yes", "true", "pass", "factual", "correct", "grounded"}:
+        if value.strip().lower() == "yes":
             return 1.0
-        if value.strip().lower() in {"no", "false", "fail", "hallucinated", "incorrect", "ungrounded"}:
+        if value.strip().lower() == "no":
             return 0.0
     return None
+
+
+def eligibility_declaration(outputs):
+    """Return the one allowed first-line declaration, otherwise ``None``.
+
+    Count every declaration marker, including inline or malformed repetitions.
+    A correct first label cannot hide a second contradictory declaration.
+    This validates the declared label; a semantic judge still checks the prose.
+    """
+    if not isinstance(outputs, str) or not outputs:
+        return None
+    if len(re.findall(r"(?i)\beligibility\s*:", outputs)) != 1:
+        return None
+    found = re.match(r"Eligibility: (full_refund|store_credit|support_review)(?=[ \t]*(?:\r?\n|$)|[.!?,;:](?:\s|$))", outputs)
+    return found.group(1) if found else None
+
+
+def policy_decision_value(outputs, expectations):
+    """The business-label check shared by the notebook and release scorers."""
+    declared = eligibility_declaration(outputs)
+    return declared is not None and declared == expectations.get("expected_decision")
 
 
 def _client(provider):
@@ -269,12 +304,16 @@ def build_scorers(provider, include_judge=True):
     """Fast checks plus one real judge. Every component remains inspectable."""
     _configure_timeouts(provider)
     from mlflow.entities import Feedback
-    from mlflow.genai.scorers import PIIDetection, RegexMatch, ResponseLength, make_scorer_ensemble, scorer
+    from mlflow.genai.scorers import PIIDetection, ResponseLength, make_scorer_ensemble, scorer
+
+    @scorer(name="eligibility_format")
+    def eligibility_format(outputs):
+        return Feedback(value=eligibility_declaration(outputs) is not None,
+                        rationale="Requires one allowed eligibility declaration at the start, with no second declaration anywhere in the answer.")
 
     @scorer(name="policy_decision")
     def policy_decision(outputs, expectations):
-        found = re.search(_ELIGIBILITY_PATTERN, outputs or "")
-        passed = bool(found and found.group(1) == expectations.get("expected_decision"))
+        passed = policy_decision_value(outputs, expectations)
         return Feedback(value=passed, rationale="Checks the declared eligibility against the immutable case label. The judge separately checks the prose.")
 
     @scorer(name="no_false_transaction")
@@ -284,7 +323,7 @@ def build_scorers(provider, include_judge=True):
         return Feedback(value=not bool(claim), rationale="A phrase tripwire for false transaction claims, with semantic review provided by policy_judge.")
 
     checks = [
-        RegexMatch(name="eligibility_format", pattern=_ELIGIBILITY_PATTERN),
+        eligibility_format,
         ResponseLength(name="response_length", min_length=20, max_length=1400),
         PIIDetection(name="pii_detection"),
         policy_decision,
@@ -326,7 +365,7 @@ def _scorer_manifest(scorers):
     return rows
 
 
-def _trace_rows(run_id: str, expected_rows: list[dict]):
+def _trace_rows(run_id: str, expected_rows: list[dict], *, label_maps=None):
     import mlflow
 
     traces = mlflow.search_traces(run_id=run_id, return_type="list", max_results=1000, flush=True)
@@ -359,13 +398,14 @@ def _trace_rows(run_id: str, expected_rows: list[dict]):
             if getattr(assessment, "valid", True) is False:
                 continue
             feedback = getattr(assessment, "feedback", None)
-            if feedback is None:
+            error = getattr(assessment, "error", None) or getattr(feedback, "error", None)
+            if feedback is None and not error:
                 continue
             value = getattr(feedback, "value", None)
-            error = getattr(assessment, "error", None) or getattr(feedback, "error", None)
             if assessment.name in scores:
                 duplicates.add(assessment.name)
-            scores[assessment.name] = None if error else _score(value)
+            mapped = (label_maps or {}).get(assessment.name, {}).get(value, value) if isinstance(value, str) else value
+            scores[assessment.name] = None if error else _score(mapped)
             assessment_rows.append({"name": assessment.name, "value": value if not error else None, "rationale": getattr(assessment, "rationale", None), "error": bool(error)})
         for name in duplicates:
             scores[name] = None
@@ -441,7 +481,7 @@ def _validate_trace_replay(result, trace_id: str, scorer_name: str) -> dict:
     }
 
 
-def _evaluate(provider, variant, rows, scorers, directory, *, authored=False):
+def _evaluate(provider, variant, rows, scorers, directory, *, authored=False, label_maps=None):
     import mlflow
     import pandas as pd
 
@@ -461,7 +501,7 @@ def _evaluate(provider, variant, rows, scorers, directory, *, authored=False):
         mlflow.log_input(mlflow.data.from_pandas(pd.DataFrame(rows), name="west-refund-policy-" + dataset_digest(rows)[:12]), context="evaluation")
         result = mlflow.genai.evaluate(data=rows, predict_fn=None if authored else make_predictor(provider, variant), scorers=scorers)
         run_id = result.run_id or run.info.run_id
-        trace_rows = _trace_rows(run_id, rows)
+        trace_rows = _trace_rows(run_id, rows, label_maps=label_maps)
         complete = _complete(trace_rows, rows, [s.name for s in scorers])
         metrics = {name: float(value) for name, value in result.metrics.items() if isinstance(value, (int, float)) and math.isfinite(float(value))}
         artifact_path = directory / (variant + "-rows.json")
@@ -620,11 +660,14 @@ def _execute(index, provider, directory, experiment_id):
         success = (comparison is not None and not candidate_gate["passed"] and repaired_gate["passed"]
                    and comparison["same_dataset"] and comparison["same_scorers"]
                    and comparison["repaired_mean"] > comparison["candidate_mean"])
+        completed = (all(item["complete"] for item in results) and candidate_gate["complete"]
+                     and repaired_gate["complete"] and comparison is not None
+                     and comparison["same_dataset"] and comparison["same_scorers"])
         with mlflow.start_run(run_name="west-release-gates") as gate_run:
             mlflow.log_dict(_sanitize({"candidate": candidate_gate, "repaired": repaired_gate}), "gate_decisions.json")
             mlflow.log_dict(_sanitize(comparison), "repair_comparison.json")
             mlflow.log_metrics({"candidate_passed": int(candidate_gate["passed"]), "repaired_passed": int(repaired_gate["passed"])})
-        return {"status": "passed" if success else "error", "evaluations": results, "judge_validation": validation, "repair_comparison": comparison, "gates": {"candidate": candidate_gate, "repaired": repaired_gate}, "gate_run_id": gate_run.info.run_id, "decision": repaired_gate["decision"], "expected_outcome_observed": success}
+        return {"status": "passed" if completed else "error", "execution_status": "complete" if completed else "error", "evaluations": results, "judge_validation": validation, "repair_comparison": comparison, "gates": {"candidate": candidate_gate, "repaired": repaired_gate}, "gate_run_id": gate_run.info.run_id, "decision": repaired_gate["decision"], "expected_outcome_observed": success}
     rows = [row for row in dataset() if row["inputs"]["case_id"] == "defect_day_45"]
     result = _evaluate(provider, "repaired", rows, build_scorers(provider), directory)
     if not result["complete"]:
@@ -652,8 +695,8 @@ def _failure_reason(index, summary):
     if index == 3:
         return "The judge disagreed with at least one of its eight rubric controls. Read the control disagreements before trusting it."
     if index == 4:
-        return ("The comparison finished, but the gates did not block the stale candidate and ship the repair. "
-                "Fresh answers vary. Read each gate's reason in the report before rerunning.")
+        return ("The comparison lacks complete comparable evidence or passing judge controls. "
+                "Inspect the saved assessments and identities before starting a new experiment. A completed BLOCK is a valid result.")
     return "The exercise did not pass. Read the saved summary before rerunning."
 
 
@@ -725,7 +768,8 @@ def run_integrations(provider=None, output_dir=None) -> dict:
             scorers = [Hallucination(model=model), Coherence(model=model)]
             rows = opening_case()
             rows[0]["expectations"]["context"] = CURRENT_POLICY
-            result = _evaluate(provider, "repaired", rows, scorers, directory)
+            result = _evaluate(provider, "repaired", rows, scorers, directory,
+                               label_maps={"Hallucination": {"factual": 1, "hallucinated": 0}})
             summary.update(status="passed" if result["complete"] else "error", evaluations=[result], live_validation="completed" if result["complete"] else "failed")
             if not result["complete"]:
                 summary["error"] = _failure_reason(None, summary)

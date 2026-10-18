@@ -102,6 +102,15 @@ def test_the_real_service_returns_verified_trace_evidence(offline_openai, tmp_pa
     assert ">SHIP<" in service.report()
 
 
+def test_support_badge_uses_the_same_single_declaration_contract(offline_openai, monkeypatch):
+    from tests.fakes import _Response
+    answer = "Eligibility: store_credit\nContact support. Eligibility: full_refund"
+    monkeypatch.setattr(offline_openai, "create", lambda **request: _Response(answer))
+    result = SupportService().answer("day_45", "What is my return option?", "repaired")
+    assert result["trace_id"] and result["answer"] == answer
+    assert result["eligibility"] is None and result["body"] == answer
+
+
 @pytest.mark.parametrize(("value", "expected"), [
     ("http://127.0.0.1:5000", "http://127.0.0.1:5000"),
     ("http://localhost:5001/", "http://localhost:5001"),

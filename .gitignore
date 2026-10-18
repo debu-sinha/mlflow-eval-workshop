@@ -34,3 +34,7 @@ docs/AUDIENCE_PATHS.md
 docs/LIVE_VALIDATION.md
 private/
 prep/
+presentation/.build/
+/presentation/
+/docs/workshop-validation.md
+/scripts/prepare_presentation_evidence.py

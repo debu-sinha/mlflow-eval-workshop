@@ -16,7 +16,7 @@ from flask import Flask, jsonify, render_template, request
 
 from .config import application_model, preflight, selected_provider
 from .data import CURRENT_POLICY, STALE_POLICY
-from .runtime import WorkshopExecutionError, _ELIGIBILITY_PATTERN, _configure_timeouts, _setup_tracking, make_predictor
+from .runtime import WorkshopExecutionError, eligibility_declaration, _configure_timeouts, _setup_tracking, make_predictor
 
 ROOT = Path(__file__).resolve().parent
 ORDERS = {
@@ -101,7 +101,7 @@ class SupportService:
         # Never substitute an expected policy for missing trace evidence.
         if evidence is None or not isinstance(evidence.get("page_content"), str):
             raise WorkshopExecutionError("The answer's saved retrieval trace could not be verified.")
-        eligibility = re.search(_ELIGIBILITY_PATTERN, answer)
+        eligibility = eligibility_declaration(answer)
         workspace_host = _workspace_url(os.environ.get("DATABRICKS_HOST", ""))
         trace_url, trace_hint = None, None
         if self.provider == "databricks" and workspace_host:
@@ -113,8 +113,8 @@ class SupportService:
                 trace_hint = "This link needs the local MLflow UI from the README, running on the same database."
         return {
             "answer": answer,
-            "body": answer[eligibility.end():].lstrip(" .:\n\r") if eligibility and eligibility.start() == 0 else answer,
-            "eligibility": eligibility.group(1) if eligibility else None,
+            "body": answer[len("Eligibility: " + eligibility):].lstrip(" .:\n\r") if eligibility else answer,
+            "eligibility": eligibility,
             "order_key": order_key,
             "variant": variant,
             "trace_id": trace_id,

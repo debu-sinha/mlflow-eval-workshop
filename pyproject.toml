@@ -12,7 +12,7 @@ readme = "README.md"
 # Core dependencies for notebooks 00 to 05, the CLI, and the support app.
 # Third-party evaluator frameworks are optional and live in the ecosystem extra.
 dependencies = [
-    "mlflow[genai]==3.16.1",
+    "mlflow[genai]==3.17.1",
     "scikit-learn>=1.4",
     # NumPy and protobuf stay on the versions validated in Databricks Free Edition.
     "numpy>=1.26,<2",
@@ -23,7 +23,7 @@ dependencies = [
 
 [project.optional-dependencies]
 ecosystem = [
-    # MLflow 3.16 builds Phoenix's legacy evaluator classes, which
+    # MLflow's Phoenix integration builds legacy evaluator classes, which
     # arize-phoenix-evals 3.0 removed. Keep the 2.x series.
     "arize-phoenix-evals>=2.11,<3.0",
     # MLflow's TruLens scorers import only these three packages. The trulens
@@ -36,7 +36,13 @@ ecosystem = [
     "nltk>=3.9",
 ]
 databricks = ["databricks-agents>=0.14"]
-local = ["jupytext>=1.16"]
+local = [
+    "jupytext>=1.16",
+    "jupyterlab>=4.4,<5",
+    "ipykernel>=6.29,<7",
+    "nbclient>=0.10,<0.11",
+    "nbformat>=5.10,<6",
+]
 all = [
     "mlflow-eval-workshop[ecosystem,databricks,local]",
 ]
@@ -47,7 +53,7 @@ dev = ["pytest>=8.3"]
 [tool.uv]
 # LiteLLM 1.82.7 and 1.82.8 are no longer on PyPI. Never resolve them from a
 # cache or mirror, including when Databricks packages pull LiteLLM in.
-constraint-dependencies = ["litellm!=1.82.7,!=1.82.8"]
+constraint-dependencies = ["litellm!=1.82.7,!=1.82.8", "mlflow-skinny==3.17.1", "mlflow-tracing==3.17.1"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -8,6 +8,11 @@ import sys
 
 
 def main():
+    # The primary workshop CLI evaluates the complete repair policy. The older
+    # checkpoint interface stays available for the preserved v1 reference path.
+    if len(sys.argv) == 1 or sys.argv[1] in {"-h", "--help", "evaluate", "gate", "review-template", "rescore", "rescore-legacy", "promote-case"}:
+        from .repair_workshop import main as repair_main
+        return repair_main(sys.argv[1:] or ["evaluate"])
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--provider", choices=("openai", "databricks"), default="openai")
     action = parser.add_mutually_exclusive_group()

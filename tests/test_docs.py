@@ -51,7 +51,7 @@ def test_notebooks_are_valid_databricks_source(path):
 def test_prose_uses_no_semicolons_or_dashes(path):
     markdown = path.read_text(encoding="utf-8") if path.suffix == ".md" else "\n\n".join(_markdown_cells(path))
     for number, line in enumerate(_prose(markdown).splitlines(), start=1):
-        for mark, name in ((";", "semicolon"), ("—", "em dash"), ("–", "en dash")):
+        for mark, name in ((";", "semicolon"), ("\u2014", "em dash"), ("\u2013", "en dash")):
             assert mark not in line, f"{path.name}: {name} in prose: {line.strip()[:120]}"
 
 
@@ -76,10 +76,14 @@ def test_links_within_each_guide_resolve(path):
         assert anchor in anchors, f"{path.name} links to a missing section: #{anchor}"
 
 
-def test_every_notebook_is_listed_in_the_readme():
+def test_primary_notebooks_are_listed_and_legacy_route_is_identified():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    for path in NOTEBOOKS:
-        assert f"notebooks/west/{path.name}" in readme, path.name
+    primary = sorted((ROOT / "notebooks" / "workshop").glob("*.ipynb"))
+    assert len(primary) == 3
+    for path in primary:
+        assert f"notebooks/workshop/{path.name}" in readme, path.name
+    assert "notebooks/west/" in readme
+    assert "historical" in readme
 
 
 def test_links_into_the_readme_from_notebooks_and_docs_resolve():

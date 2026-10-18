@@ -199,6 +199,31 @@ def test_checkpoint_4_blocks_stale_and_ships_the_repair(checkpoint_4):
     assert len(client.calls) == 30, "three versions times ten cases, with no extra validation calls"
 
 
+@pytest.mark.parametrize("request_failed", [False, True])
+def test_legacy_comparison_completion_does_not_require_a_preferred_verdict(offline_openai, tmp_path, monkeypatch, request_failed):
+    from west_workshop import runtime
+
+    @scorer(name="policy_judge")
+    def reviewing_judge(inputs, outputs, expectations):
+        if "authored_human_label" in expectations:
+            return bool(expectations["authored_human_label"])
+        if request_failed:
+            raise RuntimeError("test-only unavailable judge")
+        return False
+
+    monkeypatch.setattr(runtime, "_policy_judge", lambda provider: reviewing_judge)
+    summary = run_checkpoint(4, "openai", tmp_path / "legacy-completion-test-only")
+    assert summary["gates"]["repaired"]["decision"] == "block"
+    assert summary["expected_outcome_observed"] is False
+    if request_failed:
+        assert summary["status"] == "error" and summary["execution_status"] == "error"
+        assert not summary["evaluations"][2]["complete"]
+    else:
+        assert summary["status"] == "passed" and summary["execution_status"] == "complete"
+        assert summary["live_validation"] == "completed"
+        assert ">BLOCK<" in render_release_report(summary), "later reference-notebook cells must still render a completed BLOCK"
+
+
 def test_checkpoint_4_report_separates_eligibility_from_combined_checks(checkpoint_4):
     summary, _ = checkpoint_4
     breakdown = {item["version"]: item for item in score_breakdown(summary)}
