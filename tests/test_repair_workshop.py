@@ -156,6 +156,24 @@ def test_saved_mode_has_no_synthetic_fallback(tmp_path):
         workshop.notebook_session("saved", evidence_dir=tmp_path)
 
 
+@pytest.mark.parametrize("route, decision", [("local", "REVIEW_REQUIRED"), ("databricks", "PASS")])
+def test_released_review_metadata_is_anonymous_and_preserves_bound_policy(route, decision):
+    directory = ROOT / "evidence" / "workshop" / route / "final"
+    session = workshop.WorkshopSession("saved", evidence_dir=directory)
+    report = session.finish()
+    from west_workshop.repair_policy import evaluate_repair
+    assert evaluate_repair(**session.policy_inputs()) == report["policy_result"]
+    assert report["policy_result"]["decision"] == decision
+    assert report["review"]["reviewer_kind"] == "model"
+    assert report["review"]["reviewer_id"] == "automated-review"
+    assert report["review"]["evidence"] == report["policy_result"]["evidence"]
+    assert report["production_authorization"] is False
+    if route == "local":
+        assert any(item["material"] and item["status"] == "open" for item in report["review"]["findings"])
+    for name, saved in zip(session.manifest["decisions"], session.bundle["decisions"]):
+        assert Path(name).stem == workshop._digest(saved)[:20]
+
+
 def test_review_template_is_bound_but_never_automatically_complete(saved_evidence):
     directory, _ = saved_evidence
     form = workshop.review_skeleton(directory)
@@ -197,7 +215,9 @@ def test_saved_notebook_review_panel_shows_exact_bound_evidence_before_vote_with
     exec(compile(document["cells"][cell_index]["source"], "02-review-evidence", "exec"),
          {"report": report, "comparison": comparison, "json": json, "HTML": HTML, "display": rendered.append})
     content = rendered[0].data
-    assert "complete" in content and "model / named-test-reviewer" in content
+    assert "complete" in content
+    assert "Reviewer:" not in content and "named-test-reviewer" not in content
+    assert "model /" not in content
     assert "Status: open" in content and "Material: True" in content
     assert "Customer &lt;text&gt; attributed to the assistant" in content
     assert escape(json.dumps(row["inputs"], ensure_ascii=False, indent=2)) in content

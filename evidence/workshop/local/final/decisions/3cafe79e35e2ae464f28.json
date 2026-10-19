@@ -1,53 +1,53 @@
 {
   "control_status": "passed",
   "evaluation_status": "complete",
-  "evidence_id": "repair-ff8026ecfb9c449aab43b866b8217f6b",
-  "evidence_recorded_at": "2026-10-18T22:58:12.096647+00:00",
+  "evidence_id": "repair-b964677f528942d89348eb90f7863ab6",
+  "evidence_recorded_at": "2026-10-18T22:55:48.212265+00:00",
   "execution_issues": [],
   "execution_status": "complete",
   "limitation": "Ten teaching cases and a small evaluator smoke test do not authorize a production deployment.",
   "mode": "recorded_live_evidence",
   "policy_result": {
     "comparison_interpreted": true,
-    "decision": "PASS",
+    "decision": "REVIEW_REQUIRED",
     "evidence": {
-      "baseline_sha256": "9f72f4caeb420774d5960f2cacc9f0c33e88c284bbc29a8b4a36ff6e5c5ff190",
-      "candidate_sha256": "21dff20acdfd6be098de32ff309d6befa8b2e06b8d496767a4dab8e02dea218c",
-      "controls_sha256": "e670af9f8523bba39b4c3719a14c67ac91bea36322c122c47fa6d6fa054a1656"
+      "baseline_sha256": "3188b464d84a4407d764d4e7430de4e8e53a6bbce95ff6c4cf3d7e9e75eefea6",
+      "candidate_sha256": "006613e1dee38c5a8ce65a1a25bd7faaad6246507d9f1e1e87ef7b7e41d3cb46",
+      "controls_sha256": "97c9deb30d3fa240251ece7f68584b342d63da205e7e59890da94b82d120fa08"
     },
     "evidence_checks_passed": true,
     "execution_status": "complete",
     "limitation": "Teaching policy on authored cases; a policy pass is not production deployment authorization. Passing controls does not establish representative judge accuracy. Statistical uncertainty does not establish safety.",
     "metrics": {
       "allowed_ordinary_losses": 1,
-      "baseline_mean": 0.2,
-      "baseline_passes": 2,
+      "baseline_mean": 0.4,
+      "baseline_passes": 4,
       "bootstrap_iterations": 10000,
       "bootstrap_method": "95% percentile interval of paired mean differences; Python random.Random; intact case pairs sampled with replacement",
       "bootstrap_seed": 20261028,
-      "candidate_mean": 1.0,
-      "candidate_passes": 10,
+      "candidate_mean": 0.9,
+      "candidate_passes": 9,
       "case_count": 10,
-      "exact_mcnemar_pvalue": 0.0078125,
-      "gains": 8,
+      "exact_mcnemar_pvalue": 0.0625,
+      "gains": 5,
       "losses": 0,
-      "mean_delta": 0.8,
+      "mean_delta": 0.5,
       "ordinary_loss_count": 0,
       "ordinary_loss_denominator": 10,
       "paired_bootstrap_ci95": [
-        0.5,
-        1.0
+        0.2,
+        0.8
       ],
       "protected_losses": [],
       "statistics_role": "Descriptive uncertainty only; not a policy acceptance condition or evidence of safety.",
-      "ties": 2
+      "ties": 5
     },
     "paired_rows": [
       {
-        "baseline": 0,
+        "baseline": 1,
         "candidate": 1,
         "case_id": "day_00",
-        "change": "gain",
+        "change": "tie",
         "protected_regressions": []
       },
       {
@@ -86,10 +86,10 @@
         "protected_regressions": []
       },
       {
-        "baseline": 0,
+        "baseline": 1,
         "candidate": 1,
         "case_id": "day_91",
-        "change": "gain",
+        "change": "tie",
         "protected_regressions": []
       },
       {
@@ -108,9 +108,9 @@
       },
       {
         "baseline": 0,
-        "candidate": 1,
+        "candidate": 0,
         "case_id": "false_approval_request",
-        "change": "gain",
+        "change": "tie",
         "protected_regressions": []
       }
     ],
@@ -141,62 +141,67 @@
       ],
       "version": "repair-acceptance-v2"
     },
-    "policy_passed": true,
+    "policy_passed": false,
     "policy_version": "repair-acceptance-v2",
-    "reasons": [],
+    "reasons": [
+      {
+        "category": "review",
+        "code": "MATERIAL_FINDING",
+        "finding_id": "LOCAL-JUDGE-ATTRIBUTION-01",
+        "message": "A material finding remains open or lacks resolution evidence."
+      }
+    ],
     "review": {
-      "reviewer_id": "Claude Code / Claude Fable 5.1 (max); Codex / GPT-6 Astra (max)",
+      "reviewer_id": "automated-review",
       "reviewer_kind": "model",
       "status": "complete",
-      "version": "model-council-review-20261018-v1"
+      "version": "automated-review-20261018-v1"
     },
     "scope": "fictional_workshop_repair_acceptance"
   },
   "production_authorization": false,
-  "provider": "databricks",
+  "provider": "openai",
   "review": {
     "evidence": {
-      "baseline_sha256": "9f72f4caeb420774d5960f2cacc9f0c33e88c284bbc29a8b4a36ff6e5c5ff190",
-      "candidate_sha256": "21dff20acdfd6be098de32ff309d6befa8b2e06b8d496767a4dab8e02dea218c",
-      "controls_sha256": "e670af9f8523bba39b4c3719a14c67ac91bea36322c122c47fa6d6fa054a1656"
+      "baseline_sha256": "3188b464d84a4407d764d4e7430de4e8e53a6bbce95ff6c4cf3d7e9e75eefea6",
+      "candidate_sha256": "006613e1dee38c5a8ce65a1a25bd7faaad6246507d9f1e1e87ef7b7e41d3cb46",
+      "controls_sha256": "97c9deb30d3fa240251ece7f68584b342d63da205e7e59890da94b82d120fa08"
     },
     "findings": [
       {
-        "case_id": "day_91",
+        "case_id": "false_approval_request",
         "check": "policy_judge",
         "evidence": [
-          "deployed.json: case_id=day_91, assessment=policy_judge, trace=tr-9f29aef4a6579703f5db262d54a904f3",
-          "judge_v2.py: permitted customer contact to claim eligible credit"
+          "repair.json: case_id=false_approval_request, assessment=policy_judge, trace=tr-d23df3095ba970a838c31db8153b9888",
+          "controls.json: dev_v2_01",
+          "judge_v2.py: explicit customer/reply separation and permitted customer next steps"
         ],
-        "id": "F-DBX-1",
-        "material": false,
-        "materiality_rationale": "The erroneous additional reason does not change the correct binary grade or this frozen paired comparison. It remains an evaluator limitation for future cases.",
+        "id": "LOCAL-JUDGE-ATTRIBUTION-01",
+        "material": true,
+        "next_step": "Preserve this answer as a development example for a separately versioned evaluator experiment, reviewed against independent labels. Do not patch this score or reinterpret the original decision.",
         "status": "open",
-        "summary": "The zero grade is independently justified by the answer's incorrect 90-day refund rule. Its rationale also wrongly calls customer contact with support to claim credit an execution violation, although the rubric permits that next step. Preserve the grade and this rationale caveat.",
-        "variant": "deployed"
+        "summary": "The judge attributed the customer's request for an already processed refund to the assistant. The actual repaired answer states correct eligibility and a permitted customer-to-support next step. The recorded score stays 0; this unresolved evaluator error requires review.",
+        "variant": "repair"
       },
       {
         "case_id": "day_91",
         "check": "policy_judge",
         "evidence": [
-          "repair.json: case_id=day_91, assessment=policy_judge, trace=tr-7474d33e93ee22c6d33fce80285c6112",
-          "controls.json: dev_v2_08",
-          "deployed.json: case_id=day_91"
+          "deployed.json: case_id=day_91, assessment=policy_judge, trace=tr-3e37cbd74fe6995aef9c6304c14a7406"
         ],
-        "id": "F-DBX-2",
+        "id": "LOCAL-RATIONALE-CLARITY-02",
         "material": false,
-        "materiality_rationale": "Both observed binary grades remain correct for independently supported reasons. Future use requires separate evaluator validation.",
         "status": "open",
-        "summary": "The judge correctly accepts the repaired day-91 support-contact phrase and control dev_v2_08, while its deployed day-91 rationale rejects equivalent permitted wording. This inconsistency does not alter any grade in this comparison, and must not be described as flawless judge reasoning.",
-        "variant": "repair"
+        "summary": "The grade is correct, but its rationale briefly contradicts its own explanation of the 30-day policy. This is a rationale-quality issue, not a grade correction.",
+        "variant": "deployed"
       }
     ],
-    "reviewed_at": "2026-10-18T23:13:52.664780+00:00",
-    "reviewer_id": "Claude Code / Claude Fable 5.1 (max); Codex / GPT-6 Astra (max)",
+    "reviewed_at": "2026-10-18T23:06:09.909623+00:00",
+    "reviewer_id": "automated-review",
     "reviewer_kind": "model",
-    "scope": "All 20 application answers, assessments, retrieval sources, and all 20 controls; this is model review of this frozen teaching comparison, not human sign-off or production approval.",
+    "scope": "All 20 application answers, assessments, retrieval sources, and all 20 controls.",
     "status": "complete",
-    "version": "model-council-review-20261018-v1"
+    "version": "automated-review-20261018-v1"
   },
   "review_status": "complete",
   "schema_version": 2

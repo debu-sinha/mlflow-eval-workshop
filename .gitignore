@@ -10,7 +10,7 @@ mlartifacts/
 .guardrails/
 m3_run_ids.json
 
-# Private working notes that should never land in the public repo.
+# Local notes and build outputs.
 *AUDIT*.md
 *PRIVATE*.md
 *STRATEGY*.md
@@ -27,7 +27,7 @@ artifacts/
 *.db-shm
 *.db-wal
 
-# Preparation files are kept outside the audience repository.
+# Local documents and presentation outputs.
 WEST_2026_PLAN.md
 docs/PRESENTER_GUIDE.md
 docs/AUDIENCE_PATHS.md

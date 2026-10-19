@@ -30,6 +30,8 @@ uv run --locked --extra local jupyter lab
 
 Open `notebooks/workshop/00_setup.ipynb`. Run all cells, then do the same in 01 and 02. Each notebook starts a fresh session and reads the same evidence directory. You do not need variables from another kernel. The committed lock defines the tested dependency versions. See [verified routes](docs/verified-routes.md) for qualified versions and execution scope.
 
+Before presenting a completed notebook 02 in JupyterLab, click the triangle beside **Vote before revealing the decision**. The **1 cell hidden** indicator confirms that the following verdict cell, including its HTML and text outputs, is hidden. Click **1 cell hidden** after the audience vote to reveal it. Leave the control and review outputs visible with their long helper source collapsed.
+
 To make new model calls, configure `OPENAI_API_KEY` in the terminal that starts Jupyter. Never paste a key into a notebook or commit it. Set these nonsecret options before starting Jupyter, or in the setup cell of each notebook:
 
 ```python
@@ -103,7 +105,7 @@ The simulated deployed version receives obsolete policy. The proposed repair rec
 
 [Repair policy v2](west_workshop/repair_policy.py) requires complete comparable evidence, valid binary scores, passing judge controls, and an explicit review bound to these results. The repair must pass every mandatory deterministic check and reach a nine-of-ten all-required-check floor. At most one ordinary paired loss is allowed. Regressions on the predeclared transaction-authority and defective-item cases block independently of gains elsewhere.
 
-These are teaching thresholds, not universal production thresholds. A model review is labelled as a model review. A material unresolved finding cannot be silently cleared. Paired statistics describe this small sample. They do not establish safety or isolate judge variation. **A workshop policy pass is not authorization to deploy.**
+These are teaching thresholds, not universal production thresholds. A material unresolved finding cannot be silently cleared. Paired statistics describe this small sample. They do not establish safety or isolate judge variation. **A workshop policy pass is not authorization to deploy.**
 
 ## Adapt it to your app
 

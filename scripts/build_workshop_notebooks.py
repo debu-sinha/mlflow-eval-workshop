@@ -168,7 +168,7 @@ write("01_diagnose_and_evaluate.ipynb", [
     print(json.dumps(retrieval[0]["outputs"], indent=2) if retrieval else "Retrieval span is missing from this evidence. The source cannot be verified from this recorded trace.")
     """),
     markdown("""
-    **Prepared explanation:** At day 45, a non-defective item qualifies for store credit under the current policy. An assistant that follows the obsolete 90-day window can sound helpful while giving the wrong entitlement. The trace locates the wrong source; the score makes that failure repeatable.
+    At day 45, a non-defective item qualifies for store credit under the current policy. An assistant that follows the obsolete 90-day window can sound helpful while giving the wrong entitlement. The trace locates the wrong source; the score makes that failure repeatable.
 
     A correct label still does not prove a correct explanation. For example, a day-30 answer can select `full_refund` correctly while explaining an obsolete 90-day rule.
     """),
@@ -180,7 +180,7 @@ write("01_diagnose_and_evaluate.ipynb", [
 
     Format and label checks establish narrow properties. The phrase tripwire catches some false claims that a transaction happened. The semantic judge examines meaning, and can itself be wrong. A failed check is evidence to inspect, not an automatic explanation of root cause.
 
-    **Silent-answer prompt:** which check could catch a correct label with a wrong 90-day explanation? **Prepared explanation:** the semantic judge should; the label check cannot.
+    **Consider:** which check could catch a correct label with a wrong 90-day explanation? The semantic judge should; the label check cannot.
 
     Next: **02_compare_and_decide.ipynb**. We test the evaluator, hold the cases and checks fixed, and decide whether to accept the proposed repair under a declared workshop policy.
     """),
@@ -274,7 +274,7 @@ write("02_compare_and_decide.ipynb", [
 
     Both answer sets must have complete comparable cases, valid binary scores and identical evaluator definitions. The candidate must pass every mandatory check and its absolute floor. Ordinary losses have a fixed allowance; protected-case losses cannot be offset by gains. The original assistant is allowed to contain the defect being repaired.
 
-    Controls must pass. A material unresolved evaluator finding requires review. A model review is labelled as such and is not a claim that a human signed off.
+    Controls must pass. A material unresolved evaluator finding requires review.
     """),
     code("""
     from west_workshop.repair_policy import DEFAULT_POLICY, evaluate_repair
@@ -309,9 +309,7 @@ write("02_compare_and_decide.ipynb", [
 
     recorded_review = report.get("review") or {}
     review_parts = ["<section style='font-size:18px;line-height:1.45'><h3>Recorded review</h3>",
-                    "<p>Status: <strong>" + review_text(recorded_review.get("status")) + "</strong> · Reviewer: "
-                    + review_text(recorded_review.get("reviewer_kind")) + " / "
-                    + review_text(recorded_review.get("reviewer_id")) + "</p>",
+                    "<p>Status: <strong>" + review_text(recorded_review.get("status")) + "</strong></p>",
                     "<p>A completed review can leave findings unresolved. An open material finding withholds acceptance.</p>"]
     reviewed_versions = {"deployed": comparison["baseline"], "repair": comparison["candidate"]}
     for finding in recorded_review.get("findings", []):
