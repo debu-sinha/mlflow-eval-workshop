@@ -48,8 +48,10 @@ Use a new output directory when changing code, cases, model settings, dependenci
 Use the same source revision and notebooks in a Databricks Git folder. Saved mode reads the bundled local results unless you select the separate Databricks evidence folder. Live mode uses workspace authentication and the configured serving endpoint. No personal access token is required by these notebooks.
 
 1. Create a Git folder for this repository and select the workshop revision.
-2. Open `notebooks/workshop/00_setup.ipynb`. Select **Standard v5** as the serverless base environment and add the committed requirements file using its absolute workspace path, for example `-r /Workspace/Users/<you>/<repo>/requirements-workshop.txt`.
-3. Apply the environment and restart the kernel if prompted. The configuration cell below belongs before the notebook's bootstrap cell. Repeat it in each notebook because kernels do not share variables.
+2. Open `notebooks/workshop/00_setup.ipynb`. In the **Environment** panel, choose **Base environment > More > Standard v5** and add the committed requirements file using its absolute workspace path, for example `-r /Workspace/Users/<you>/<repo>/requirements-workshop.txt`.
+3. Click **Apply**, confirm the environment reset, and wait for installation to finish. Repeat these Environment-panel steps in `01_diagnose_and_evaluate.ipynb` and `02_compare_and_decide.ipynb`. Each notebook has its own settings. Run all cells in 00, then 01, then 02.
+
+For the first run, leave the default saved mode. To make new model calls, add the configuration cell below before the bootstrap cell in **each** notebook. Fresh kernels do not share Python variables or environment settings.
 
 ```python
 import os
@@ -62,7 +64,19 @@ os.environ["WORKSHOP_OUTPUT_DIR"] = "/Workspace/Users/<you>/odsc-repair-evidence
 
 Replace `<you>` and choose an endpoint you can access. The preflight checks configuration presence, not endpoint availability or quota. The Free Edition's workspace limits still apply. [Verified routes](docs/verified-routes.md) distinguishes native notebook job execution from manual interactive setup checks.
 
-For the saved Databricks result, keep `WORKSHOP_MODE=saved` and set `WORKSHOP_EVIDENCE_DIR` to the absolute path of `evidence/workshop/databricks/final` in the checkout. Set `WORKSHOP_PROJECT_ROOT` explicitly only if your notebook is outside the repository.
+To inspect the saved Databricks result, put this cell before the bootstrap cell in **each** notebook, replacing `<you>` and `<repo>` with your Git-folder path:
+
+```python
+import os
+os.environ["WORKSHOP_MODE"] = "saved"
+os.environ["WORKSHOP_EVIDENCE_DIR"] = "/Workspace/Users/<you>/<repo>/evidence/workshop/databricks/final"
+```
+
+Without this selection, saved mode opens the local bundle even when the notebook runs on Databricks. Check the displayed provider and evidence ID before comparing results. Set `WORKSHOP_PROJECT_ROOT` explicitly only if your notebook is outside the repository.
+
+If Databricks reports that its HTML-output host is unreachable and offers **Run in strict sandbox**, that supported option rendered the workshop tables in the October 18, 2026 Chrome walkthrough. After execution finishes, reload the page if an HTML output is blank. Reloading the page displayed completed saved and live outputs without another model run.
+
+Before presenting a completed notebook, check its visible state. The long control-example and review-display source cells in 02 should be collapsed while their outputs remain visible. Leave the material finding visible and secondary findings collapsed. Use the **Collapse cell** control beside the final decision cell before the audience vote, then **Expand cell** to reveal the recorded result. This hides both its HTML and text verdicts. The two short code views in 01 remain part of the explanation.
 
 ## Read a decision without rerunning a model
 

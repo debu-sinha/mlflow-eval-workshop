@@ -19,4 +19,12 @@ Historical answers were also rescored with the frozen v2 judge, without regenera
 
 The original optional integration checks exercised Phoenix Hallucination and TruLens Coherence on one answer per route. Guardrails AI and TruLens Groundedness were not qualified. External scores do not enter the repair policy.
 
-Native notebook jobs and manual interactive setup are different checks. The interactive Git-folder and Environment-panel steps still need a manual walkthrough. Follow the [setup instructions](../README.md) and choose saved mode if you prefer to inspect results without credentials.
+The interactive attendee route was also exercised through Chrome in Databricks Free Edition on October 18, 2026. A fresh Git folder selected workshop revision `e253860`. Each notebook received Standard v5 and the committed requirements through the Environment panel. Browser **Run all** completed all 19 code cells across 00, 01 and 02 in saved mode, displaying the default local bundle and its unchanged REVIEW_REQUIRED result.
+
+A fresh live comparison then completed through the same browser route, with one documented configuration cell added to each notebook. All 22 code cells succeeded. This separate run recorded 2/10 to 10/10, eight gains, no losses, two ties and 20/20 controls. Its decision remains REVIEW_REQUIRED because its review is pending. It does not replace the earlier reviewed native bundle above. The MLflow interface showed all three runs, and the day-45 trace exposed the obsolete 90-day source used by the deployed answer.
+
+Selecting the bundled native Databricks evidence explicitly in all three notebooks also completed the 22-cell saved replay. It displayed the retained reviewed result, PASS under the workshop policy. Saved replay does not make model calls. Its completed review belongs to that saved bundle, not to the new live comparison.
+
+The browser check verified collapsed helper source, visible material-review evidence, working secondary-finding disclosures, and hiding both final verdict outputs until the audience vote. In this browser, Databricks offered **Run in strict sandbox** when its usual HTML-output host was unreachable. That option and a page reload displayed the completed HTML outputs without another model run. The [setup instructions](../README.md) include those steps and explain which settings to repeat in every notebook.
+
+These checks establish the tested execution and browser workflow. They do not measure presentation delivery or attendee understanding.
