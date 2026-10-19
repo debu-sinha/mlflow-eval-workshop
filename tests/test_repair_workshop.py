@@ -8,6 +8,7 @@ from pathlib import Path
 import socket
 import subprocess
 import sys
+import textwrap
 
 import pytest
 
@@ -299,6 +300,42 @@ def test_primary_notebooks_are_portable_and_expose_real_mlflow_calls():
             calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "evaluate"]
             assert any({keyword.arg for keyword in node.keywords} >= {"data", "predict_fn", "scorers"} for node in calls)
         assert all(cell.get("outputs", []) == [] for cell in notebook["cells"]), "released source notebooks must not conceal test-double outputs"
+
+
+@pytest.mark.parametrize("name", ["00_setup.ipynb", "01_diagnose_and_evaluate.ipynb", "02_compare_and_decide.ipynb"])
+def test_notebook_bootstrap_refreshes_a_cached_missing_path_finder(tmp_path, name):
+    package = tmp_path / "west_workshop"
+    package.mkdir()
+    (package / "__init__.py").write_text("READY = True\n", encoding="utf-8")
+    (package / "data.py").write_text("# Root marker\n", encoding="utf-8")
+    (tmp_path / "notebooks" / "workshop").mkdir(parents=True)
+    script = textwrap.dedent("""
+        import importlib, importlib.machinery, importlib.util, json, os, sys
+        from pathlib import Path
+
+        root = Path(sys.argv[1]).resolve()
+        notebook = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+        bootstrap = next(cell["source"] for cell in notebook["cells"] if "setup" in cell.get("metadata", {}).get("tags", []))
+        os.environ["WORKSHOP_PROJECT_ROOT"] = str(root)
+        os.environ["WORKSHOP_MODE"] = "saved"
+        os.chdir(root / "notebooks" / "workshop")
+        # Isolate the real path finder from installed copies of the package.
+        sys.meta_path = [importlib.machinery.BuiltinImporter, importlib.machinery.FrozenImporter, importlib.machinery.PathFinder]
+        sys.path[:] = [str(root), *(entry for entry in sys.path if not (Path(entry) / "west_workshop").exists())]
+        sys.path_importer_cache[str(root)] = None
+        assert (root / "west_workshop" / "__init__.py").is_file()
+        assert importlib.util.find_spec("west_workshop") is None
+
+        namespace = {}
+        exec(compile(bootstrap, sys.argv[2], "exec"), namespace)
+        import west_workshop
+        assert west_workshop.READY
+        assert Path(west_workshop.__file__).resolve() == root / "west_workshop" / "__init__.py"
+        assert namespace["ROOT"] == root and namespace["MODE"] == "saved"
+    """)
+    result = subprocess.run([sys.executable, "-I", "-c", script, str(tmp_path), str(ROOT / "notebooks" / "workshop" / name)],
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_notebook_saves_and_setup_edits_preserve_live_handoff_but_retain_hashes(offline_openai, tmp_path, monkeypatch):

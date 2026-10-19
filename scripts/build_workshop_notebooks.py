@@ -19,6 +19,7 @@ def code(source, *, setup=False):
 
 
 BOOTSTRAP = """
+import importlib
 import os, sys, json
 from pathlib import Path
 
@@ -29,6 +30,7 @@ if ROOT is None:
     raise RuntimeError("Set WORKSHOP_PROJECT_ROOT to the workshop checkout, then restart this notebook.")
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+importlib.invalidate_caches()
 os.chdir(ROOT)
 MODE = os.environ.get("WORKSHOP_MODE", "saved")  # Explicit opt-in before any model calls.
 """
