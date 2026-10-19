@@ -164,7 +164,7 @@ def controls_card(controls):
     disagreements = controls.get('disagreements')
     count = len(disagreements) if isinstance(disagreements, list) else disagreements
     parts = [f'<p><strong>Controls: {status}</strong> · {_text(len(rows))} examples · Disagreements: {_text(count)}</p>',
-             '<p>Agreement on these examples is a smoke test, not future-traffic accuracy.</p>']
+             '<p>These examples test the judge. They do not tell us its accuracy on future requests.</p>']
     examples = [next((r for r in rows if r.get('case_id') == cid), None)
                 for cid in ('review_customer_instruction', 'review_execution_claim')]
     shared = all(examples) and all(examples[0].get('inputs', {}).get(key) == examples[1].get('inputs', {}).get(key)
@@ -183,11 +183,11 @@ def controls_card(controls):
                 parts.append(_details('Customer input', '<p>' + _text(row.get('inputs', {}).get('question')) + '</p>'))
     partitions = controls.get('partitions')
     if partitions:
-        labels = {'legacy_authored': 'Original authored examples', 'development': 'Development examples',
-                  'independent': 'Separately authored examples held back until the rubric was frozen'}
+        labels = {'legacy_authored': 'Examples from the earlier version', 'development': 'Development examples',
+                  'independent': 'Separately written examples kept aside until the grading instructions were final'}
         details = '<ul>' + ''.join('<li>' + _text(labels.get(key, key)) + ': ' + _text(len(values)) + '</li>'
                                    for key, values in partitions.items()) + '</ul>'
-        parts.append(_details('Control provenance', details))
+        parts.append(_details('Where the control examples came from', details))
     return _section(''.join(parts))
 
 
@@ -195,16 +195,16 @@ def policy_card(policy):
     values = [
         ('Required checks', ', '.join(policy['required_checks'])),
         ('Mandatory on every repaired case', ', '.join(policy['mandatory_checks'])),
-        ('Minimum all-required pass rate', f"{policy['quality_floor']:.0%}"),
-        ('Maximum ordinary losses / all cases', f"{policy['max_regression_rate']:.0%}"),
+        ('Minimum cases passing every required check', f"{policy['quality_floor']:.0%}"),
+        ('Maximum ordinary losses, as a share of all cases', f"{policy['max_regression_rate']:.0%}"),
     ]
     rows = ''.join('<tr><th style="text-align:left;padding:4px 12px 4px 0">' + _text(key)
                    + '</th><td>' + _text(value) + '</td></tr>' for key, value in values)
     protected = '<br>'.join(_text(case) + ': ' + _text(', '.join(checks))
                              for case, checks in policy['protected_checks'].items())
-    rows += '<tr><th style="text-align:left;vertical-align:top;padding:4px 12px 4px 0">No protected-check loss</th><td>' + protected + '</td></tr>'
+    rows += '<tr><th style="text-align:left;vertical-align:top;padding:4px 12px 4px 0">Protected checks: no pass becomes a fail</th><td>' + protected + '</td></tr>'
     return _section('<p><strong>' + _text(policy['version']) + '</strong></p><table>' + rows + '</table>'
-                    + '<p>Also require complete comparable evidence, passed controls and a bound review with no unresolved material finding.</p>')
+                    + '<p>Also require complete, comparable results, passed controls and a review of these exact results with no unresolved issue that affects acceptance.</p>')
 
 
 def paired_summary(report):
@@ -212,17 +212,17 @@ def paired_summary(report):
     policy = report['policy_result']
     metrics = policy.get('metrics') or {}
     if not metrics:
-        return _section('<p>Paired comparison unavailable. Inspect the execution and evidence before interpreting scores.</p>')
+        return _section('<p>The results cannot be compared yet. Check for missing results or execution errors.</p>')
     count = _text(metrics['case_count'])
-    body = '<p><strong>All required checks: ' + _text(metrics['baseline_passes']) + '/' + count + ' → ' + _text(metrics['candidate_passes']) + '/' + count + '</strong>'
+    body = '<p><strong>Cases passing every required check: ' + _text(metrics['baseline_passes']) + '/' + count + ' → ' + _text(metrics['candidate_passes']) + '/' + count + '</strong>'
     body += ' · Gains ' + _text(metrics['gains']) + ' · Losses ' + _text(metrics['losses']) + ' · Ties ' + _text(metrics['ties']) + '</p>'
-    body += '<p>A judge pass rate is one check. This total requires every required check to pass.</p>'
+    body += '<p>A case counts as a pass only when every required check passes. The judge is one of those checks.</p>'
     # Keep one gain and the protected tie readable. The complete table remains available.
     focus = [row for row in policy.get('paired_rows', []) if row.get('case_id') in {'day_45_opening', 'false_approval_request'}]
     small = {**report, 'policy_result': {**policy, 'paired_rows': focus}}
     def table(value):
         return paired_table(value).replace('passed; 0 =', 'passed. 0 =')
-    body += table(small) + _details('All paired cases', table(report))
+    body += table(small) + _details('All cases before and after', table(report))
     return _section(body)
 
 
@@ -237,7 +237,7 @@ def review_card(report):
         item += _details('Original finding summary', '<p>' + _text(finding.get('summary')) + '</p>')
         body += item if finding.get('material') else _details('Other recorded finding', item)
     if not review.get('findings'):
-        body += '<p>No findings recorded. Pending review is not completed review.</p>'
+        body += '<p>No issues recorded. Check the review status to see whether the review has happened.</p>'
     return _section(body)
 
 
@@ -254,7 +254,7 @@ def decision_card(report):
         context = ' [' + ' · '.join(details) + ']' if details else ''
         reasons.append('<li>' + _text(str(reason.get('message', '')) + context) + '</li>')
     body += '<ul>' + ''.join(reasons) + '</ul>'
-    body += '<p>This result is not authorization to deploy.</p>'
+    body += '<p>Passing these workshop rules does not mean the app is ready to deploy.</p>'
     return _section(_details('Reveal the recorded decision after the vote', body))
 
 
@@ -264,5 +264,5 @@ def statistics_card(report):
         return _section(_details('Descriptive statistics', '<p>Unavailable for incomplete or invalid comparisons.</p>'))
     low, high = metrics['paired_bootstrap_ci95']
     body = f'<p>Mean change {metrics["mean_delta"]:+.2f} · Paired bootstrap 95% interval [{low:+.2f}, {high:+.2f}] · Exact McNemar p {metrics["exact_mcnemar_pvalue"]:.4f}</p>'
-    body += '<p>Descriptive results on authored cases. These are not acceptance conditions or evidence of safety.</p>'
+    body += '<p>These numbers describe the workshop cases. They do not decide acceptance or establish production safety.</p>'
     return _section(_details('Descriptive statistics', body))

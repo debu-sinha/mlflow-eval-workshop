@@ -57,7 +57,7 @@ write("00_setup.ipynb", [
 
     **Would you accept this repair?** Follow one case through its rule, trace, checks, repair and decision.
 
-    Watching is a complete participation route. **Saved** reads dated real evidence without model or network calls. **Live** makes new model calls and can produce a different result.
+    You can follow by watching. **Saved** shows recorded results without model or network calls. **Live** makes new model calls and can produce a different result.
     """),
     code(BOOTSTRAP, setup=True),
     markdown("""
@@ -85,7 +85,7 @@ write("00_setup.ipynb", [
     | Simulated deployed assistant | Obsolete 90-day policy |
     | Proposed repair | Current 30-day policy |
 
-    The cases and checks stay fixed. A workshop policy pass is not authorization to deploy.
+    The cases and checks stay fixed. Passing these workshop rules does not mean the app is ready to deploy.
 
     Next: **01_diagnose_and_evaluate.ipynb**.
     """),
@@ -111,7 +111,7 @@ write("01_diagnose_and_evaluate.ipynb", [
     markdown("""
     ## Code view 1: one business check
 
-    Compare the declared eligibility with the reviewed label. A correct label alone cannot prove the explanation is correct.
+    Compare the answer's eligibility label with the expected label. We check the explanation separately.
     """),
     code("""
     import inspect
@@ -123,7 +123,7 @@ write("01_diagnose_and_evaluate.ipynb", [
     ## Code view 2: evaluate the application
 
     `data` holds named cases. `predict_fn` runs the traced application. `scorers` checks its answers.
-    Saved mode reads the original result. Live mode generates each missing batch once.
+    Saved mode reads the original result. Live mode creates new results and reuses completed batches.
     """),
     code("""
     if session.needs("deployed"):
@@ -140,7 +140,7 @@ write("01_diagnose_and_evaluate.ipynb", [
         raise RuntimeError("This evaluation is incomplete. Inspect its preserved failure before retrying in a new directory.")
     """, hidden=True),
     markdown("""
-    ## Inspect in MLflow: request → source → assessments
+    ## Inspect in MLflow: request → source → check results
 
     Open `day_45_opening`. Which source did the assistant receive? Which check caught the wrong answer?
 
@@ -158,7 +158,7 @@ write("02_compare_and_decide.ipynb", [
     markdown("""
     # 2 · Compare and decide
 
-    **What would make the repair acceptable?** Change the retrieved policy. Keep the cases and checks fixed.
+    **What would make the repair acceptable?** Give the app the current policy document. Keep the cases and checks fixed.
     """),
     code(BOOTSTRAP, setup=True),
     code("""
@@ -175,7 +175,7 @@ write("02_compare_and_decide.ipynb", [
     markdown("""
     ## Test the judge
 
-    Can it distinguish a customer's request from an assistant's claim that a transaction happened?
+    Can the judge tell the customer's instructions apart from the assistant's claim that a refund happened?
     """),
     code("""
     controls = None
@@ -186,7 +186,7 @@ write("02_compare_and_decide.ipynb", [
     markdown("""
     ## Evaluate the repair
 
-    Use the same MLflow call on both configurations. Reuse completed batches. Failed controls or a recorded execution failure stop further provider work.
+    Use the same MLflow call for both versions. Failed controls or an execution error stop further model calls.
     """),
     code("""
     if MODE == "live" and controls and controls["passed"] and not session.has_execution_failure():
@@ -206,9 +206,9 @@ write("02_compare_and_decide.ipynb", [
     comparison = session.policy_inputs(reviewed)
     """, hidden=True),
     markdown("""
-    ## Code view 3: apply the declared policy
+    ## Code view 3: apply the acceptance rules
 
-    The workshop's acceptance rules are separate from MLflow's measurements.
+    MLflow records the results. These rules decide whether the repair passes.
     """),
     code("""
     from west_workshop.repair_policy import DEFAULT_POLICY, evaluate_repair
@@ -221,19 +221,19 @@ write("02_compare_and_decide.ipynb", [
     display(HTML(policy_card(DEFAULT_POLICY)))
     """, hidden=True),
     markdown("""
-    ## Inspect in MLflow: repair → disputed assessment
+    ## Inspect in MLflow: repaired answer → disputed grade
 
-    Check the repaired day-45 source and answer. Then inspect any material finding's case.
-    MLflow records the trace and scores. Our review records whether an issue remains open.
+    Check the repaired day-45 source and answer. Then inspect any case flagged by the review.
+    MLflow records the trace and scores. The review records any unresolved issue.
     """),
     code("""
     display(HTML(inspection_card(session, "repair", ["day_45_opening", *finding_cases(report)])))
     """, hidden=True, cell_id="02-mlflow"),
     markdown("""
-    ## Inspect the pairs and review
+    ## Compare each case and read the review
 
     Compare the same case before and after. A 0-to-0 score is a tie, even on a protected case.
-    A completed review can leave a material finding open.
+    A material finding is an issue that can affect acceptance. A completed review can leave one unresolved.
     """),
     code("""
     display(HTML(paired_summary(report)))
@@ -254,10 +254,10 @@ write("02_compare_and_decide.ipynb", [
     ## Turn the finding into a future test
 
     Preserve the original answer and score. Have a human approve the new case label.
-    Qualify a changed judge, then rescore all frozen answers with that same definition.
-    Never patch one disagreeable score.
+    Test a changed judge on controls. Then use that version to grade all the same saved answers again.
+    Keep the original scores.
 
-    Adapt the application, cases, checks and policy using the README. Keep the owner and evidence for your next decision explicit.
+    The README shows where to change the app, cases, checks and acceptance rules. Record who owns the next decision and the evidence they need.
     """),
     code("""
     display(HTML(statistics_card(report)))
