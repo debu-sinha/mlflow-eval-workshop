@@ -30,7 +30,7 @@ uv run --locked --extra local jupyter lab
 
 Open `notebooks/workshop/00_setup.ipynb`. Run all cells, then do the same in 01 and 02. Each notebook starts a fresh session and reads the same evidence directory. You do not need variables from another kernel. The committed lock defines the tested dependency versions. See [verified routes](docs/verified-routes.md) for qualified versions and execution scope.
 
-Before presenting a completed notebook 02 in JupyterLab, click the triangle beside **Vote before revealing the decision**. The **1 cell hidden** indicator confirms that the following verdict cell, including its HTML and text outputs, is hidden. Click **1 cell hidden** after the audience vote to reveal it. Leave the control and review outputs visible with their long helper source collapsed.
+Notebook 02 keeps its verdict inside a closed **Reveal the recorded decision after the vote** disclosure, including after Run All. Open it after the vote. Setup and display helpers use collapsed-source metadata. Keep the actual scorer, evaluation call and policy call visible.
 
 To make new model calls, configure `OPENAI_API_KEY` in the terminal that starts Jupyter. Never paste a key into a notebook or commit it. Set these nonsecret options before starting Jupyter, or in the setup cell of each notebook:
 
@@ -78,7 +78,29 @@ Without this selection, saved mode opens the local bundle even when the notebook
 
 If Databricks reports that its HTML-output host is unreachable and offers **Run in strict sandbox**, that supported option rendered the workshop tables in the October 18, 2026 Chrome walkthrough. After execution finishes, reload the page if an HTML output is blank. Reloading the page displayed completed saved and live outputs without another model run.
 
-Before presenting a completed notebook, check its visible state. The long control-example and review-display source cells in 02 should be collapsed while their outputs remain visible. Leave the material finding visible and secondary findings collapsed. Use the **Collapse cell** control beside the final decision cell before the audience vote, then **Expand cell** to reveal the recorded result. This hides both its HTML and text verdicts. The two short code views in 01 remain part of the explanation.
+Before presenting, check the visible state. Collapse setup and display helper source while keeping its output visible. Leave the material finding's status visible and its original summary closed. The verdict disclosure starts closed after execution. After the vote, click **Reveal the recorded decision after the vote**. Notebook editors can handle imported collapse metadata differently, so inspect the actual screen.
+
+## Inspect the same evidence in MLflow
+
+The notebooks have two inspection points: the deployed day-45 trace, then the repaired trace and any material review finding. Links use the run and trace IDs in the selected evidence. MLflow shows the recorded request, retrieved policy and assessments. The workshop's bound review and acceptance policy are separate code and JSON records. They are not built-in MLflow deployment approvals.
+
+**Saved mode:** the downloaded JSON bundle does not include an MLflow tracking server or database. Each inspection point therefore includes a closed, offline case view with the exact recorded answer, retrieved source and assessment explanations. You can complete the workshop with these views alone. If you separately have the matching tracking backend, set `WORKSHOP_MLFLOW_UI_URL` and `WORKSHOP_MLFLOW_EXPERIMENT_ID` in each notebook. These are navigation settings only. Saved mode never probes or validates that server, and an unrelated experiment will not contain these records.
+
+**Local live mode:** after recording your own run, start an MLflow UI against its actual tracking database. With the default tracking configuration and the example output directory above, run from the checkout:
+
+```bash
+uv run --locked --extra local mlflow ui --backend-store-uri sqlite:///artifacts/my-first-repair-run/mlflow-west.db --host 127.0.0.1 --port 5000
+```
+
+Set this nonsecret option in each notebook, then rerun its inspection cell:
+
+```python
+os.environ["WORKSHOP_MLFLOW_UI_URL"] = "http://127.0.0.1:5000"
+```
+
+Use your configured backend instead if you set `MLFLOW_TRACKING_URI`. Live mode reads the recorded run from that backend to find its experiment. It does not create another evaluation to make a link. An HTTP tracking URI can also serve as the UI URL.
+
+**Databricks live mode:** the notebook reads the recorded run's workspace tags and experiment ID to link to that evaluation and selected trace. If workspace tags are unavailable, set `WORKSHOP_MLFLOW_UI_URL` to your workspace's HTTPS base URL. Authentication remains in your browser and workspace session. Never put credentials in a URL. For a custom host, `WORKSHOP_MLFLOW_UI_KIND=databricks` selects the workspace route. Without enough information or tracking access, the notebook keeps the offline case view available.
 
 ## Read a decision without rerunning a model
 
