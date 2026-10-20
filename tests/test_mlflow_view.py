@@ -52,7 +52,7 @@ def test_saved_inspection_is_offline_and_has_exact_fallback(saved, monkeypatch):
     before = copy.deepcopy(saved.bundle)
     card = views.inspection_card(saved, 'deployed', ['day_45_opening'])
     assert 'href=' not in card
-    assert 'within 90 days' in card and 'Recorded assessment explanations' in card
+    assert 'within 90 days' in card and 'Recorded reasons for the grades' in card
     assert 'retrieve' in card.lower() and 'policy_decision: 0.0' in card
     assert saved.bundle == before
 
@@ -125,7 +125,7 @@ def test_closed_verdict_and_small_review_do_not_duplicate_trace(saved):
     parser.feed(decision)
     assert 'REVIEW_REQUIRED' in decision and 'REVIEW_REQUIRED' not in ''.join(parser.text)
     review = views.review_card(report)
-    assert 'complete' in review and 'Material: True' in review and 'Status: open' in review
+    assert 'complete' in review and 'Affects acceptance: Yes' in review and 'Status: open' in review
     assert 'Reviewer:' not in review and 'automated-review' not in review
     assert 'Assistant answer' not in review and 'Customer input' not in review
     parser = VisibleText()

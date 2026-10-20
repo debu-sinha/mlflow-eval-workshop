@@ -29,16 +29,16 @@ import importlib
 import os, sys, json
 from pathlib import Path
 
-# Find the checkout in local Jupyter or a Databricks Git folder.
+# Find the repository folder in local Jupyter or Databricks.
 start = Path(os.environ.get("WORKSHOP_PROJECT_ROOT", Path.cwd())).resolve()
 ROOT = next((p for p in (start, *start.parents) if (p / "west_workshop" / "data.py").is_file()), None)
 if ROOT is None:
-    raise RuntimeError("Set WORKSHOP_PROJECT_ROOT to the workshop checkout, then restart this notebook.")
+    raise RuntimeError("Set WORKSHOP_PROJECT_ROOT to the workshop repository folder, then restart this notebook.")
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 importlib.invalidate_caches()
 os.chdir(ROOT)
-MODE = os.environ.get("WORKSHOP_MODE", "saved")  # Explicit opt-in before any model calls.
+MODE = os.environ.get("WORKSHOP_MODE", "saved")  # Choose live mode to make new model calls.
 """
 
 
@@ -55,15 +55,15 @@ write("00_setup.ipynb", [
     markdown("""
     # Start here
 
-    **Would you accept this repair?** Follow one case through its rule, trace, checks, repair and decision.
+    **Would you accept this repair?** Find why the assistant gave a wrong answer, test the fix and decide.
 
-    You can follow by watching. **Saved** shows recorded results without model or network calls. **Live** makes new model calls and can produce a different result.
+    You can follow along by watching. **Saved mode** shows recorded results without model or network calls. **Live mode** makes new model calls and can produce a different result.
     """),
     code(BOOTSTRAP, setup=True),
     markdown("""
     ## Check your environment
 
-    Run all cells in 00, then 01, then 02. Installation and local or Databricks configuration are in the repository README.
+    Run all cells in notebook 00, then 01, then 02. The README explains setup on your computer or in Databricks.
     """),
     code("""
     from IPython.display import display, HTML
@@ -80,12 +80,12 @@ write("00_setup.ipynb", [
     markdown("""
     ## What changes?
 
-    | Configuration | Retrieved source |
+    | Version | Policy document |
     |---|---|
-    | Simulated deployed assistant | Obsolete 90-day policy |
+    | Starting assistant (simulated) | Old 90-day policy |
     | Proposed repair | Current 30-day policy |
 
-    The cases and checks stay fixed. Passing these workshop rules does not mean the app is ready to deploy.
+    The test cases and checks stay the same. Passing these workshop rules does not mean the app is ready to deploy.
 
     Next: **01_diagnose_and_evaluate.ipynb**.
     """),
@@ -95,9 +95,9 @@ write("01_diagnose_and_evaluate.ipynb", [
     markdown("""
     # 1 · Diagnose and evaluate
 
-    **Can a fluent answer use the wrong policy?** A non-defective item was bought 45 days ago. The customer asks for a full refund.
+    **Can a clear answer still be wrong?** The item is not defective. The customer asks for a full refund 45 days after buying it.
 
-    Current rule: full refund through day 30, store credit after day 30. Defective items need support review.
+    Current rule: full refund through day 30, store credit after day 30. Support must review defective items.
     """),
     code(BOOTSTRAP, setup=True),
     code("""
@@ -111,7 +111,7 @@ write("01_diagnose_and_evaluate.ipynb", [
     markdown("""
     ## Code view 1: one business check
 
-    Compare the answer's eligibility label with the expected label. We check the explanation separately.
+    Does the answer name the right outcome: full refund, store credit or support review? This label check is one of five code checks in `deterministic_stack`. It does not judge the explanation.
     """),
     code("""
     import inspect
@@ -122,8 +122,8 @@ write("01_diagnose_and_evaluate.ipynb", [
     markdown("""
     ## Code view 2: evaluate the application
 
-    `data` holds named cases. `predict_fn` runs the traced application. `scorers` checks its answers.
-    Saved mode reads the original result. Live mode creates new results and reuses completed batches.
+    `data` holds the test cases. `predict_fn` runs the app and records its steps. `scorers` lists the checks for each answer.
+    Saved mode reads recorded results. Live mode runs new evaluations and reuses completed results from the same output folder.
     """),
     code("""
     if session.needs("deployed"):
@@ -137,20 +137,20 @@ write("01_diagnose_and_evaluate.ipynb", [
     code("""
     deployed = session.recorded("deployed")
     if not deployed["complete"]:
-        raise RuntimeError("This evaluation is incomplete. Inspect its preserved failure before retrying in a new directory.")
+        raise RuntimeError("This evaluation is incomplete. Read the saved error before trying again in a new output folder.")
     """, hidden=True),
     markdown("""
-    ## Inspect in MLflow: request → source → check results
+    ## Inspect in MLflow: request → policy → check results
 
-    Open `day_45_opening`. Which source did the assistant receive? Which check caught the wrong answer?
+    A trace shows what happened during one request. Open `day_45_opening`. Which policy did the assistant receive? Which check caught the wrong answer?
 
-    If no matching tracking server is available, expand the recorded case below.
+    If you cannot open these results in MLflow, expand the recorded case below.
     """),
     code("""
     display(HTML(inspection_card(session, "deployed", ["day_45_opening"])))
     """, hidden=True, cell_id="01-mlflow"),
     markdown("""
-    Next: **02_compare_and_decide.ipynb**. Test the judge, change the retrieved policy and inspect what improved.
+    Next: **02_compare_and_decide.ipynb**. Test how answers are graded, then check the repair.
     """),
 ])
 
@@ -158,7 +158,7 @@ write("02_compare_and_decide.ipynb", [
     markdown("""
     # 2 · Compare and decide
 
-    **What would make the repair acceptable?** Give the app the current policy document. Keep the cases and checks fixed.
+    **What would make the repair acceptable?** Give the app the current policy document. Keep the test cases and checks the same.
     """),
     code(BOOTSTRAP, setup=True),
     code("""
@@ -175,7 +175,9 @@ write("02_compare_and_decide.ipynb", [
     markdown("""
     ## Test the judge
 
-    Can the judge tell the customer's instructions apart from the assistant's claim that a refund happened?
+    The judge is a model that grades answers. Controls are examples with known grades that we use to test it.
+
+    Can it distinguish a customer's request from an assistant's claim that it processed a refund?
     """),
     code("""
     controls = None
@@ -186,7 +188,7 @@ write("02_compare_and_decide.ipynb", [
     markdown("""
     ## Evaluate the repair
 
-    Use the same MLflow call for both versions. Failed controls or an execution error stop further model calls.
+    Use the same MLflow call for both versions. Stop further model calls if the judge fails the controls or execution fails.
     """),
     code("""
     if MODE == "live" and controls and controls["passed"] and not session.has_execution_failure():
@@ -221,10 +223,10 @@ write("02_compare_and_decide.ipynb", [
     display(HTML(policy_card(DEFAULT_POLICY)))
     """, hidden=True),
     markdown("""
-    ## Inspect in MLflow: repaired answer → disputed grade
+    ## Inspect in MLflow: repaired answer → review findings
 
-    Check the repaired day-45 source and answer. Then inspect any case flagged by the review.
-    MLflow records the trace and scores. The review records any unresolved issue.
+    Open `day_45_opening` for the repair. Check the policy and answer, then inspect any case flagged in the review.
+    MLflow records what happened and the scores. The review records any issue that still needs attention.
     """),
     code("""
     display(HTML(inspection_card(session, "repair", ["day_45_opening", *finding_cases(report)])))
@@ -232,8 +234,8 @@ write("02_compare_and_decide.ipynb", [
     markdown("""
     ## Compare each case and read the review
 
-    Compare the same case before and after. A 0-to-0 score is a tie, even on a protected case.
-    A material finding is an issue that can affect acceptance. A completed review can leave one unresolved.
+    The table shows each case's overall result. For each protected check, 1 to 0 is a new failure, even if the overall result stays 0. A check that stays at 0 is a tie.
+    A completed review can still have an open issue that affects the decision.
     """),
     code("""
     display(HTML(paired_summary(report)))
@@ -244,7 +246,13 @@ write("02_compare_and_decide.ipynb", [
     markdown("""
     ## Vote before revealing the decision
 
-    **Pause for 20 seconds.** PASS, BLOCK, REVIEW REQUIRED, or INVALID EVIDENCE?
+    **Pause for 20 seconds.** Which decision fits the evidence?
+
+    - **PASS**: all acceptance rules met.
+    - **BLOCK**: an acceptance rule failed.
+    - **REVIEW REQUIRED**: review unfinished or an important issue still open.
+    - **INVALID**: results cannot be compared.
+
     Name the evidence that would change your decision.
     """),
     code("""
@@ -253,11 +261,10 @@ write("02_compare_and_decide.ipynb", [
     markdown("""
     ## Turn the finding into a future test
 
-    Preserve the original answer and score. Have a human approve the new case label.
-    Test a changed judge on controls. Then use that version to grade all the same saved answers again.
-    Keep the original scores.
+    Keep the original answer and score. Ask a person to approve the expected grade for the new test case.
+    Test the updated judge on controls, including new examples it was not tuned on. Then use it to grade all the same saved answers again. Keep both sets of scores.
 
-    The README shows where to change the app, cases, checks and acceptance rules. Record who owns the next decision and the evidence they need.
+    The README shows where to change the app, cases, checks and acceptance rules. Write down who makes the next decision and what evidence they need.
     """),
     code("""
     display(HTML(statistics_card(report)))

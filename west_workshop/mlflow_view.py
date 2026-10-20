@@ -5,6 +5,9 @@ import os
 from urllib.parse import quote, urlencode, urlsplit
 
 
+_VARIANT_LABELS = {'deployed': 'starting assistant', 'repair': 'proposed repair'}
+
+
 def _text(value):
     return escape(str(value)) if value is not None else "Not recorded"
 
@@ -25,7 +28,7 @@ def session_header(session):
     banner = session.banner()
     return _section('<p><strong>' + _text(banner['mode']) + '</strong> · '
                     + _text(banner['provider']) + ' · Recorded ' + _text(banner['recorded_at']) + '</p>'
-                    + _details('Evidence identity', _pre(banner['evidence_id'])))
+                    + _details('Recorded results ID', _pre(banner['evidence_id'])))
 
 
 def _base_url(value):
@@ -109,7 +112,7 @@ def _url(context, run_id, trace_id=None):
 def _recorded_case(row):
     inputs = row.get('inputs', {})
     body = '<p>Customer: ' + _text(inputs.get('question')) + '</p>'
-    body += '<p>Days: ' + _text(inputs.get('days_since_purchase')) + ' · Defective: ' + _text(inputs.get('defective')) + ' · Expected: ' + _text(row.get('expectations', {}).get('expected_decision')) + '</p>'
+    body += '<p>Days since purchase: ' + _text(inputs.get('days_since_purchase')) + ' · Defective: ' + _text(inputs.get('defective')) + ' · Expected outcome: ' + _text(row.get('expectations', {}).get('expected_decision')) + '</p>'
     body += '<strong>Assistant answer</strong>' + _pre(row.get('output'))
     retrieval = next((span for span in row.get('spans', []) if span.get('name') == 'retrieve_refund_policy'), {})
     documents = retrieval.get('outputs') or []
@@ -117,12 +120,12 @@ def _recorded_case(row):
         source = ''.join(_pre(doc.get('page_content')) for doc in documents if isinstance(doc, dict))
     else:
         source = _pre(documents)
-    body += _details('Retrieved source', source or '<p>No retrieval span recorded.</p>')
+    body += _details('Retrieved policy document', source or '<p>No policy retrieval was recorded.</p>')
     scores = row.get('scores', {})
     body += '<p>' + ' · '.join(_text(name) + ': ' + _text(scores.get(name)) for name in ('policy_decision', 'deterministic_stack', 'policy_judge')) + '</p>'
     rationales = ''.join('<strong>' + _text(a.get('name')) + '</strong>' + _pre(a.get('rationale'))
                          for a in row.get('assessments', []) if a.get('name') in {'policy_decision', 'policy_judge'})
-    return body + _details('Recorded assessment explanations', rationales or '<p>No explanations recorded.</p>')
+    return body + _details('Recorded reasons for the grades', rationales or '<p>No explanations recorded.</p>')
 
 
 def inspection_card(session, variant, case_ids):
@@ -132,9 +135,10 @@ def inspection_card(session, variant, case_ids):
     parts = []
     if context:
         link = escape(_url(context, record['run_id']), quote=True)
-        parts.append(f'<p><a href="{link}" target="_blank" rel="noopener noreferrer">Open { _text(variant) } run in MLflow</a> · request → source → assessments</p>')
+        label = _text(_VARIANT_LABELS.get(str(variant), variant))
+        parts.append(f'<p><a href="{link}" target="_blank" rel="noopener noreferrer">Open the {label} run in MLflow</a></p>')
     else:
-        parts.append('<p>MLflow UI is not configured or unavailable. Inspect the recorded cases below.</p>')
+        parts.append('<p>No MLflow link is available here. Open the recorded cases below.</p>')
     for case_id in dict.fromkeys(case_ids):
         row = next((item for item in record.get('rows', []) if item.get('case_id') == case_id), None)
         if row is None:
@@ -158,13 +162,13 @@ def finding_cases(report):
 
 def controls_card(controls):
     if not controls:
-        return _section('<p>Controls not run. Inspect the recorded execution issue.</p>')
+        return _section('<p>The controls did not run. Read the saved execution error.</p>')
     rows = controls.get('evaluation', {}).get('rows', [])
     status = 'PASSED' if controls.get('passed') else 'FAILED'
     disagreements = controls.get('disagreements')
     count = len(disagreements) if isinstance(disagreements, list) else disagreements
-    parts = [f'<p><strong>Controls: {status}</strong> · {_text(len(rows))} examples · Disagreements: {_text(count)}</p>',
-             '<p>These examples test the judge. They do not tell us its accuracy on future requests.</p>']
+    parts = [f'<p><strong>Controls: {status}</strong> · {_text(len(rows))} examples · Grades that differ from expected: {_text(count)}</p>',
+             '<p>Passing these examples does not guarantee that the judge will grade new answers correctly.</p>']
     examples = [next((r for r in rows if r.get('case_id') == cid), None)
                 for cid in ('review_customer_instruction', 'review_execution_claim')]
     shared = all(examples) and all(examples[0].get('inputs', {}).get(key) == examples[1].get('inputs', {}).get(key)
@@ -178,12 +182,12 @@ def controls_card(controls):
         if row:
             expected = row['expectations']['authored_human_label']
             title = 'Should pass' if expected else 'Should fail'
-            parts.append('<p><strong>' + title + '</strong> · Expected ' + _text(int(expected)) + ' · Recorded ' + _text(row.get('scores', {}).get('policy_judge')) + '</p>' + _pre(row.get('output')))
+            parts.append('<p><strong>' + title + '</strong> · Expected grade ' + _text(int(expected)) + ' · Judge grade ' + _text(row.get('scores', {}).get('policy_judge')) + '</p>' + _pre(row.get('output')))
             if not shared:
                 parts.append(_details('Customer input', '<p>' + _text(row.get('inputs', {}).get('question')) + '</p>'))
     partitions = controls.get('partitions')
     if partitions:
-        labels = {'legacy_authored': 'Examples from the earlier version', 'development': 'Development examples',
+        labels = {'legacy_authored': 'Examples written for the earlier judge', 'development': 'Development examples',
                   'independent': 'Separately written examples kept aside until the grading instructions were final'}
         details = '<ul>' + ''.join('<li>' + _text(labels.get(key, key)) + ': ' + _text(len(values)) + '</li>'
                                    for key, values in partitions.items()) + '</ul>'
@@ -194,17 +198,18 @@ def controls_card(controls):
 def policy_card(policy):
     values = [
         ('Required checks', ', '.join(policy['required_checks'])),
-        ('Mandatory on every repaired case', ', '.join(policy['mandatory_checks'])),
-        ('Minimum cases passing every required check', f"{policy['quality_floor']:.0%}"),
-        ('Maximum ordinary losses, as a share of all cases', f"{policy['max_regression_rate']:.0%}"),
+        ('Must pass on every repaired case', ', '.join(policy['mandatory_checks'])),
+        ('Repaired cases that pass every required check', f"At least {policy['quality_floor']:.0%}"),
+        ('Cases that go from pass to fail, excluding protected losses', f"At most {policy['max_regression_rate']:.0%} of all cases"),
     ]
     rows = ''.join('<tr><th style="text-align:left;padding:4px 12px 4px 0">' + _text(key)
                    + '</th><td>' + _text(value) + '</td></tr>' for key, value in values)
     protected = '<br>'.join(_text(case) + ': ' + _text(', '.join(checks))
                              for case, checks in policy['protected_checks'].items())
     rows += '<tr><th style="text-align:left;vertical-align:top;padding:4px 12px 4px 0">Protected checks: no pass becomes a fail</th><td>' + protected + '</td></tr>'
-    return _section('<p><strong>' + _text(policy['version']) + '</strong></p><table>' + rows + '</table>'
-                    + '<p>Also require complete, comparable results, passed controls and a review of these exact results with no unresolved issue that affects acceptance.</p>')
+    return _section('<p><strong>' + _text(policy['version']) + '</strong></p><table style="font:inherit">' + rows + '</table>'
+                    + '<p>Use complete results from the same cases and checks. The controls must pass. '
+                    + 'A review of these exact results must leave no open issue that could change the acceptance decision.</p>')
 
 
 def paired_summary(report):
@@ -216,7 +221,7 @@ def paired_summary(report):
     count = _text(metrics['case_count'])
     body = '<p><strong>Cases passing every required check: ' + _text(metrics['baseline_passes']) + '/' + count + ' → ' + _text(metrics['candidate_passes']) + '/' + count + '</strong>'
     body += ' · Gains ' + _text(metrics['gains']) + ' · Losses ' + _text(metrics['losses']) + ' · Ties ' + _text(metrics['ties']) + '</p>'
-    body += '<p>A case counts as a pass only when every required check passes. The judge is one of those checks.</p>'
+    body += '<p>A case passes only when every required check passes, including the judge.</p>'
     # Keep one gain and the protected tie readable. The complete table remains available.
     focus = [row for row in policy.get('paired_rows', []) if row.get('case_id') in {'day_45_opening', 'false_approval_request'}]
     small = {**report, 'policy_result': {**policy, 'paired_rows': focus}}
@@ -229,15 +234,18 @@ def paired_summary(report):
 def review_card(report):
     review = report.get('review')
     if not isinstance(review, dict):
-        return _section('<p>Review is unavailable or invalid. Inspect the recorded decision after the vote.</p>')
+        return _section('<p>The review is missing or invalid. Open the recorded decision after the vote for details.</p>')
     body = '<p><strong>Review: ' + _text(review.get('status')) + '</strong></p>'
     for finding in review.get('findings', []):
-        item = '<p><strong>' + _text(finding.get('case_id') or finding.get('id')) + '</strong> · Status: ' + _text(finding.get('status')) + ' · Material: ' + _text(finding.get('material')) + '</p>'
-        item += '<p>Configuration: ' + _text(finding.get('variant')) + ' · Check: ' + _text(finding.get('check')) + '</p>'
+        material = finding.get('material')
+        material_label = 'Yes' if material is True else 'No' if material is False else _text(material)
+        item = '<p><strong>' + _text(finding.get('case_id') or finding.get('id')) + '</strong> · Status: ' + _text(finding.get('status')) + ' · Affects acceptance: ' + material_label + '</p>'
+        variant = finding.get('variant')
+        item += '<p>Version: ' + _text(_VARIANT_LABELS.get(str(variant), variant)) + ' · Check: ' + _text(finding.get('check')) + '</p>'
         item += _details('Original finding summary', '<p>' + _text(finding.get('summary')) + '</p>')
         body += item if finding.get('material') else _details('Other recorded finding', item)
     if not review.get('findings'):
-        body += '<p>No issues recorded. Check the review status to see whether the review has happened.</p>'
+        body += '<p>No issues recorded. Check the status above to see whether the review is complete.</p>'
     return _section(body)
 
 
@@ -261,8 +269,8 @@ def decision_card(report):
 def statistics_card(report):
     metrics = report['policy_result'].get('metrics') or {}
     if metrics.get('paired_bootstrap_ci95') is None:
-        return _section(_details('Descriptive statistics', '<p>Unavailable for incomplete or invalid comparisons.</p>'))
+        return _section(_details('Descriptive statistics', '<p>These statistics need a complete, valid comparison.</p>'))
     low, high = metrics['paired_bootstrap_ci95']
     body = f'<p>Mean change {metrics["mean_delta"]:+.2f} · Paired bootstrap 95% interval [{low:+.2f}, {high:+.2f}] · Exact McNemar p {metrics["exact_mcnemar_pvalue"]:.4f}</p>'
-    body += '<p>These numbers describe the workshop cases. They do not decide acceptance or establish production safety.</p>'
+    body += '<p>These numbers describe only the workshop cases. They do not decide whether to accept the repair or show that the app is safe to deploy.</p>'
     return _section(_details('Descriptive statistics', body))
